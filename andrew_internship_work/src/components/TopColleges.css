@@ -1,0 +1,468 @@
+.top-colleges-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 32px 16px;
+}
+
+.top-colleges-container h1,
+.top-colleges-title {
+  font-size: 2.2rem;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 24px;
+  color: #1a73e8;
+}
+
+.top-colleges-flex {
+  display: flex;
+  align-items: flex-start;
+  gap: 32px;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.colleges-list {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-left: 360px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.colleges-list-with-padding {
+  padding-top: 40px;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.college-card {
+  display: flex;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  padding: 18px 22px;
+  align-items: flex-start;
+  transition: box-shadow 0.2s;
+  margin-left: auto;
+  margin-right: auto;
+  width: 88%;
+  max-width: 680px;
+  box-sizing: border-box;
+}
+
+.college-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.13);
+}
+
+.college-rank {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1a73e8;
+  margin-right: 28px;
+  min-width: 60px;
+  text-align: center;
+}
+
+.college-info {
+  flex: 1;
+}
+
+.college-name {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #222;
+  margin-bottom: 4px;
+}
+
+.college-location,
+.college-description,
+.college-metrics {
+  font-size: 1rem;
+  color: #333;
+}
+
+.college-location {
+  margin-bottom: 8px;
+  color: #666;
+}
+
+.college-metrics {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.97em;
+}
+
+.college-rank-image {
+  width: 90px;
+  min-width: 90px;
+  height: 180px;
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  border-radius: 8px 0 0 8px;
+  margin-right: 16px;
+  position: relative;
+}
+
+.college-rank-number {
+  color: #fff;
+  font-size: 2rem;
+  font-weight: bold;
+  padding: 8px 16px;
+  border-radius: 0 0 0 8px;
+  margin-bottom: 8px;
+}
+
+.selectable-card {
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: border 0.2s;
+  position: relative;
+}
+
+.selectable-card.selected {
+  border: 2px solid #1a73e8;
+  background: #eaf1fb;
+}
+
+.selectable-card input[type="checkbox"] {
+  position: absolute;
+  right: 18px;
+  top: 18px;
+  z-index: 2;
+  transform: scale(1.2);
+}
+
+.add-to-list-btn {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  z-index: 100;
+  padding: 16px 32px;
+  background: #1a73e8;
+  color: #fff;
+  border: none;
+  border-radius: 32px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  box-shadow: 0 4px 16px rgba(26, 115, 232, 0.15);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.add-to-list-btn:disabled {
+  background: #b0c4de;
+  cursor: not-allowed;
+}
+
+.filters-sidebar,
+.filters-sidebar-fixed {
+  width: 320px;
+  min-width: 260px;
+  max-width: 340px;
+  background: #f8fafc;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+  padding: 10px 18px 12px;
+  position: relative;
+  height: fit-content;
+  margin-left: 24px;
+}
+
+.filters-sidebar-fixed {
+  position: fixed;
+  top: 90px;
+  left: 0;
+  z-index: 100;
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.sticky-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  position: sticky;
+  top: 24px;
+}
+
+.search-bar-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.college-search-bar {
+  width: 90%;
+  max-width: 240px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #cfd8dc;
+  font-size: 1.08em;
+  background: #fff;
+  margin: 0 auto;
+  display: block;
+}
+
+.filters-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-bottom: 24px;
+  align-items: flex-end;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  font-size: 0.98rem;
+}
+
+.filter-slider-group {
+  margin-bottom: 8px;
+}
+
+.filter-slider-group label {
+  font-weight: 500;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.slider-row,
+.slider-inputs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.slider-bar-wrap {
+  position: relative;
+  height: 30px; /* enough height to show thumbs */
+}
+
+.slider {
+  width: 100%;
+  pointer-events: auto;
+  background: transparent;
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 32px;
+  margin: 0;
+  appearance: none;
+  accent-color: #1976d2;
+}
+
+.slider-thumb-min::-webkit-slider-thumb,
+.slider-thumb-max::-webkit-slider-thumb,
+.slider-thumb-min::-moz-range-thumb,
+.slider-thumb-max::-moz-range-thumb,
+.slider-thumb-min::-ms-thumb,
+.slider-thumb-max::-ms-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #1976d2;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.13);
+  cursor: pointer;
+}
+
+.slider-track-highlight {
+  position: absolute;
+  height: 6px;
+  background: #1976d2;
+  border-radius: 3px;
+  top: 13px;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.slider-num {
+  width: 60px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid #cfd8dc;
+  font-size: 1em;
+}
+
+.slider-value {
+  font-weight: 600;
+  color: #1976d2;
+}
+
+.apply-filters-btn {
+  padding: 10px 22px;
+  border-radius: 8px;
+  border: none;
+  background: #1976d2;
+  color: #fff;
+  font-weight: 600;
+  font-size: 1.08em;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: background 0.15s;
+}
+
+.apply-filters-btn:hover {
+  background: #1256a0;
+}
+
+@media (max-width: 1200px) {
+  .college-card {
+    width: 95%;
+    max-width: 720px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+@media (max-width: 900px) {
+  .top-colleges-flex {
+    flex-direction: column;
+  }
+  .filters-sidebar,
+  .filters-sidebar-fixed {
+    position: static;
+    width: 100%;
+    max-width: 100%;
+    margin-bottom: 24px;
+    left: 0;
+    top: 0;
+    z-index: 1;
+  }
+  .colleges-list {
+    margin-left: 0;
+  }
+  .colleges-list-with-padding {
+    padding-top: 0;
+  }
+  .college-card {
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: 8px;
+    padding-right: 8px;
+    width: 100%;
+  }
+}
+
+.slider-container {
+  width: 100%;
+  max-width: 400px; /* or whatever width you want */
+  margin: 0 auto;
+}
+
+.slider-bar-wrap {
+  position: relative;
+  width: 100%;
+  height: 36px;
+  margin-bottom: 12px;
+}
+
+/* The slider inputs overlap perfectly */
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  position: absolute;
+  width: 100%;
+  height: 36px;
+  background: transparent;
+  pointer-events: all;
+  top: 0;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+  border: none;
+}
+
+/* Track background (gray bar) */
+.slider-bar-wrap::before {
+  content: "";
+  position: absolute;
+  top: 14px;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: #ddd;
+  border-radius: 4px;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Track highlight between thumbs */
+.slider-track-highlight {
+  position: absolute;
+  top: 14px;
+  height: 6px;
+  background: #1976d2;
+  border-radius: 4px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #1976d2;
+  cursor: pointer;
+  border: none;
+  margin-top: -6px; /* center vertically */
+  /* remove position and z-index here */
+}
+
+/* Thumb styling for Firefox */
+.slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #1976d2;
+  cursor: pointer;
+  border: none;
+  position: relative;
+  z-index: 10;
+}
+
+/* Optional number input styling */
+.slider-inputs {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  font-size: 1rem;
+}
+
+.slider-num {
+  width: 60px;
+  padding: 4px 6px;
+  font-size: 1rem;
+}
+
+.slider-thumb-min {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+}
+
+.slider-thumb-max {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+}

@@ -1,0 +1,329 @@
+
+
+.landing-root {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  min-height: 100vh;
+  color: #1a202c;
+  background: url(/assets/background.gif);
+}
+
+.landing-hero-bg {
+  position: relative;
+  min-height: 60vh;
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+}
+
+.landing-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 32px 8vw 0 8vw;
+  background: transparent;
+  position: relative;
+  z-index: 2;
+}
+
+.landing-logo {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 1px;
+  text-shadow: 0 2px 16px rgba(44,62,80,0.25);
+}
+
+.landing-nav {
+  display: flex;
+  align-items: center;
+}
+
+.landing-nav a {
+  margin-left: 32px;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 1.1rem;
+  transition: color 0.2s;
+  text-shadow: 0 2px 16px rgba(44,62,80,0.25);
+}
+
+.landing-nav a:hover {
+  color: #dbeafe;
+}
+
+.login-nav-btn {
+  margin-left: 32px;
+  padding: 8px 22px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  background: #415a77;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+  box-shadow: 0 2px 12px rgba(44,62,80,0.13);
+}
+
+.login-nav-btn:hover {
+  background: #274060;
+}
+
+.landing-slogan-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 40vh;
+  padding: 80px 0 60px 0;
+  position: relative;
+  z-index: 2;
+}
+
+.landing-slogan {
+  font-size: 3rem;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 4px 32px rgba(44,62,80,0.45);
+  margin-bottom: 32px;
+  text-align: center;
+}
+
+.get-started-btn {
+  padding: 16px 48px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  background: #415a77;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 12px rgba(44,62,80,0.07);
+}
+.get-started-btn:hover {
+  background: #274060;
+  box-shadow: 0 4px 18px rgba(44,62,80,0.13);
+}
+
+.landing-section {
+  padding: 48px 8vw;
+  background: #fff;
+  margin: 32px 0;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(44,62,80,0.04);
+}
+
+.landing-section h2 {
+  font-size: 2rem;
+  color: #274060;
+  margin-bottom: 16px;
+}
+
+.landing-section ul {
+  list-style: disc inside;
+  color: #415a77;
+  font-size: 1.1rem;
+}
+
+.landing-footer {
+  text-align: center;
+  padding: 32px 0 16px 0;
+  color: #415a77;
+  font-size: 1rem;
+  background: transparent;
+}
+
+.landing-wave-divider {
+  width: 100%;
+  height: 80px;
+  margin-bottom: -2px;
+  display: block;
+}
+
+.landing-section {
+  padding: 64px 8vw 48px 8vw;
+  background: linear-gradient(135deg, #f8fafc 60%, #e0e7ef 100%);
+  margin: 0 0 48px 0;
+  border-radius: 0 0 24px 24px;
+  box-shadow: 0 8px 32px rgba(44,62,80,0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.landing-section-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 36px;
+  justify-content: center;
+  margin-top: 40px;
+}
+
+.landing-feature-card {
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 4px 24px rgba(44,62,80,0.10);
+  padding: 36px 28px 32px 28px;
+  max-width: 340px;
+  min-width: 260px;
+  flex: 1 1 260px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  transition: transform 0.18s, box-shadow 0.18s;
+}
+
+.landing-feature-card:hover {
+  transform: translateY(-8px) scale(1.03);
+  box-shadow: 0 12px 36px rgba(44,62,80,0.16);
+}
+
+.landing-feature-icon {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 18px;
+  display: block;
+}
+
+.landing-feature-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #274060;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.landing-feature-desc {
+  font-size: 1.08rem;
+  color: #415a77;
+  text-align: center;
+}
+
+.landing-section-bgshape {
+  position: absolute;
+  right: -80px;
+  top: -60px;
+  width: 260px;
+  opacity: 0.13;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.landing-section-bgshape2 {
+  position: absolute;
+  left: -60px;
+  bottom: -60px;
+  width: 180px;
+  opacity: 0.09;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Animated Stats Section */
+.landing-stats-row {
+  display: flex;
+  justify-content: center;
+  gap: 48px;
+  flex-wrap: wrap;
+  margin-top: 32px;
+}
+.landing-stat-block {
+  text-align: center;
+}
+.landing-stat-number {
+  font-size: 48px;
+  font-weight: 700;
+  color: #274060;
+}
+.landing-stat-label {
+  font-size: 18px;
+  color: #415a77;
+}
+
+/* Student Photo Grid */
+.student-photo-grid {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 24px;
+}
+.student-photo-grid img {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 50%;
+  box-shadow: 0 4px 16px rgba(44,62,80,0.10);
+}
+
+/* Call-to-Action Banner */
+.landing-cta-banner {
+  background: linear-gradient(120deg, #e0e7efcc 60%, #f8fafccc 100%), url('https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=1200&q=80') center/cover;
+  color: #274060;
+  text-align: center;
+  padding: 64px 8vw;
+}
+.landing-cta-banner h2 {
+  font-size: 2.2rem;
+  margin-bottom: 16px;
+}
+.landing-cta-banner p {
+  font-size: 1.2rem;
+  margin-bottom: 32px;
+}
+.landing-cta-banner .get-started-btn {
+  font-size: 20px;
+  padding: 16px 48px;
+}
+
+/* Newsletter Signup */
+.landing-newsletter-form {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+.landing-newsletter-form input[type="email"] {
+  padding: 12px 18px;
+  border-radius: 8px;
+  border: 1px solid #b6c6e0;
+  font-size: 16px;
+  min-width: 220px;
+}
+.landing-newsletter-form button[type="submit"] {
+  background: #274060;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 28px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+/* Floating Chat Button */
+.floating-chat-btn {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  background: #274060;
+  color: #fff;
+  border-radius: 50%;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  box-shadow: 0 4px 24px rgba(44,62,80,0.18);
+  z-index: 1000;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+.floating-chat-btn:hover {
+  background: #415a77;
+}

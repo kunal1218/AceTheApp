@@ -1,0 +1,58 @@
+.user-info-outer {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  max-height: 100vh;
+}
+.user-info-outer.water-bg {
+  min-height: 100vh;
+  width: 100vw;
+  background: url('../assets/background.gif') center center/cover no-repeat fixed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.user-info-box {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  padding: 2.5rem 2.5rem 2rem 2.5rem;
+  min-width: 340px;
+  max-width: 90vw;
+  color: #222;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.user-info-box h2 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  font-size: 2rem;
+  color: #2a4d69;
+  text-align: center;
+}
+.user-info-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.user-info-item {
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+  display: flex;
+  gap: 0.5rem;
+}
+.user-info-key {
+  font-weight: 600;
+  color: #4b86b4;
+}
+.user-info-value {
+  word-break: break-all;
+}
+.user-info-box.error {
+  color: #b22222;
+  background: #fff0f0;
+  border: 1px solid #b22222;
+}

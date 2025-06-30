@@ -1,0 +1,31 @@
+.app {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.title {
+  font-size: 2.5rem;
+  margin-bottom: 1.5rem;
+  font-weight: 600;
+}
+
+.background-gif {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+  overflow: hidden;
+}
+
+.background-gif img {
+  width: 100vw;
+  height: 100vh;
+  object-fit: cover;
+  filter: blur(8px) brightness(0.85);
+  pointer-events: none;
+  user-select: none;
+}

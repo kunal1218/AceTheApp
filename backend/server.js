@@ -9,7 +9,7 @@ dotenv.config();
 const app = express(); // <-- MOVE THIS UP HERE
 
 app.use(cors({
-  origin: "http://localhost:5173", // or "*" for all, but this is safer
+  origin: process.env.FRONTEND_ORIGIN, // moved from hardcoded value
   credentials: true
 }));
 app.use(express.json());

@@ -6,8 +6,8 @@ window.addEventListener('unhandledrejection', function(event) {
   alert('UNHANDLED PROMISE REJECTION: ' + (event.reason && event.reason.message ? event.reason.message : JSON.stringify(event.reason)));
 });
 
-const CLIENT_ID = "909605093667-578a1equr1rng4onvuv7lbnvj8qc0p9n.apps.googleusercontent.com";
-const API_KEY = "AIzaSyDCZCwL0lhWcesxuE-NTa2dnB-WJoP5D7g";
+const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
 const SCOPES = "https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/drive.file";
 
 let accessToken = null;

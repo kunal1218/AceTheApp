@@ -29,3 +29,14 @@
   pointer-events: none;
   user-select: none;
 }
+
+/* Change NProgress bar color */
+#nprogress .bar {
+  background: #ffffff !important; /* Use any color you like */
+}
+
+/* Optional: Change the spinner color */
+#nprogress .spinner-icon {
+  border-top-color: #ffffff !important;
+  border-left-color: #ffffff !important;
+}

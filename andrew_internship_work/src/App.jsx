@@ -20,6 +20,8 @@ import { CollegeProvider } from "./components/CollegeProvider";
 import { getToken } from "./api";
 import { getProfile } from "./api";
 import UserInfoPage from "./components/UserInfoPage";
+import NProgress from 'nprogress';
+import 'nprogress/nprogress.css';
 
 
 function App() {

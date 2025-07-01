@@ -1,3 +1,5 @@
+import NProgress from 'nprogress';
+
 const API_URL = import.meta.env.VITE_API_URL;
 let jwt = localStorage.getItem("token") || null;
 
@@ -12,9 +14,20 @@ export function getToken() {
   return localStorage.getItem("token");
 }
 
+// Helper to wrap fetch with NProgress
+export async function apiFetch(url, options) {
+  NProgress.start();
+  try {
+    const res = await fetch(url, options);
+    return res;
+  } finally {
+    NProgress.done();
+  }
+}
+
 // Auth
 export async function register({ name, email, password }) {
-  const res = await fetch(`${API_URL}/auth/register`, {
+  const res = await apiFetch(`${API_URL}/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name, email, password }),
@@ -26,7 +39,7 @@ export async function register({ name, email, password }) {
 }
 
 export async function login({ email, password }) {
-  const res = await fetch(`${API_URL}/auth/login`, {
+  const res = await apiFetch(`${API_URL}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
@@ -41,7 +54,7 @@ export async function login({ email, password }) {
 export async function getProfile() {
   const token = getToken();
   if (!token) return null;
-  const res = await fetch(`${API_URL}/profile/me`, {
+  const res = await apiFetch(`${API_URL}/profile/me`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (res.status === 401) return null;
@@ -52,7 +65,7 @@ export async function getProfile() {
 export async function getColleges() {
   const token = getToken();
   if (!token) return [];
-  const res = await fetch(`${API_URL}/profile/colleges`, {
+  const res = await apiFetch(`${API_URL}/profile/colleges`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (res.status === 401) return [];
@@ -63,7 +76,7 @@ export async function getColleges() {
 export async function addCollege(id) {
   const token = getToken();
   if (!token) return null;
-  const res = await fetch(`${API_URL}/profile/colleges`, {
+  const res = await apiFetch(`${API_URL}/profile/colleges`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -79,7 +92,7 @@ export async function addCollege(id) {
 export async function removeCollege(id) {
   const token = getToken();
   if (!token) return null;
-  const res = await fetch(`${API_URL}/profile/colleges/${id}`, {
+  const res = await apiFetch(`${API_URL}/profile/colleges/${id}`, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -91,7 +104,7 @@ export async function removeCollege(id) {
 export async function saveCollegeDoc(collegeId, docUrl) {
   const token = getToken();
   if (!token) return null;
-  const res = await fetch(`${API_URL}/profile/college-doc`, {
+  const res = await apiFetch(`${API_URL}/profile/college-doc`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -107,7 +120,7 @@ export async function saveCollegeDoc(collegeId, docUrl) {
 export async function getCollegeDocs() {
   const token = getToken();
   if (!token) return [];
-  const res = await fetch(`${API_URL}/profile/college-docs`, {
+  const res = await apiFetch(`${API_URL}/profile/college-docs`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (res.status === 401) return [];
@@ -118,7 +131,7 @@ export async function getCollegeDocs() {
 export async function getAssignmentAnswers() {
   const token = getToken();
   if (!token) return null;
-  const res = await fetch(`${API_URL}/profile/assignment-answers`, {
+  const res = await apiFetch(`${API_URL}/profile/assignment-answers`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (res.status === 401) return null;
@@ -131,7 +144,7 @@ export async function saveAssignmentAnswers(answers) {
   if (!token) return null;
   // Convert answers object to array in correct order
   const arr = [answers.q1 || "", answers.q2 || "", answers.q3 || "", answers.q4 || ""];
-  const res = await fetch(`${API_URL}/profile/assignment-answers`, {
+  const res = await apiFetch(`${API_URL}/profile/assignment-answers`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -148,7 +161,7 @@ export async function getUser() {
   const token = getToken();
   if (!token) return null;
   // Use the correct endpoint: /profile/me
-  const res = await fetch(`${API_URL}/profile/me`, {
+  const res = await apiFetch(`${API_URL}/profile/me`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (res.status === 401) return null;
@@ -159,7 +172,7 @@ export async function getUser() {
 export async function getSurveyAnswers() {
   const token = getToken();
   if (!token) return null;
-  const res = await fetch(`${API_URL}/profile/survey-answers`, {
+  const res = await apiFetch(`${API_URL}/profile/survey-answers`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (res.status === 401) return null;
@@ -170,7 +183,7 @@ export async function getSurveyAnswers() {
 export async function saveSurveyAnswers(answers) {
   const token = getToken();
   if (!token) return null;
-  const res = await fetch(`${API_URL}/profile/survey-answers`, {
+  const res = await apiFetch(`${API_URL}/profile/survey-answers`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -186,7 +199,7 @@ export async function saveSurveyAnswers(answers) {
 export async function getUsaMapClickedChain() {
   const token = getToken();
   if (!token) return null;
-  const res = await fetch(`${API_URL}/profile/usa-map-chain`, {
+  const res = await apiFetch(`${API_URL}/profile/usa-map-chain`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (res.status === 401) return null;
@@ -197,7 +210,7 @@ export async function getUsaMapClickedChain() {
 export async function saveUsaMapClickedChain(chain) {
   const token = getToken();
   if (!token) return null;
-  const res = await fetch(`${API_URL}/profile/usa-map-chain`, {
+  const res = await apiFetch(`${API_URL}/profile/usa-map-chain`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -213,7 +226,7 @@ export async function saveUsaMapClickedChain(chain) {
 export async function getCollegeProgress() {
   const token = getToken();
   if (!token) return {};
-  const res = await fetch(`${API_URL}/profile/progress`, {
+  const res = await apiFetch(`${API_URL}/profile/progress`, {
     headers: { Authorization: `Bearer ${token}` },
     credentials: "include",
   });
@@ -224,7 +237,7 @@ export async function getCollegeProgress() {
 export async function saveCollegeProgress(collegeId, progress) {
   const token = getToken();
   if (!token) return null;
-  const res = await fetch(`${API_URL}/profile/progress`, {
+  const res = await apiFetch(`${API_URL}/profile/progress`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     credentials: "include",

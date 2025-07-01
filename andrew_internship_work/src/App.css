@@ -33,6 +33,7 @@
 /* Change NProgress bar color */
 #nprogress .bar {
   background: #ffffff !important; /* Use any color you like */
+  height: 3px !important; /* Default is 2px; adjust as needed */
 }
 
 /* Optional: Change the spinner color */

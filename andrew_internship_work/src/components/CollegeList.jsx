@@ -864,7 +864,7 @@ export const allColleges = [
     out_state_tuition: 43622,
     undergrad_enrollment: 32100,
     acceptance_rate: 0.81,
-    image: "https://www.usnews.com/dims4/USNEWS/e281b91/17177859217/resize/800x540%3E/quality/85/?url=https%3A%2F%2Fwww.usnews.com%2Fcmsmedia%2Fb7%2F029f7721431e45fe47d6a961289c63%2FCUBoulder_Campuslife1.JPG",
+    image: "https://www.usnews.com/dims4/USNEWS/b85c298/17177859217/resize/800x540%3E/quality/85/?url=https%3A%2F%2Fwww.usnews.com%2Fcmsmedia%2Ffe%2F9167da148c13a123138a81139ffc6c%2FCUBouder_Campuslife2.JPG",
     description: "A flagship public university with leading programs in aerospace engineering, environmental science, physics, and business."
 },
 ];

@@ -45,11 +45,9 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // If not logged in, redirect to login page
-    if (!localStorage.getItem("token")) {
-      setLoggedIn(false);
-      navigate("/login");
-    }
+    // Remove forced redirect to /login for unauthenticated users
+    // Only redirect to /login if the route is protected and user is not logged in
+    // This logic should be handled in the route definitions, not globally here
   }, []);
 
   // Logout handler

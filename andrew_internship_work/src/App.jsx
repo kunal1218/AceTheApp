@@ -22,6 +22,7 @@ import { getProfile } from "./api";
 import UserInfoPage from "./components/UserInfoPage";
 import NProgress from 'nprogress';
 import 'nprogress/nprogress.css';
+import GoogleAuthHandler from "./components/GoogleAuthHandler";
 
 
 function App() {
@@ -136,6 +137,8 @@ function App() {
             loggedIn ? <CollegeList /> : <LandingPage />
           } />
           <Route path="/user-info" element={<UserInfoPage />} />
+          {/* Add /profile route for Google OAuth redirect, but route to home page */}
+          <Route path="/profile" element={<GoogleAuthHandler setLoggedIn={setLoggedIn} />} />
         </Routes>
       </>
     </CollegeProvider>

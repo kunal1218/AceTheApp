@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import "./UserInfoPage.css";
-import { getUser } from "../api";
+import { getUser, setToken } from "../api";
 import backgroundGif from "../assets/background.gif";
 import colleges from "../colleges";
 
@@ -11,6 +11,17 @@ const OPTIONS = ["Very Unlikely", "Unlikely", "Neutral", "Likely", "Very Likely"
 export default function UserInfoPage() {
   const [user, setUser] = useState(null);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+    if (token) {
+      setToken(token);
+      window.history.replaceState({}, document.title, window.location.pathname);
+      // Optionally, trigger a reload or state update here
+      window.location.reload(); // Ensures user info loads with new token
+    }
+  }, []);
 
   useEffect(() => {
     getUser().then(setUser).catch(e => setError("Failed to load user info."));

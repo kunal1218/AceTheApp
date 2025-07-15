@@ -1,10 +1,47 @@
+import "dotenv/config";
+
 import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
+import passport from "passport";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import User from "../models/User.js";
 const router = express.Router();
 
+// Google OAuth setup
+passport.use(new GoogleStrategy({
+  clientID: process.env.GOOGLE_CLIENT_ID,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  callbackURL: "/api/auth/google/callback"
+}, async (accessToken, refreshToken, profile, done) => {
+  try {
+    // Only allow Google login if user already exists
+    let user = await User.findOne({ email: profile.emails[0].value });
+    if (!user) {
+      // User does not exist, do not create a new account
+      return done(null, false, { message: "No account exists for this email. Please sign up first." });
+    }
+    // User exists, allow login
+    return done(null, user);
+  } catch (err) {
+    return done(err, null);
+  }
+}));
+
+passport.serializeUser((user, done) => {
+  done(null, user.id);
+});
+passport.deserializeUser(async (id, done) => {
+  try {
+    const user = await User.findById(id);
+    done(null, user);
+  } catch (err) {
+    done(err, null);
+  }
+});
+
+// Registration route: prevent duplicate emails
 router.post("/register", async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -41,6 +78,36 @@ router.post("/login", async (req, res) => {
     return res.status(401).json({ message: "Invalid credentials" });
   const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
   res.json({ token, user: { name: user.name, email: user.email } });
+});
+
+// Google OAuth routes
+router.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+
+router.get("/google/callback",
+  passport.authenticate("google", {
+    failureRedirect: "/login",
+    session: true
+  }),
+  (req, res) => {
+    // Redirect to frontend after successful login
+    const token = jwt.sign({ id: req.user.id }, process.env.JWT_SECRET);
+    res.redirect(`${process.env.FRONTEND_ORIGIN}/profile?token=${token}`);
+  },
+  (err, req, res, next) => {
+    // If the error is from our custom GoogleStrategy logic, show a clear message
+    if (err && err.message === "No account exists for this email. Please sign up first.") {
+      return res.status(403).send("No account exists for this email. Please sign up first.");
+    }
+    console.error("OAuth callback error:", err);
+    res.status(500).send("OAuth error: " + (err && err.message ? err.message : "Unknown error"));
+  }
+);
+
+router.get("/logout", (req, res) => {
+  req.logout(() => {
+    // Use an absolute backend URL for logout redirect to avoid blank page if user logs out from a different origin
+    res.redirect(`${process.env.FRONTEND_ORIGIN}/login`);
+  });
 });
 
 export default router;

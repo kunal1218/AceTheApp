@@ -29,6 +29,15 @@ export default function LoginPage({ setLoggedIn }) {
     }
   };
 
+  // Helper to get the correct backend URL for Google OAuth
+  const getGoogleAuthUrl = () => {
+    if (window.location.hostname === "localhost") {
+      return "http://localhost:5001/api/auth/google";
+    } else {
+      return "https://ace-the-app-backend.onrender.com/api/auth/google";
+    }
+  };
+
   return (
     <div className="create-account-outer">
       <form className="create-account-box" onSubmit={handleSubmit}>
@@ -53,6 +62,18 @@ export default function LoginPage({ setLoggedIn }) {
         <button type="submit" className="create-account-btn">
           Log In
         </button>
+        <div className="or-separator">
+          <span className="or-line" />
+          <span className="or-text">or</span>
+          <span className="or-line" />
+        </div>
+        <a
+          href={getGoogleAuthUrl()}
+          className="google-login-btn"
+        >
+          <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="google-icon" />
+          Log in with Google
+        </a>
       </form>
     </div>
   );

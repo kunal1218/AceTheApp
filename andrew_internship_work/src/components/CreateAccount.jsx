@@ -6,6 +6,15 @@ import { saveSurveyAnswers, getToken } from "../api";
 
 const LOCAL_STORAGE_KEY = "guestSurveyAnswers";
 
+// Helper to get the correct backend URL for Google OAuth
+const getGoogleAuthUrl = () => {
+  if (window.location.hostname === "localhost") {
+    return "http://localhost:5001/api/auth/google";
+  } else {
+    return "https://ace-the-app-backend.onrender.com/api/auth/google";
+  }
+};
+
 export default function CreateAccount({ setLoggedIn }) {
   const navigate = useNavigate();
   const [form, setForm] = useState({
@@ -133,6 +142,18 @@ export default function CreateAccount({ setLoggedIn }) {
         <button type="submit" className="create-account-btn">
           Create Account
         </button>
+        <div className="or-separator">
+          <span className="or-line" />
+          <span className="or-text">or</span>
+          <span className="or-line" />
+        </div>
+        <a
+          href={getGoogleAuthUrl()}
+          className="google-login-btn"
+        >
+          <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="google-icon" />
+          Sign up with Google
+        </a>
       </form>
     </div>
   );

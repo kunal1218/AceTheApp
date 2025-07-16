@@ -136,8 +136,7 @@ function App() {
           <Route path="/colleges-list" element={
             loggedIn ? <CollegeList /> : <LandingPage />
           } />
-          export NVM_DIR="$HOME/.nvm"
-          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"          <Route path="/user-info" element={<UserInfoPage />} />
+          <Route path="/user-info" element={<UserInfoPage />} />
           {/* Add /profile route for Google OAuth redirect, but route to home page */}
           <Route path="/profile" element={<GoogleAuthHandler setLoggedIn={setLoggedIn} />} />
         </Routes>

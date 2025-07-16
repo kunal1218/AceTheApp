@@ -20,11 +20,13 @@ passport.use(new GoogleStrategy({
     let user = await User.findOne({ email: profile.emails[0].value });
     if (!user) {
       // User does not exist, do not create a new account
+      console.error("[GoogleStrategy] No user found for email:", profile.emails[0].value);
       return done(null, false, { message: "No account exists for this email. Please sign up first." });
     }
     // User exists, allow login
     return done(null, user);
   } catch (err) {
+    console.error("[GoogleStrategy] Error:", err);
     return done(err, null);
   }
 }));
@@ -94,11 +96,11 @@ router.get("/google/callback",
     res.redirect(`${process.env.FRONTEND_ORIGIN}/profile?token=${token}`);
   },
   (err, req, res, next) => {
+    console.error("[Google OAuth callback] Error:", err);
     // If the error is from our custom GoogleStrategy logic, show a clear message
     if (err && err.message === "No account exists for this email. Please sign up first.") {
       return res.status(403).send("No account exists for this email. Please sign up first.");
     }
-    console.error("OAuth callback error:", err);
     res.status(500).send("OAuth error: " + (err && err.message ? err.message : "Unknown error"));
   }
 );

@@ -13,14 +13,13 @@ const router = express.Router();
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL: process.env.GOOGLE_CALLBACK_URL
-}, async (accessToken, refreshToken, profile, done) => {
+  callbackURL: process.env.GOOGLE_CALLBACK_URL,
+  passReqToCallback: true
+}, async (req, accessToken, refreshToken, profile, done) => {
   try {
-    // Check if this is a signup attempt
-    const isSignup = profile._json.signup === true || (profile._json.signup === "true");
+    const isSignup = req.query.state === "signup";
     let user = await User.findOne({ email: profile.emails[0].value });
     if (!user) {
-      // Only create account if signup=true
       if (isSignup) {
         user = new User({
           name: profile.displayName,
@@ -32,12 +31,10 @@ passport.use(new GoogleStrategy({
         await user.save();
         return done(null, user);
       } else {
-        // User does not exist, do not create a new account
         console.error("[GoogleStrategy] No user found for email:", profile.emails[0].value);
         return done(null, false, { message: "No account exists for this email. Please sign up first." });
       }
     }
-    // User exists, allow login
     return done(null, user);
   } catch (err) {
     console.error("[GoogleStrategy] Error:", err);

@@ -148,7 +148,7 @@ export default function CreateAccount({ setLoggedIn }) {
           <span className="or-line" />
         </div>
         <a
-          href={getGoogleAuthUrl()}
+          href={getGoogleAuthUrl() + '?signup=true'}
           className="google-login-btn"
         >
           <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="google-icon" />

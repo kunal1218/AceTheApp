@@ -16,12 +16,26 @@ passport.use(new GoogleStrategy({
   callbackURL: process.env.GOOGLE_CALLBACK_URL
 }, async (accessToken, refreshToken, profile, done) => {
   try {
-    // Only allow Google login if user already exists
+    // Check if this is a signup attempt
+    const isSignup = profile._json.signup === true || (profile._json.signup === "true");
     let user = await User.findOne({ email: profile.emails[0].value });
     if (!user) {
-      // User does not exist, do not create a new account
-      console.error("[GoogleStrategy] No user found for email:", profile.emails[0].value);
-      return done(null, false, { message: "No account exists for this email. Please sign up first." });
+      // Only create account if signup=true
+      if (isSignup) {
+        user = new User({
+          name: profile.displayName,
+          email: profile.emails[0].value,
+          password: "", // No password for Google accounts
+          myColleges: [],
+          collegeDocs: {}
+        });
+        await user.save();
+        return done(null, user);
+      } else {
+        // User does not exist, do not create a new account
+        console.error("[GoogleStrategy] No user found for email:", profile.emails[0].value);
+        return done(null, false, { message: "No account exists for this email. Please sign up first." });
+      }
     }
     // User exists, allow login
     return done(null, user);

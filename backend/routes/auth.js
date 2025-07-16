@@ -94,7 +94,13 @@ router.post("/login", async (req, res) => {
 });
 
 // Google OAuth routes
-router.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+router.get("/google", (req, res, next) => {
+  const state = req.query.state || "";
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+    state
+  })(req, res, next);
+});
 
 router.get("/google/callback",
   passport.authenticate("google", {

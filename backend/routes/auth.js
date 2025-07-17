@@ -26,16 +26,10 @@ passport.use(new GoogleStrategy({
           email: profile.emails[0].value,
           password: "", // No password for Google accounts
           myColleges: [],
-          collegeDocs: {},
-          surveyAnswers: Array(10).fill(null), // Ensure surveyAnswers initialized
-          assignmentAnswers: Array(4).fill("") // Ensure assignmentAnswers initialized
+          collegeDocs: {}
+          // Do NOT manually set surveyAnswers or assignmentAnswers, let Mongoose defaults handle it
         });
         await user.save();
-        // Double-check and force save surveyAnswers if missing
-        if (!user.surveyAnswers || user.surveyAnswers.length !== 10) {
-          user.surveyAnswers = Array(10).fill(null);
-          await user.save();
-        }
         return done(null, user);
       } else {
         console.error("[GoogleStrategy] No user found for email:", profile.emails[0].value);

@@ -31,6 +31,11 @@ passport.use(new GoogleStrategy({
           assignmentAnswers: Array(4).fill("") // Ensure assignmentAnswers initialized
         });
         await user.save();
+        // Double-check and force save surveyAnswers if missing
+        if (!user.surveyAnswers || user.surveyAnswers.length !== 10) {
+          user.surveyAnswers = Array(10).fill(null);
+          await user.save();
+        }
         return done(null, user);
       } else {
         console.error("[GoogleStrategy] No user found for email:", profile.emails[0].value);

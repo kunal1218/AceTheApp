@@ -139,8 +139,7 @@ export default function USAMap() {
 
   // Only allow clicking a node if it's not already in the chain and not already connected
   const handleNodeClick = (id) => {
-    // Prevent clicking 'CA' more than once
-    if (id === "CA" && clickedChain.includes("CA")) return;
+    // Allow clicking CA even if it's already in the chain
     const capital = getCap(id);
     if (!capital) return;
     setPopup(capital);
@@ -148,7 +147,9 @@ export default function USAMap() {
 
   // Only allow clicking on nodes that are not already in the chain and not ME if not last
   const isNodeClickable = (id) => {
-    return id === "CA" || !clickedChain.includes(id);
+    // Always allow clicking CA, even if it's already in the chain
+    if (id === "CA") return true;
+    return !clickedChain.includes(id);
   };
 
   const handlePopupClose = () => setPopup(null);
@@ -639,11 +640,9 @@ export default function USAMap() {
           {lines}
           {/* Render pins for each capital */}
           {capitals.map((cap) => {
-            // Remove pointerEvents: clickable ? "auto" : "none" to allow hover on all pins
             const isClicked = clickedChain.includes(cap.id);
             const clickable = isNodeClickable(cap.id);
 
-            // Determine pin size based on ranking
             let pinSize = 12;
             if (cap.ranking && cap.ranking <= 20) {
               pinSize = 15;
@@ -653,6 +652,9 @@ export default function USAMap() {
               pinSize = 5;
             }
 
+            // Add pulse class for CA when it's the only node in the chain
+            const pulseClass = clickedChain.length === 1 && clickedChain[0] === "CA" && cap.id === "CA" ? " pulse" : "";
+
             return (
               <image
                 key={cap.name}
@@ -661,13 +663,12 @@ export default function USAMap() {
                 y={cap.y - pinSize / 2}
                 width={pinSize}
                 height={pinSize}
-                className={`capital-pin${isClicked ? ' clicked' : ''}`}
+                className={`capital-pin${isClicked ? ' clicked' : ''}${pulseClass}`}
                 style={{
                   cursor: clickable ? 'pointer' : 'default',
                   zIndex: cap.id === 'CA' ? 2 : 1,
                   filter: 'none',
                   transition: 'all 0.15s',
-                  // pointerEvents removed to allow hover on all pins
                 }}
                 onClick={() => clickable && handleNodeClick(cap.id)}
                 onMouseEnter={() => setHoveredCap(cap)}

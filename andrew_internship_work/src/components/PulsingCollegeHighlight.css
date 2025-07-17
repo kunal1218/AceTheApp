@@ -1,0 +1,30 @@
+.pulsing-college {
+  display: inline-block;
+  position: absolute; /* <-- Add this */
+  left: 0;            /* <-- You should set these dynamically via style in JSX */
+  top: 0;
+  z-index: 1000;      /* <-- Add this to ensure it's on top */
+  padding: 12px 24px;
+  border-radius: 8px;
+  background: #ffe066;
+  color: #222;
+  font-weight: bold;
+  box-shadow: 0 0 0 0 rgba(255, 224, 102, 0.7);
+  transition: box-shadow 0.3s;
+  cursor: pointer;
+}
+
+.pulsing-college.pulse {
+  animation: pulse 1s infinite;
+}
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 224, 102, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 20px 10px rgba(255, 224, 102, 0.4);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 224, 102, 0.7);
+  }
+}

@@ -91,3 +91,23 @@
 .usa-map-popup-btn:hover {
   filter: brightness(0.95);
 }
+
+.capital-pin.pulse {
+  animation: mascot-pulse 1s infinite;
+  /* You can combine with .clicked if needed */
+}
+
+@keyframes mascot-pulse {
+  0% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 8px #ff5c5c);
+  }
+  50% {
+    transform: scale(1.03);
+    filter: drop-shadow(0 0 16px #ff5c5c);
+  }
+  100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 8px #ff5c5c);
+  }
+}

@@ -26,7 +26,9 @@ passport.use(new GoogleStrategy({
           email: profile.emails[0].value,
           password: "", // No password for Google accounts
           myColleges: [],
-          collegeDocs: {}
+          collegeDocs: {},
+          surveyAnswers: Array(10).fill(null), // Ensure surveyAnswers initialized
+          assignmentAnswers: Array(4).fill("") // Ensure assignmentAnswers initialized
         });
         await user.save();
         return done(null, user);

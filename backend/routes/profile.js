@@ -52,9 +52,11 @@ router.get("/college-docs", auth, async (req, res) => {
 
 // Save assignment answers
 router.post("/assignment-answers", auth, async (req, res) => {
-  const user = await User.findById(req.user.id);
-  user.assignmentAnswers = req.body.answers;
-  await user.save();
+  await User.findByIdAndUpdate(
+    req.user.id,
+    { assignmentAnswers: req.body.answers },
+    { new: true }
+  );
   res.json({ success: true });
 });
 
@@ -71,9 +73,11 @@ router.get("/assignment-answers", auth, async (req, res) => {
 
 // Save clicked chain
 router.post("/usa-map-chain", auth, async (req, res) => {
-  const user = await User.findById(req.user.id);
-  user.usaMapClickedChain = req.body.chain;
-  await user.save();
+  await User.findByIdAndUpdate(
+    req.user.id,
+    { usaMapClickedChain: req.body.chain },
+    { new: true }
+  );
   res.json({ success: true });
 });
 
@@ -86,16 +90,12 @@ router.get("/usa-map-chain", auth, async (req, res) => {
 // Save or update progress for a college
 router.post("/progress", auth, async (req, res) => {
   const { collegeId, progress } = req.body;
-  console.log("[DEBUG] Saving progress", { userId: req.user.id, collegeId, progress });
-  const user = await User.findById(req.user.id);
-  if (!user.collegeProgress) user.collegeProgress = {};
-  user.collegeProgress[collegeId] = {
-    ...(user.collegeProgress[collegeId] || {}),
-    ...progress
-  };
-  user.markModified('collegeProgress');
-  await user.save();
-  console.log("[DEBUG] Saved user.collegeProgress:", user.collegeProgress);
+  // Use $set for nested field update
+  await User.findByIdAndUpdate(
+    req.user.id,
+    { $set: { ["collegeProgress." + collegeId]: progress } },
+    { new: true }
+  );
   res.json({ success: true });
 });
 
@@ -107,9 +107,11 @@ router.get("/progress", auth, async (req, res) => {
 
 // Save survey answers
 router.post("/survey-answers", auth, async (req, res) => {
-  const user = await User.findById(req.user.id);
-  user.surveyAnswers = req.body.answers;
-  await user.save();
+  await User.findByIdAndUpdate(
+    req.user.id,
+    { surveyAnswers: req.body.answers },
+    { new: true }
+  );
   res.json({ success: true });
 });
 

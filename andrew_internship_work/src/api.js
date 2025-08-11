@@ -246,3 +246,17 @@ export async function saveCollegeProgress(collegeId, progress) {
   if (!res.ok) throw new Error("Failed to save college progress");
   return res.json();
 }
+
+export async function generateSubgoals(goal) {
+  const token = getToken();
+  const res = await fetch(`${import.meta.env.VITE_API_URL}/profile/generate-subgoals`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ goal }),
+  });
+  if (!res.ok) throw new Error("Failed to generate subgoals");
+  return res.json();
+}

@@ -23,6 +23,7 @@ import UserInfoPage from "./components/UserInfoPage";
 import NProgress from 'nprogress';
 import 'nprogress/nprogress.css';
 import GoogleAuthHandler from "./components/GoogleAuthHandler";
+import SubgoalGenerator from "./components/SubgoalGenerator";
 
 
 function App() {
@@ -139,6 +140,7 @@ function App() {
           <Route path="/user-info" element={<UserInfoPage />} />
           {/* Add /profile route for Google OAuth redirect, but route to home page */}
           <Route path="/profile" element={<GoogleAuthHandler setLoggedIn={setLoggedIn} />} />
+          <Route path="/subgoals" element={<SubgoalGenerator />} />
         </Routes>
       </>
     </CollegeProvider>

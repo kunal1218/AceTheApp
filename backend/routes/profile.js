@@ -1,7 +1,10 @@
 import express from "express";
 import User from "../models/User.js";
 import auth from "../middleware/auth.js";
+import OpenAI from "openai";
+
 const router = express.Router();
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 router.get("/me", auth, async (req, res) => {
   const user = await User.findById(req.user.id);
@@ -124,6 +127,51 @@ router.get("/survey-answers", auth, async (req, res) => {
   if (answers.length < 10) answers = [...answers, ...Array(10 - answers.length).fill(null)];
   if (answers.length > 10) answers = answers.slice(0, 10);
   res.json(answers);
+});
+
+// Generate subgoals for a project goal
+router.post("/generate-subgoals", auth, async (req, res) => {
+  const { goal } = req.body;
+  if (!goal) {
+    console.error("[ERROR] Missing goal in request body");
+    return res.status(400).json({ error: "Missing goal" });
+  }
+
+  const prompt = `Break down the goal \"${goal}\" into minimal actionable subgoals. For each subgoal, estimate the effort (small/medium/large) and assign points (small=10, medium=25, large=50). Return as a JSON list.`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 400,
+      temperature: 0.7,
+    });
+    const text = completion.choices[0].message.content;
+    console.log("[GPT RAW RESPONSE]", text); // Always log raw response
+    let subgoals;
+    try {
+      subgoals = JSON.parse(text);
+    } catch (e) {
+      console.error("[ERROR] JSON.parse failed", e);
+      // fallback: try to extract JSON from text
+      const match = text.match(/\[.*\]/s);
+      if (match) {
+        try {
+          subgoals = JSON.parse(match[0]);
+        } catch (e2) {
+          console.error("[ERROR] Fallback JSON.parse failed", e2);
+          return res.status(500).json({ error: "Could not parse GPT response as JSON", raw: text });
+        }
+      } else {
+        console.error("[ERROR] No JSON array found in GPT response");
+        return res.status(500).json({ error: "Could not parse GPT response as JSON", raw: text });
+      }
+    }
+    res.json({ subgoals });
+  } catch (err) {
+    console.error("[ERROR] OpenAI API or other failure", err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 export default router;

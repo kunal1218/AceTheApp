@@ -137,7 +137,8 @@ router.post("/generate-subgoals", auth, async (req, res) => {
     return res.status(400).json({ error: "Missing goal" });
   }
 
-  const prompt = `Break down the goal \"${goal}\" into minimal actionable subgoals. For each subgoal, estimate the effort (small/medium/large) and assign points (small=10, medium=25, large=50). Return as a JSON list.`;
+  // Optimized prompt for minified JSON response
+  const prompt = `Given the goal \"${goal}\", respond ONLY with minified JSON: {\"t\":\"goal\",\"s\":[\"subgoal1\",\"subgoal2\"],\"d\":[]} where \"t\" is the main task, \"s\" is a list of subgoals, and \"d\" is optional details. Use short keys, no spaces, no newlines, no explanations.`;
 
   try {
     const completion = await openai.chat.completions.create({
@@ -148,26 +149,26 @@ router.post("/generate-subgoals", auth, async (req, res) => {
     });
     const text = completion.choices[0].message.content;
     console.log("[GPT RAW RESPONSE]", text); // Always log raw response
-    let subgoals;
+    let result;
     try {
-      subgoals = JSON.parse(text);
+      result = JSON.parse(text);
     } catch (e) {
       console.error("[ERROR] JSON.parse failed", e);
       // fallback: try to extract JSON from text
-      const match = text.match(/\[.*\]/s);
+      const match = text.match(/{.*}/s);
       if (match) {
         try {
-          subgoals = JSON.parse(match[0]);
+          result = JSON.parse(match[0]);
         } catch (e2) {
           console.error("[ERROR] Fallback JSON.parse failed", e2);
           return res.status(500).json({ error: "Could not parse GPT response as JSON", raw: text });
         }
       } else {
-        console.error("[ERROR] No JSON array found in GPT response");
+        console.error("[ERROR] No JSON object found in GPT response");
         return res.status(500).json({ error: "Could not parse GPT response as JSON", raw: text });
       }
     }
-    res.json({ subgoals });
+    res.json(result);
   } catch (err) {
     console.error("[ERROR] OpenAI API or other failure", err);
     res.status(500).json({ error: err.message });

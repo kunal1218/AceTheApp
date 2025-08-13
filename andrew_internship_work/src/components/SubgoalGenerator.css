@@ -1,0 +1,89 @@
+.subgoal-container {
+  max-width: 900px;
+  margin: 2rem auto;
+  padding: 1rem;
+  font-family: 'Courier New', monospace;
+  text-align: center;
+}
+
+.welcome-text {
+  font-size: 1.8rem;
+  margin-bottom: 1rem;
+}
+
+.goal-form {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.goal-input {
+  flex: 1;
+  max-width: 400px;
+  padding: 0.5rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+.generate-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: none;
+  background-color: #222;
+  color: white;
+  cursor: pointer;
+}
+
+.generate-btn:disabled {
+  background-color: #888;
+  cursor: not-allowed;
+}
+
+.error-message {
+  color: red;
+  margin-bottom: 1rem;
+}
+
+.subgoal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.subgoal-card {
+  border-radius: 12px;
+  padding: 1rem;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+}
+
+.subgoal-card .points {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: white;
+  color: black;
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 0.8rem;
+}
+
+.subgoal-card .subgoal-text {
+  margin-top: 1.5rem;
+  text-align: left;
+}
+
+/* Colors based on effort */
+.effort-easy {
+  background-color: #6be36b;
+}
+.effort-medium {
+  background-color: #d96be3;
+}
+.effort-hard {
+  background-color: #e36b6b;
+}

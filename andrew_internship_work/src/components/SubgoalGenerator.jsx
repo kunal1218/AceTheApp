@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { generateSubgoals } from "../api";
+import "./SubgoalGenerator.css";
 
 export default function SubgoalGenerator() {
   const [goal, setGoal] = useState("");
@@ -21,31 +22,36 @@ export default function SubgoalGenerator() {
   };
 
   return (
-    <div style={{ maxWidth: 500, margin: "2rem auto", padding: 24, background: "#f9f9f9", borderRadius: 12 }}>
-      <h2>Project Subgoal Generator</h2>
-      <form onSubmit={handleSubmit}>
+    <div className="subgoal-container">
+      <h1 className="welcome-text">Welcome!</h1>
+
+      <form className="goal-form" onSubmit={handleSubmit}>
         <input
           type="text"
           value={goal}
-          onChange={e => setGoal(e.target.value)}
-          placeholder="Enter your project goal..."
-          style={{ width: "100%", padding: 8, marginBottom: 12 }}
+          onChange={(e) => setGoal(e.target.value)}
+          placeholder="Enter your goal..."
+          className="goal-input"
           required
         />
-        <button type="submit" disabled={loading || !goal}>
+        <button type="submit" className="generate-btn" disabled={loading || !goal}>
           {loading ? "Generating..." : "Generate Subgoals"}
         </button>
       </form>
-      {error && <div style={{ color: "red", marginTop: 12 }}>{error}</div>}
-      {subgoals.length > 0 && (
-        <ul style={{ marginTop: 24 }}>
-          {subgoals.map((sg, i) => (
-            <li key={i} style={{ marginBottom: 8 }}>
-              <strong>{sg.subgoal}</strong> — Effort: {sg.effort}, Points: {sg.points}
-            </li>
-          ))}
-        </ul>
-      )}
+
+      {error && <div className="error-message">{error}</div>}
+
+      <div className="subgoal-grid">
+        {subgoals.map((sg, i) => (
+          <div
+            key={i}
+            className={`subgoal-card effort-${sg.effort?.toLowerCase()}`}
+          >
+            <span className="points">{sg.points}</span>
+            <p className="subgoal-text">{sg.subgoal}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

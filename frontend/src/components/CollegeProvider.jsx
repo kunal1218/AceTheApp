@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { allColleges } from "./CollegeList.jsx";
-import { getColleges, addCollege as apiAddCollege, removeCollege as apiRemoveCollege } from "../api.js";
+import { allColleges } from "../components/CollegeList.jsx";
+import { getColleges, addCollege as apiAddCollege, removeCollege as apiRemoveCollege } from "../api";
 
 const CollegeContext = createContext();
 

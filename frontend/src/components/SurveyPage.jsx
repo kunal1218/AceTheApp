@@ -110,26 +110,63 @@ export default function SurveyPage() {
     navigate("/create-account");
   };
 
+  const answeredCount = answers.filter(a => a !== null).length;
+  const progressPercent = Math.round((answeredCount / QUESTIONS.length) * 100);
+
+  useEffect(() => {
+    const existing = answers[current];
+    setSelected(existing !== null ? existing : null);
+  }, [current, answers]);
+
   if (loading) {
-    return <div className="survey-outer"><div className="survey-box">Loading...</div></div>;
+    return (
+      <section className="survey-shell">
+        <div className="survey-panel">
+          <div className="survey-card">Loading...</div>
+        </div>
+      </section>
+    );
   }
 
   if (recap) {
     return (
-      <div className="survey-outer">
-        <div className="survey-box survey-recap">
-          <div className="survey-title">Recap: Your Answers</div>
-          <ol className="survey-list">
-            {QUESTIONS.map((q, idx) => (
-              <li key={q} className="survey-list-item">
-                <div className="survey-question">{q}</div>
-                <div className="survey-recap-row">
-                  <span className="survey-answer">
-                    {answers[idx] !== null ? OPTIONS[answers[idx]] : <span style={{ color: "#c00" }}>No answer</span>}
-                  </span>
+      <section className="survey-shell">
+        <div className="survey-panel">
+          <div className="survey-info">
+            <p className="eyebrow">Ace counseling intake</p>
+            <h1>Review & refine your preferences</h1>
+            <p>
+              Tap any answer below to adjust it. Once you confirm, Ace locks these signals into your
+              counseling workspace so the roadmap stays personalized.
+            </p>
+            <div className="survey-stats">
+              <div>
+                <span>{answeredCount}</span>
+                <p>Answers saved</p>
+              </div>
+              <div>
+                <span>{QUESTIONS.length}</span>
+                <p>Total questions</p>
+              </div>
+            </div>
+          </div>
+          <div className="survey-card recap">
+            <div className="survey-card-header">
+              <h2>Recap</h2>
+              <p>Adjust directly in-line—Ace saves changes instantly.</p>
+            </div>
+            <div className="survey-recap-list">
+              {QUESTIONS.map((q, idx) => (
+                <div className="survey-recap-item" key={q}>
+                  <div>
+                    <p className="survey-question-small">{q}</p>
+                    <span className="survey-answer-chip">
+                      {answers[idx] !== null ? OPTIONS[answers[idx]] : "No answer"}
+                    </span>
+                  </div>
                   <select
                     value={answers[idx] !== null ? answers[idx] : ""}
-                    onChange={async e => {
+                    onChange={async (e) => {
                       const updated = [...answers];
                       updated[idx] = Number(e.target.value);
                       setAnswers(updated);
@@ -141,62 +178,76 @@ export default function SurveyPage() {
                     }}
                     className="survey-dropdown"
                   >
-                    <option value="" disabled>Change answer...</option>
+                    <option value="" disabled>
+                      Change answer...
+                    </option>
                     {OPTIONS.map((option, optionIdx) => (
-                      <option key={option} value={optionIdx}>{option}</option>
+                      <option key={option} value={optionIdx}>
+                        {option}
+                      </option>
                     ))}
                   </select>
                 </div>
-              </li>
-            ))}
-          </ol>
-          <button
-            onClick={handleConfirm}
-            className="survey-confirm-btn"
-            onMouseOver={e => e.currentTarget.style.background = "#274060"}
-            onMouseOut={e => e.currentTarget.style.background = "#415a77"}
-          >
-            Confirm
-          </button>
+              ))}
+            </div>
+            <button className="primary-btn" onClick={handleConfirm}>
+              Confirm & continue →
+            </button>
+          </div>
         </div>
-      </div>
+      </section>
     );
   }
 
-  // Normal survey mode
   return (
-    <div className="survey-outer">
-      <div className="survey-box">
-        <div className="survey-question-main">
-          {QUESTIONS[current]}
+    <section className="survey-shell">
+      <div className="survey-panel">
+        <div className="survey-info">
+          <p className="eyebrow">Ace counseling intake</p>
+          <h1>Let’s align Ace with how you like to learn</h1>
+          <p>
+            Answer a quick set of prompts so Ace can tailor your counseling path, recommend the right
+            support, and surface colleges that match your workflow.
+          </p>
+          <div className="survey-progress">
+            <div className="survey-progress-top">
+              <span>
+                Question {current + 1} / {QUESTIONS.length}
+              </span>
+              <span>{progressPercent}% complete</span>
+            </div>
+            <div className="survey-progress-track">
+              <div
+                className="survey-progress-thumb"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          </div>
         </div>
-        <div className="survey-options-row">
-          {OPTIONS.map((option, idx) => (
-            <button
-              key={option}
-              onClick={() => setSelected(idx)}
-              className={`survey-option-btn${selected === idx ? " selected" : ""}`}
-            >
-              {option}
+        <div className="survey-card">
+          <p className="survey-step-label">Prompt {current + 1}</p>
+          <h2 className="survey-question-main">{QUESTIONS[current]}</h2>
+          <div className="survey-options-grid">
+            {OPTIONS.map((option, idx) => (
+              <button
+                key={option}
+                onClick={() => setSelected(idx)}
+                className={`survey-option${selected === idx ? " is-selected" : ""}`}
+              >
+                <span>{option}</span>
+              </button>
+            ))}
+          </div>
+          <div className="survey-actions">
+            <button className="outline-btn" onClick={() => navigate("/")}>
+              Exit
             </button>
-          ))}
-        </div>
-        {selected !== null && (
-          <div className="survey-next-row">
-            <span>
-              You selected: <b>{OPTIONS[selected]}</b>
-            </span>
-            <button
-              onClick={handleNext}
-              className="survey-next-btn"
-              onMouseOver={e => e.currentTarget.style.background = "#e0e7ef"}
-              onMouseOut={e => e.currentTarget.style.background = "#f7fafc"}
-            >
-              Next Question
+            <button className="primary-btn" disabled={selected === null} onClick={handleNext}>
+              {current === QUESTIONS.length - 1 ? "Finish" : "Next"}
             </button>
           </div>
-        )}
+        </div>
       </div>
-    </div>
+    </section>
   );
 }

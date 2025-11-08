@@ -9,6 +9,8 @@ import backgroundGif from "./assets/background.gif";
 import SurveyPage from "./components/SurveyPage";
 import HomeScreenButton from "./components/HomeScreenButton";
 import LandingPage from "./components/LandingPage";
+import ProductivityDashboard from "./components/ProductivityDashboard";
+import AceOnboarding from "./components/AceOnboarding";
 import CreateAccount from "./components/CreateAccount";
 import LoginPage from "./components/LoginPage";
 import './App.css';
@@ -119,6 +121,8 @@ function App() {
           <Route path="/create-account" element={<CreateAccount setLoggedIn={setLoggedIn} />} />
           <Route path="/login" element={<LoginPage setLoggedIn={setLoggedIn} />} />
           <Route path="/survey" element={<SurveyPage />} />
+          <Route path="/dashboard" element={<ProductivityDashboard />} />
+          <Route path="/ace-onboarding" element={<AceOnboarding />} />
           {/* Protected routes */}
           <Route path="/affinity-calc" element={
             loggedIn ? <ComingSoon emoji="🧮" /> : <LandingPage />

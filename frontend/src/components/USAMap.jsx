@@ -1,22 +1,15 @@
 // src/components/USAMap.jsx
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import './USAMap.css';
-import rednode from '../assets/rednode.png';
-import { allColleges } from "./CollegeList"; 
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-} from "@mui/material";
+import "./USAMap.css";
+import { allColleges } from "./CollegeList";
 import { getUsaMapClickedChain, saveUsaMapClickedChain } from "../api";
-
-
-// Efficiently import all mascot PNGs from mascots folder
-const mascotModules = import.meta.glob('../assets/mascots/*.png', { eager: true });
-const mascotImages = Object.values(mascotModules).map(mod => mod.default);
+import {
+  START_COLLEGE_ID,
+  NEXT_STOP_STORAGE_KEY,
+  getCollegeById,
+  pickNearbyCollegeId,
+} from "../utils/coursePath";
 
 
 export default function USAMap() {
@@ -74,209 +67,166 @@ export default function USAMap() {
     { id: 'WY', name: 'Cheyenne', x: 437, y: 211 },
   ];*/}
 
-  // Actually colleges, just called capitals temporarily
   const capitals = allColleges;
-
-  // Assign a random mascot to each capital on mount
-  const [mascotMap, setMascotMap] = useState({});
-  useEffect(() => {
-    const map = {};
-    capitals.forEach(cap => {
-      map[cap.id] = mascotImages[Math.floor(Math.random() * mascotImages.length)];
-    });
-    setMascotMap(map);
-  }, []);
-
-  const [clickedChain, setClickedChain] = useState(['CA']);
-  const [loadingChain, setLoadingChain] = useState(true);
-
-  useEffect(() => {
-    getUsaMapClickedChain()
-      .then(chain => {
-        if (Array.isArray(chain) && chain.length > 0) {
-          setClickedChain(chain);
-        }
-      })
-      .finally(() => setLoadingChain(false));
-  }, []);
-
-  useEffect(() => {
-    if (!loadingChain) {
-      saveUsaMapClickedChain(clickedChain);
-    }
-  }, [clickedChain, loadingChain]);
-
-  // Animation state for the green line
-  const [animProgress, setAnimProgress] = useState(1); // 0=start, 1=done
-  const animRef = useRef();
-
   const navigate = useNavigate();
 
-  // Animate when a new node is added
-  useEffect(() => {
-    if (clickedChain.length < 2) return;
-    setAnimProgress(0);
-    let start;
-    const duration = 400; // ms
-
-    function animate(ts) {
-      if (!start) start = ts;
-      const elapsed = ts - start;
-      const progress = Math.min(1, elapsed / duration);
-      setAnimProgress(progress);
-      if (progress < 1) {
-        animRef.current = requestAnimationFrame(animate);
-      }
-    }
-    animRef.current = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(animRef.current);
-  }, [clickedChain.length]);
-
-  const [popup, setPopup] = useState(null); // { capital: {id, name} } or null
-
-  // Helper: get capital by id
-  const getCap = (id) => capitals.find(c => c.id === id);
-
-  // Only allow clicking a node if it's not already in the chain and not already connected
-  const handleNodeClick = (id) => {
-    // Allow clicking CA even if it's already in the chain
-    const capital = getCap(id);
-    if (!capital) return;
-    setPopup(capital);
-  };
-
-  // Only allow clicking on nodes that are not already in the chain and not ME if not last
-  const isNodeClickable = (id) => {
-    // Always allow clicking CA, even if it's already in the chain
-    if (id === "CA") return true;
-    return !clickedChain.includes(id);
-  };
-
-  const handlePopupClose = () => setPopup(null);
-
-  const handlePopupProceed = async () => {
-    if (popup) {
-      if (!clickedChain.includes(popup.id)) {
-        const newChain = [...clickedChain, popup.id];
-        setClickedChain(newChain);
-        await saveUsaMapClickedChain(newChain);
-      }
-      setPopup(null);
-      navigate("/video");
-    }
-  };
-
+  const [courseChain, setCourseChain] = useState([START_COLLEGE_ID]);
+  const [loadingChain, setLoadingChain] = useState(true);
+  const [nextStopId, setNextStopId] = useState(null);
   const [hoveredCap, setHoveredCap] = useState(null);
 
-  // Helper: get the "connection point" for a capital
+  useEffect(() => {
+    let mounted = true;
+    getUsaMapClickedChain()
+      .then((chain) => {
+        if (!mounted) return;
+        if (Array.isArray(chain) && chain.length) {
+          setCourseChain(chain);
+        } else {
+          setCourseChain([START_COLLEGE_ID]);
+          saveUsaMapClickedChain([START_COLLEGE_ID]);
+        }
+      })
+      .catch((err) => {
+        console.error("[USAMap] failed to fetch chain", err);
+        setCourseChain([START_COLLEGE_ID]);
+      })
+      .finally(() => {
+        if (mounted) setLoadingChain(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (loadingChain) return;
+    const lastId = courseChain[courseChain.length - 1] || START_COLLEGE_ID;
+    const storage = typeof window !== "undefined" ? window.localStorage : null;
+    const storedNext = storage?.getItem(NEXT_STOP_STORAGE_KEY);
+    if (storedNext) {
+      const storedCap = getCollegeById(storedNext);
+      if (storedCap && storedCap.id !== lastId && !courseChain.includes(storedCap.id)) {
+        setNextStopId(storedCap.id);
+        return;
+      }
+      storage?.removeItem(NEXT_STOP_STORAGE_KEY);
+    }
+    const candidate = pickNearbyCollegeId(lastId, courseChain);
+    if (candidate) {
+      setNextStopId(candidate.id);
+      storage?.setItem(NEXT_STOP_STORAGE_KEY, candidate.id);
+    } else {
+      setNextStopId(null);
+    }
+  }, [courseChain, loadingChain]);
+
+  const currentStop = useMemo(
+    () => getCollegeById(courseChain[courseChain.length - 1] || START_COLLEGE_ID),
+    [courseChain]
+  );
+  const upcomingStop = nextStopId ? getCollegeById(nextStopId) : null;
+
+  const handleWatchLesson = () => {
+    if (!upcomingStop) return;
+    navigate("/video", { state: { courseId: upcomingStop.id } });
+  };
+
+  const handleNodeClick = (id) => {
+    if (id === nextStopId) {
+      handleWatchLesson();
+    }
+  };
+
   const getCapConnectionPoint = (cap) => ({
-    x: cap.x,
-    y: cap.y, // 2/3 down from top of 30px pin (since pin is 30px tall, 2/3*30 = 20, but since y is at top, y+20 is bottom, y+10 is 2/3 down)
+    x: cap?.x ?? 0,
+    y: cap?.y ?? 0,
   });
 
-  // Render lines: blue for all except the most recent, green for the last click (animated)
-  const lines = [];
-  for (let i = 0; i < clickedChain.length - 1; i++) {
-    const from = getCap(clickedChain[i]);
-    const to = getCap(clickedChain[i + 1]);
+  const routeLines = courseChain.slice(1).map((id, idx) => {
+    const from = getCollegeById(courseChain[idx]);
+    const to = getCollegeById(id);
     const fromPoint = getCapConnectionPoint(from);
     const toPoint = getCapConnectionPoint(to);
-    const isLast = i === clickedChain.length - 2;
+    return (
+      <line
+        key={`${from?.id}-${to?.id}`}
+        x1={fromPoint.x}
+        y1={fromPoint.y}
+        x2={toPoint.x}
+        y2={toPoint.y}
+        stroke="#6366f1"
+        strokeWidth={3}
+        opacity={0.6}
+      />
+    );
+  });
 
-    if (isLast && animProgress < 1) {
-      // Animate the green line
-      const x2 = fromPoint.x + (toPoint.x - fromPoint.x) * animProgress;
-      const y2 = fromPoint.y + (toPoint.y - fromPoint.y) * animProgress;
-      lines.push(
-        <line
-          key={from.id + '-' + to.id}
-          x1={fromPoint.x}
-          y1={fromPoint.y}
-          x2={x2}
-          y2={y2}
-          stroke="green"
-          strokeWidth={4}
-          opacity={0.7}
-        />
-      );
-    } else {
-      lines.push(
-        <line
-          key={from.id + '-' + to.id}
-          x1={fromPoint.x}
-          y1={fromPoint.y}
-          x2={toPoint.x}
-          y2={toPoint.y}
-          stroke={isLast ? 'green' : 'blue'}
-          strokeWidth={isLast ? 4 : 2}
-          opacity={0.7}
-        />
-      );
-    }
-  }
+  const previewLine = (() => {
+    if (!upcomingStop || !currentStop) return null;
+    const from = getCapConnectionPoint(currentStop);
+    const to = getCapConnectionPoint(upcomingStop);
+    return (
+      <line
+        key="preview"
+        x1={from.x}
+        y1={from.y}
+        x2={to.x}
+        y2={to.y}
+        stroke="#a855f7"
+        strokeWidth={3}
+        strokeDasharray="6 8"
+        opacity={0.8}
+      />
+    );
+  })();
 
-  const handleStateClick = (id) => {
-    {/*// Remove any existing popup if present
-    const existingPopup = document.getElementById('state-popup');
-    if (existingPopup) {
-      existingPopup.remove();
-    }
-
-    // Create the popup container
-    const popup = document.createElement('div');
-    popup.id = 'state-popup';
-
-    // Style the popup box
-    popup.style.position = 'fixed';
-    popup.style.top = '50%';
-    popup.style.left = '50%';
-    popup.style.transform = 'translate(-50%, -50%)';
-    popup.style.backgroundColor = '#222';
-    popup.style.color = '#fff';
-    popup.style.padding = '20px 30px';
-    popup.style.borderRadius = '12px';
-    popup.style.boxShadow = '0 8px 16px rgba(0,0,0,0.3)';
-    popup.style.fontFamily = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
-    popup.style.fontSize = '18px';
-    popup.style.textAlign = 'center';
-    popup.style.zIndex = '9999';
-
-    // Add message text
-    popup.textContent = `Levels in the state of ${id} to be added`;
-
-    // Optional: Add a close button
-    const closeBtn = document.createElement('button');
-    closeBtn.textContent = 'Close';
-    closeBtn.style.marginTop = '15px';
-    closeBtn.style.padding = '6px 12px';
-    closeBtn.style.border = 'none';
-    closeBtn.style.borderRadius = '6px';
-    closeBtn.style.cursor = 'pointer';
-    closeBtn.style.backgroundColor = '#ff5c5c';
-    closeBtn.style.color = '#fff';
-    closeBtn.style.fontSize = '14px';
-    closeBtn.onclick = () => popup.remove();
-
-    popup.appendChild(document.createElement('br'));
-    popup.appendChild(closeBtn);
-
-    // Append popup to body
-    document.body.appendChild(popup);*/}
-  };
-
-  const handleStateHover = (id) => {
-    console.log(`Hovering over ${id}`);
-  };
+  const handleStateClick = () => {};
+  const handleStateHover = () => {};
 
   return (
-    <>
-    <div className="usa-map">
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 1000 550"
-        className="interactive-svg"
-      >
-        <g>
+    <section className="counseling-section">
+      <div className="counseling-panel">
+        <div className="counseling-info">
+          <p className="eyebrow">Ace counseling route</p>
+          <h2>Follow Ace across the map</h2>
+          <p>
+            Every course video is anchored to a campus. Start at UC Berkeley, then let Ace hop you to
+            nearby cities to keep momentum. Finish a lesson and the next waypoint appears.
+          </p>
+          <div className="lesson-card">
+            <div>
+              <p className="lesson-label">Next course video</p>
+              <h3>{upcomingStop ? upcomingStop.name : "Mapping your next stop..."}</h3>
+              <p>{upcomingStop ? upcomingStop.location : "Ace is finding a nearby campus"}</p>
+            </div>
+            <button
+              className="counsel-btn"
+              onClick={handleWatchLesson}
+              disabled={!upcomingStop}
+            >
+              Watch with Ace
+            </button>
+          </div>
+          <div className="route-chips">
+            {courseChain.map((id, index) => {
+              const cap = getCollegeById(id);
+              return (
+                <span key={`${id}-${index}`} className="route-chip">
+                  {index + 1}. {cap?.name ?? id}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+        <div className="counseling-map-card">
+          <div className="usa-map">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 1000 550"
+              className="interactive-svg"
+            >
+              <g>
           <path
             id="MA"
             d="m 956.31178,153.05085 -0.29118,-0.19412 0,0.29119 0.29118,-0.0971 z m -2.91189,-2.6207 0.67944,-0.29119 0,-0.38825 -0.67944,0.67944 z m 12.03583,-7.57092 -0.0971,-1.35889 -0.19412,-0.7765 0.29119,2.13539 z m -42.41659,-9.9975 -0.67944,0.29119 -5.5326,1.65007 -1.94126,0.67944 -2.23245,0.67944 -0.7765,0.29119 0,0.29119 0.29118,5.04728 0.29119,4.65903 0.29119,4.27078 0.48532,0.29119 1.74714,-0.48532 7.86211,-2.32951 0.19412,0.48531 13.97709,-5.33847 0.0971,0.19413 1.26182,-0.48532 4.4649,-1.74713 4.27078,5.14434 0,0 0.58238,-0.48531 0.29119,-1.45595 -0.0971,2.32952 0,0 0.97063,0 0.29119,1.16475 0.87357,1.65008 0,0 4.56197,-5.5326 3.78546,1.26182 0.87357,-1.94126 6.21204,-3.30015 -2.62071,-5.14435 0.67945,3.30015 -3.20309,2.42658 -3.59133,0.29119 -7.18267,-7.66799 -3.20309,-4.85315 3.20309,-3.39721 -3.30015,-0.19413 -1.35888,-3.20308 -0.0971,-0.19413 -5.53259,6.01791 -12.22996,4.07666 -3.97959,1.26182 0,0 z"            
@@ -639,83 +589,46 @@ export default function USAMap() {
           {/* Draw chain lines */}
           {lines}
           {/* Render pins for each capital */}
+          {routeLines}
+          {previewLine}
           {capitals.map((cap) => {
-            const isClicked = clickedChain.includes(cap.id);
-            const clickable = isNodeClickable(cap.id);
-
-            let pinSize = 12;
-            if (cap.ranking && cap.ranking <= 20) {
-              pinSize = 15;
-            } else if (cap.ranking && cap.ranking <= 50) {
-              pinSize = 10;
-            } else if (cap.ranking && cap.ranking <= 100) {
-              pinSize = 5;
-            }
-
-            // Add pulse class for CA when it's the only node in the chain
-            const pulseClass = clickedChain.length === 1 && clickedChain[0] === "CA" && cap.id === "CA" ? " pulse" : "";
-
+            const visited = courseChain.includes(cap.id);
+            const isUpcoming = cap.id === nextStopId;
+            const status = visited ? "visited" : isUpcoming ? "upcoming" : "idle";
+            const clickable = isUpcoming;
+            const radius = visited ? 7 : isUpcoming ? 9 : 5;
             return (
-              <image
-                key={cap.name}
-                href={mascotMap[cap.id] || mascotImages[0]}
-                x={cap.x - pinSize / 2}
-                y={cap.y - pinSize / 2}
-                width={pinSize}
-                height={pinSize}
-                className={`capital-pin${isClicked ? ' clicked' : ''}${pulseClass}`}
-                style={{
-                  cursor: clickable ? 'pointer' : 'default',
-                  zIndex: cap.id === 'CA' ? 2 : 1,
-                  filter: 'none',
-                  transition: 'all 0.15s',
-                }}
+              <circle
+                key={cap.id}
+                cx={cap.x}
+                cy={cap.y}
+                r={radius}
+                className={`map-pin map-pin--${status}`}
                 onClick={() => clickable && handleNodeClick(cap.id)}
                 onMouseEnter={() => setHoveredCap(cap)}
                 onMouseLeave={() => setHoveredCap(null)}
               />
             );
           })}
-          {/* Tooltip for hovered capital */}
           {hoveredCap && (
             <foreignObject
-              x={
-                hoveredCap.x < 500
-                  ? hoveredCap.x + 12 // right side for left-half nodes
-                  : hoveredCap.x - 180 - 12 // left side for right-half nodes
-              }
-              y={hoveredCap.y - 10}
+              x={hoveredCap.x < 500 ? hoveredCap.x + 12 : hoveredCap.x - 192}
+              y={hoveredCap.y - 14}
               width={180}
-              height={60}
+              height={70}
               style={{ pointerEvents: "none" }}
             >
               <div className="capital-tooltip">
-                {hoveredCap.name}
+                <strong>{hoveredCap.name}</strong>
+                <span>{hoveredCap.location || "Location updating"}</span>
               </div>
             </foreignObject>
           )}
         </g>
       </svg>
-        {popup && (
-          <Dialog open={true} onClose={handlePopupClose}>
-            <DialogTitle>Go to Lesson</DialogTitle>
-            <DialogContent>
-              You have clicked on <b>{popup.name}</b>.<br />
-              Would you like to proceed to this lesson?
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={handlePopupClose}>Cancel</Button>
-              <Button
-                onClick={handlePopupProceed}
-                color="success"
-                variant="contained"
-              >
-                Proceed
-              </Button>
-            </DialogActions>
-          </Dialog>
-        )}
     </div>
-    </>
+  </div>
+</div>
+</section>
   );
 }

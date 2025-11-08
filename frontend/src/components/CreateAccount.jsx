@@ -104,57 +104,94 @@ export default function CreateAccount({ setLoggedIn }) {
   };
 
   return (
-    <div className="create-account-outer">
-      <form className="create-account-box" onSubmit={handleSubmit}>
-        <h2>Create Your Account</h2>
-        <input
-          name="name"
-          placeholder="Full Name"
-          value={form.name}
-          onChange={handleChange}
-          autoComplete="name"
-        />
-        <input
-          name="email"
-          type="email"
-          placeholder="Email"
-          value={form.email}
-          onChange={handleChange}
-          autoComplete="email"
-        />
-        <input
-          name="password"
-          type="password"
-          placeholder="Password"
-          value={form.password}
-          onChange={handleChange}
-          autoComplete="new-password"
-        />
-        <input
-          name="confirm"
-          type="password"
-          placeholder="Confirm Password"
-          value={form.confirm}
-          onChange={handleChange}
-          autoComplete="new-password"
-        />
-        {error && <div className="create-account-error">{error}</div>}
-        <button type="submit" className="create-account-btn">
-          Create Account
-        </button>
-        <div className="or-separator">
-          <span className="or-line" />
-          <span className="or-text">or</span>
-          <span className="or-line" />
+    <section className="auth-shell">
+      <div className="auth-panel">
+        <div className="auth-info">
+          <p className="eyebrow">Ace workspace</p>
+          <h1>Spin up your Ace account</h1>
+          <p>
+            Capture your goals, sync your survey insights, and invite Ace to act as your productivity
+            copilot. Your counseling data flows directly into the same dashboard.
+          </p>
+          <ul className="auth-list">
+            <li>Unlimited goal blueprints and task suggestions</li>
+            <li>Automatic sync with your counseling progress</li>
+            <li>Secure storage for survey answers & preferences</li>
+          </ul>
+          <p className="auth-secondary">
+            Already a member?{" "}
+            <button type="button" onClick={() => navigate("/login")}>
+              Log in here
+            </button>
+          </p>
         </div>
-        <a
-          href={getGoogleAuthUrl() + '?state=signup'}
-          className="google-login-btn"
-        >
-          <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="google-icon" />
-          Sign up with Google
-        </a>
-      </form>
-    </div>
+        <form className="auth-card" onSubmit={handleSubmit}>
+          <div>
+            <h2>Create your account</h2>
+            <p className="auth-subtitle">We’ll never share your details.</p>
+          </div>
+          <label className="auth-field">
+            <span>Full name</span>
+            <input
+              name="name"
+              placeholder="Jordan Kim"
+              value={form.name}
+              onChange={handleChange}
+              autoComplete="name"
+            />
+          </label>
+          <label className="auth-field">
+            <span>Email</span>
+            <input
+              name="email"
+              type="email"
+              placeholder="you@email.com"
+              value={form.email}
+              onChange={handleChange}
+              autoComplete="email"
+            />
+          </label>
+          <label className="auth-field">
+            <span>Password</span>
+            <input
+              name="password"
+              type="password"
+              placeholder="Secure password"
+              value={form.password}
+              onChange={handleChange}
+              autoComplete="new-password"
+            />
+          </label>
+          <label className="auth-field">
+            <span>Confirm password</span>
+            <input
+              name="confirm"
+              type="password"
+              placeholder="Repeat password"
+              value={form.confirm}
+              onChange={handleChange}
+              autoComplete="new-password"
+            />
+          </label>
+          {error && <div className="auth-error">{error}</div>}
+          <button type="submit" className="primary-btn">
+            Create account
+          </button>
+          <div className="auth-divider">
+            <span />
+            <p>or</p>
+            <span />
+          </div>
+          <a href={getGoogleAuthUrl() + "?state=signup"} className="google-login-btn">
+            <img
+              src="https://www.svgrepo.com/show/475656/google-color.svg"
+              alt="Google"
+              className="google-icon"
+            />
+            Sign up with Google
+          </a>
+        </form>
+      </div>
+    </section>
   );
 }

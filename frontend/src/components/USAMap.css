@@ -1,0 +1,201 @@
+:root {
+  --map-bg: #f7f8fc;
+  --map-surface: #ffffff;
+  --map-border: #e5e7eb;
+  --map-muted: #94a3b8;
+  --map-primary: #0f172a;
+  --map-accent: #4f46e5;
+  --map-shadow: 0 25px 70px rgba(15, 23, 42, 0.08);
+}
+
+.counseling-section {
+  padding: 72px 5vw;
+  background: var(--map-bg);
+}
+
+.counseling-panel {
+  display: flex;
+  gap: 48px;
+  flex-wrap: wrap;
+  padding: 48px;
+  background: var(--map-surface);
+  border-radius: 32px;
+  box-shadow: var(--map-shadow);
+  border: 1px solid rgba(15, 23, 42, 0.05);
+}
+
+.counseling-info {
+  flex: 1 1 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.counseling-info h2 {
+  margin: 0;
+  font-size: clamp(2rem, 3vw, 2.8rem);
+}
+
+.lesson-card {
+  background: #101828;
+  color: #f1f5f9;
+  border-radius: 20px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.lesson-label {
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.7rem;
+  margin: 0 0 4px;
+  color: rgba(241, 245, 249, 0.7);
+}
+
+.lesson-card h3 {
+  margin: 0;
+  font-size: 1.6rem;
+}
+
+.counsel-btn {
+  align-self: flex-start;
+  border: none;
+  border-radius: 999px;
+  padding: 12px 28px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  background: #6366f1;
+  color: #fff;
+  box-shadow: 0 20px 35px rgba(99, 102, 241, 0.3);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.counsel-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.counsel-btn:not(:disabled):hover {
+  transform: translateY(-2px);
+}
+
+.route-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.route-chip {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--map-border);
+  background: #f1f5f9;
+  font-size: 0.9rem;
+  color: var(--map-primary);
+}
+
+.counseling-map-card {
+  flex: 2 1 480px;
+  background: var(--map-surface);
+  border-radius: 28px;
+  padding: 24px;
+  border: 1px solid var(--map-border);
+}
+
+.usa-map {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.interactive-svg {
+  width: 100%;
+  height: auto;
+  max-width: 860px;
+}
+
+.state {
+  fill: #e2e8f0;
+  stroke: #cbd5f5;
+  stroke-width: 1;
+  transition: fill 0.2s;
+}
+
+.state:hover {
+  fill: #cbd5f5;
+}
+
+.map-pin {
+  stroke: #fff;
+  stroke-width: 2;
+  cursor: pointer;
+  transition: transform 0.2s, fill 0.2s, opacity 0.2s;
+}
+
+.map-pin--visited {
+  fill: var(--map-primary);
+  opacity: 0.9;
+}
+
+.map-pin--upcoming {
+  fill: var(--map-accent);
+  animation: pinPulse 1.2s ease-in-out infinite;
+}
+
+.map-pin--idle {
+  fill: var(--map-muted);
+  opacity: 0.5;
+  cursor: default;
+}
+
+.capital-tooltip {
+  background: var(--map-primary);
+  color: #f8fafc;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.capital-tooltip strong {
+  font-size: 0.9rem;
+}
+
+.capital-tooltip span {
+  color: rgba(248, 250, 252, 0.8);
+}
+
+@keyframes pinPulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+}
+
+@media (max-width: 900px) {
+  .counseling-panel {
+    padding: 32px;
+  }
+
+  .counseling-map-card {
+    padding: 16px;
+  }
+}

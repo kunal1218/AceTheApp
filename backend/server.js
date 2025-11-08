@@ -21,6 +21,19 @@ app.use(express.json());
 
 mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
 
+// lightweight request logger to help debug 404/401s on Vercel
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+    console.log(
+      `[TRACE] ${req.method} ${req.originalUrl} -> ${res.statusCode} (${duration}ms) ` +
+      `host=${req.headers.host} ip=${req.ip} ua="${req.headers["user-agent"] || ""}"`
+    );
+  });
+  next();
+});
+
 app.use(session({
   secret: process.env.SESSION_SECRET || "devsecret",
   resave: false,
@@ -39,6 +52,12 @@ app.use(passport.session());
 
 app.use("/api/auth", authRoutes);
 app.use("/api/profile", profileRoutes);
+
+// catch-all for unfound API requests so we can see them in logs
+app.use((req, res) => {
+  console.warn(`[WARN] 404 on ${req.method} ${req.originalUrl} host=${req.headers.host}`);
+  res.status(404).json({ message: "Route not found", path: req.originalUrl });
+});
 
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

@@ -87,9 +87,11 @@ router.post("/register", async (req, res) => {
 
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
+  console.log(`[AUTH] Login attempt email=${email}`);
   const user = await User.findOne({ email });
   if (!user || !(await bcrypt.compare(password, user.password)))
     return res.status(401).json({ message: "Invalid credentials" });
+  console.log(`[AUTH] Login success email=${email} id=${user._id}`);
   const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
   res.json({ token, user: { name: user.name, email: user.email } });
 });

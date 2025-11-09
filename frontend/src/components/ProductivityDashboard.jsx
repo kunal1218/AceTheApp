@@ -95,9 +95,7 @@ export default function ProductivityDashboard() {
           <div>
             <p className="eyebrow">Workspace</p>
             <h1>Dashboard</h1>
-            <p>
-              Spin up a new skill sprint with Ace or jump into counseling when you need deeper support. Use the left and right arrow keys to browse older projects when you’ve filled the first canvas.
-            </p>
+            <p>Start Ace skill sprints, jump into counseling, and use the arrow keys to browse old projects when this fills up.</p>
           </div>
           <button className="ace-btn ghost" onClick={() => navigate("/survey")}>
             Go to Counseling

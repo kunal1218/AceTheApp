@@ -9,10 +9,12 @@
 
 .survey-shell {
   min-height: 100vh;
-  padding: 64px 5vw;
+  padding: 32px 5vw;
   background: var(--survey-bg);
   display: flex;
   align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .survey-panel {

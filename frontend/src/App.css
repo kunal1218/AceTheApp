@@ -1,3 +1,17 @@
+:root,
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+  background: var(--ace-bg, #f7f7fb);
+}
+
 .app {
   max-width: 1400px;
   margin: 0 auto;

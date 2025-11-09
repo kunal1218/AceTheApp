@@ -254,43 +254,6 @@ export default function LandingPage() {
             ))}
           </div>
         </section>
-
-        <section className="ace-section cta">
-          <h2>Ready to move your goals forward?</h2>
-          <p>
-            Join thousands of focused builders who organize their goals with Ace and tap
-            into counseling when it matters most.
-          </p>
-          <div className="ace-cta">
-            <button className="ace-btn" onClick={handleGetStarted}>
-              Get Started
-            </button>
-            <button className="ace-btn ghost" onClick={handleLogin}>
-              Log In
-            </button>
-          </div>
-        </section>
-
-        <section className="ace-section contact" id="contact">
-          <div>
-            <h2>Contact us</h2>
-            <p>
-              Email: <a href="mailto:info@acetheapp.com">info@acetheapp.com</a>
-              <br />
-              Phone: (555) 123-4567
-              <br />
-              Address: 123 College Ave, New York, NY 10001
-            </p>
-          </div>
-          <div>
-            <h3>Follow along</h3>
-            <div className="ace-social">
-              <a href="https://www.facebook.com/">Facebook</a>
-              <a href="https://www.instagram.com/">Instagram</a>
-              <a href="https://www.twitter.com/">Twitter</a>
-            </div>
-          </div>
-        </section>
       </main>
 
       <a className="ace-chat" href="mailto:info@acetheapp.com" title="Chat with us">

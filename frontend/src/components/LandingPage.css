@@ -142,10 +142,11 @@
 .ace-lp {
   font-family: var(--ace-font);
   min-height: 100vh;
+  height: 100%;
   background: var(--ace-bg);
   color: var(--ace-primary);
   position: relative;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .ace-background {

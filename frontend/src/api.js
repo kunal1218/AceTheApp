@@ -1,6 +1,18 @@
 import NProgress from 'nprogress';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3001";
+const normalizeApiBase = (value) => {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  // If the value is missing a scheme, assume https to avoid relative URL issues in prod.
+  if (!/^https?:\/\//i.test(trimmed)) {
+    return `https://${trimmed}`;
+  }
+  return trimmed;
+};
+
+const API_BASE = normalizeApiBase(import.meta.env.VITE_API_BASE_URL) ?? "http://localhost:3001";
+console.debug("[api] API_BASE =", API_BASE);
 let jwt = localStorage.getItem("token") || null;
 
 export function setToken(token) {

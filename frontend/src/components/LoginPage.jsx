@@ -23,7 +23,7 @@ export default function LoginPage({ setLoggedIn }) {
       // login() in api.js should set the token in localStorage
       setLoggedIn(true);
       await refreshColleges(); // Ensure college list is loaded after login
-      navigate("/home");
+      navigate("/home", { replace: true });
     } catch (err) {
       setError(err.message || "Invalid email or password.");
     }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, useNavigate } from 'react-router-dom';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import USAMap from './components/USAMap';
 import TopCollegesButton from './components/TopCollegesButton';
 import FloatingNavButtons from "./components/FloatingNavButtons";
@@ -32,6 +32,7 @@ import SkillAssessment from "./components/SkillAssessment";
 function App() {
   const [loggedIn, setLoggedIn] = useState(!!getToken());
   const navigate = useNavigate();
+  const location = useLocation();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [userName, setUserName] = useState(null);
 
@@ -78,6 +79,13 @@ function App() {
   // Add handlers for SettingsMenu
   const handleUserInfo = () => navigate("/user-info");
   const handleSystemOptions = () => navigate("/settings");
+
+  useEffect(() => {
+    // If already logged in and sitting on auth pages, auto-redirect to home
+    if (loggedIn && (location.pathname === "/login" || location.pathname === "/create-account")) {
+      navigate("/home", { replace: true });
+    }
+  }, [loggedIn, location.pathname, navigate]);
 
   return (
     <CollegeProvider>

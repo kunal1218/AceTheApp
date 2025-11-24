@@ -70,12 +70,13 @@ export default function CreateAccount({ setLoggedIn }) {
         return;
       }
       console.log("[DEBUG] Registration response:", res);
-      if (!res.token) {
+      const token = res?.token || res?.data?.token || localStorage.getItem("token");
+      if (!token) {
         setError("Registration failed: No token returned from server. Please try again or contact support.");
         return;
       }
       // Save token (or whatever your backend returns)
-      localStorage.setItem("token", res.token);
+      localStorage.setItem("token", token);
       setLoggedIn(true);
       // --- Sync guest survey answers if they exist ---
       const guestAnswers = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -91,7 +92,7 @@ export default function CreateAccount({ setLoggedIn }) {
         }
       }
       // -----------------------------------------------
-      navigate("/home");
+      navigate("/home", { replace: true });
     } catch (err) {
       // Show backend error message if available
       if (err && err.message) {

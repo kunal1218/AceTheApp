@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  EXPIRED
+}
+
+model User {
+  id                     String         @id @default(cuid())
+  email                  String         @unique
+  passwordHash           String
+  role                   Role           @default(USER)
+  hasActiveSubscription  Boolean        @default(false)
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+
+  subscriptions          Subscription[]
+  courses                Course[]
+}
+
+model Subscription {
+  id         String               @id @default(cuid())
+  userId     String
+  user       User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status     SubscriptionStatus   @default(ACTIVE)
+  startedAt  DateTime             @default(now())
+  expiresAt  DateTime?
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+
+  @@index([userId])
+}
+
+model Course {
+  id        String         @id @default(cuid())
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  category  String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  syllabusItems SyllabusItem[]
+
+  @@index([userId])
+}
+
+model SyllabusItem {
+  id          String    @id @default(cuid())
+  courseId    String
+  course      Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  type        String?
+  date        DateTime?
+  rawText     String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([courseId])
+  @@index([date])
+}

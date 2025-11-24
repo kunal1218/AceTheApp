@@ -587,7 +587,7 @@ export default function USAMap() {
         </g>
         <g>
           {/* Draw chain lines */}
-          {lines}
+          {routeLines}
           {/* Render pins for each capital */}
           {routeLines}
           {previewLine}

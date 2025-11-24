@@ -46,29 +46,32 @@ const handleResponse = async (res, fallbackMessage) => {
 
 // Auth
 export async function register({ name, email, password }) {
-  const res = await apiFetch(`${API_BASE}/auth/register`, {
+  const res = await apiFetch(`${API_BASE}/auth/signup`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name, email, password }),
   });
   const data = await handleResponse(res, "Register failed");
-  if (data?.token) {
-    setToken(data.token);
+  const token = data?.token ?? data?.data?.token;
+  if (token) {
+    setToken(token);
   }
-  return data; // Return full { token, user }
+  return data; // Return full response shape
 }
 
 export async function login({ email, password }) {
-  const res = await apiFetch(`${API_BASE}/auth/login`, {
+  const res = await apiFetch(`${API_BASE}/auth/signin`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
   const data = await handleResponse(res, "Login failed");
-  if (data?.token) {
-    setToken(data.token);
+  const token = data?.token ?? data?.data?.token;
+  if (token) {
+    setToken(token);
   }
-  return data?.user;
+  const user = data?.user ?? data?.data?.user;
+  return user;
 }
 
 // Profile

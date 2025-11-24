@@ -36,13 +36,24 @@ function App() {
   const [userName, setUserName] = useState(null);
 
   useEffect(() => {
+    let cancelled = false;
     if (loggedIn) {
-      getProfile().then(profile => {
-        setUserName(profile?.name || "");
-      });
+      getProfile()
+        .then(profile => {
+          if (cancelled) return;
+          setUserName(profile?.name || "");
+        })
+        .catch(err => {
+          console.warn("[App] Failed to fetch profile", err);
+          if (cancelled) return;
+          setUserName(""); // fall back to empty so UI can still render
+        });
     } else {
       setUserName("");
     }
+    return () => {
+      cancelled = true;
+    };
   }, [loggedIn]);
 
   useEffect(() => {

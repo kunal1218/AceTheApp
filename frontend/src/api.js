@@ -94,6 +94,12 @@ export async function getProfile() {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (res.status === 401) return null;
+  if (!res.ok) {
+    // Gracefully fall back instead of throwing, so the app can continue.
+    const maybeJson = await parseJsonSafe(res);
+    console.warn("[api] getProfile failed", res.status, maybeJson);
+    return null;
+  }
   return handleResponse(res, "Failed to fetch profile");
 }
 

@@ -44,6 +44,14 @@ router.post("/parse-and-store", requireAuth, upload.single("file"), async (req, 
       return res.status(400).json({ error: "workspaceName is required" });
     }
 
+    // Non-admin users: enforce max of 3 syllabus submissions (distinct courses)
+    if (req.user?.role !== "ADMIN") {
+      const courseCount = await prisma.course.count({ where: { userId: req.user!.id } });
+      if (courseCount >= 3 && !courseIdRaw) {
+        return res.status(403).json({ error: "Syllabus upload limit reached for this account." });
+      }
+    }
+
     const buffer = file.buffer;
     const mimeType = file.mimetype || "application/pdf";
     const syllabus = await parseSyllabusFromBuffer(buffer, mimeType);

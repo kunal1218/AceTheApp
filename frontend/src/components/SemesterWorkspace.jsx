@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "./ProductivityDashboard.css";
 import { addDeadline, addSyllabusEntry, getItemById } from "../utils/semesters";
+import { uploadSyllabusFile } from "../api";
 import { uploadSyllabusFile } from "../api"; // <-- import the helper
 
 export default function SemesterWorkspace() {
@@ -10,6 +11,8 @@ export default function SemesterWorkspace() {
   const [item, setItem] = useState(() => getItemById(id));
   const [newDeadline, setNewDeadline] = useState({ title: "", date: "" });
   const [uploadName, setUploadName] = useState("");
+  const [file, setFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [file, setFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
 

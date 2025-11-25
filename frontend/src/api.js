@@ -354,3 +354,13 @@ export async function uploadSyllabusFile(file, options = {}) {
 
   return handleResponse(res, "Failed to parse syllabus");
 }
+
+export async function getCourseSyllabus(courseId) {
+  const token = getToken();
+  if (!token) return null;
+  const res = await apiFetch(`${API_BASE}/courses/${courseId}/syllabus`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 401 || res.status === 403 || res.status === 404) return null;
+  return handleResponse(res, "Failed to fetch syllabus items");
+}

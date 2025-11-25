@@ -93,6 +93,7 @@ export default function SemesterWizard() {
             source: "syllabus",
             syllabusId,
             syllabusName: u.name,
+            color,
           }))
         );
       }

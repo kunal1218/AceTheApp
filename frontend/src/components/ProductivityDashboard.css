@@ -511,22 +511,21 @@
   color: #0f172a;
   font-size: 0.95rem;
 }
-.pd-calendar-day-dots {
+.pd-calendar-day-events {
   display: flex;
+  flex-direction: column;
   gap: 4px;
-  flex-wrap: wrap;
 }
-.pd-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  display: inline-block;
-}
-.pd-dot--syllabus {
-  background: #6366f1;
-}
-.pd-dot--deadline {
-  background: #ef4444;
+.pd-calendar-event-chip {
+  border-radius: 8px;
+  padding: 4px 6px;
+  color: #fff;
+  font-size: 0.8rem;
+  line-height: 1.2;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .pd-muted {
   color: #94a3b8;

@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "./ProductivityDashboard.css";
 import { addCalendarEvents, addDeadline, addSyllabusEntry, getItemById, updateItem } from "../utils/semesters";
-import { uploadSyllabusFile } from "../api"; // <--- make sure this path is correct
+import { uploadSyllabusFile, getCourseSyllabus } from "../api"; // <--- make sure this path is correct
 
 export default function SemesterWorkspace() {
   const { id } = useParams();
@@ -43,6 +43,39 @@ export default function SemesterWorkspace() {
     return [...lessonEvents, ...deadlineEvents].sort((a, b) => new Date(a.date) - new Date(b.date));
   }, [item]);
 
+  React.useEffect(() => {
+    let cancelled = false;
+    const hydrateFromDb = async () => {
+      if (!item?.courseId) return;
+      try {
+        const res = await getCourseSyllabus(item.courseId);
+        const rows = res?.data?.syllabus || res?.syllabus || res || [];
+        if (!Array.isArray(rows) || rows.length === 0) return;
+        const events = rows
+          .filter((row) => row.date)
+          .map((row) => ({
+            id: row.id,
+            date: typeof row.date === "string" ? row.date.slice(0, 10) : new Date(row.date).toISOString().slice(0, 10),
+            title: row.title || "Lesson",
+            source: "syllabus",
+            syllabusId: row.id,
+            syllabusName: row.title,
+            color: item.color,
+          }));
+        const updated = addCalendarEvents(id, events);
+        if (!cancelled && updated) {
+          setItem(hydrateItem(updated));
+        }
+      } catch (err) {
+        console.warn("[SemesterWorkspace] Failed to fetch syllabus from Postgres", err);
+      }
+    };
+    hydrateFromDb();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, item?.courseId]);
+
   const buildCalendarDays = () => {
     const today = new Date();
     const year = today.getFullYear();
@@ -50,13 +83,18 @@ export default function SemesterWorkspace() {
     const start = new Date(year, month, 1);
     const end = new Date(year, month + 1, 0);
     const startOffset = start.getDay(); // 0-6
+    const monthEvents = calendarEvents.filter((ev) => {
+      if (!ev.date) return false;
+      const d = new Date(ev.date);
+      return d.getFullYear() === year && d.getMonth() === month;
+    });
     const cells = [];
     for (let i = 0; i < startOffset; i++) {
       cells.push({ key: `empty-${i}`, label: "", date: null });
     }
     for (let d = 1; d <= end.getDate(); d++) {
       const iso = new Date(year, month, d).toISOString().slice(0, 10);
-      const matching = calendarEvents.filter((ev) => ev.date === iso);
+      const matching = monthEvents.filter((ev) => ev.date === iso);
       cells.push({ key: `day-${d}`, label: d, date: iso, events: matching });
     }
     return {
@@ -116,6 +154,7 @@ export default function SemesterWorkspace() {
             source: "syllabus",
             syllabusId,
             syllabusName: displayName,
+            color: item.color,
           }))) || updated;
       }
 
@@ -199,13 +238,16 @@ export default function SemesterWorkspace() {
                       {cal.cells.map((cell) => (
                         <div key={cell.key} className="pd-calendar-day">
                           <div className="pd-calendar-day-number">{cell.label}</div>
-                          <div className="pd-calendar-day-dots">
+                          <div className="pd-calendar-day-events">
                             {cell.events?.map((ev) => (
-                              <span
+                              <div
                                 key={ev.id}
-                                className={`pd-dot pd-dot--${ev.source === "deadline" ? "deadline" : "syllabus"}`}
+                                className="pd-calendar-event-chip"
+                                style={{ background: ev.color || item.color || "#6366f1" }}
                                 title={ev.title}
-                              />
+                              >
+                                <span>{ev.title}</span>
+                              </div>
                             ))}
                           </div>
                         </div>

@@ -134,6 +134,7 @@ export default function ProductivityDashboard() {
             source: "syllabus",
             syllabusId,
             syllabusName: u.name,
+            color: semesterColor,
           }))
         );
       }

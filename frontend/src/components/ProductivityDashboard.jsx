@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "./LandingPage.css";
 import "./ProductivityDashboard.css";
 import { CARD_COLORS, addSemester, loadItems, saveItems, updateItem } from "../utils/semesters";
-import { uploadSyllabusFile } from "../api";
+import { uploadSyllabusFile, deleteCourse } from "../api";
 import settingsIcon from "../assets/settings.png";
 import SettingsMenu from "./SettingsMenu";
 
@@ -183,10 +183,17 @@ export default function ProductivityDashboard() {
     setDraggingId(null);
   };
 
-  const confirmDelete = (id) => {
+  const confirmDelete = async (id) => {
     const item = items.find(s => s.id === id);
     if (!item) return;
     if (window.confirm(`Delete "${item.title}"?`)) {
+      if (item.type === "semester" && item.courseId) {
+        try {
+          await deleteCourse(item.courseId);
+        } catch (err) {
+          console.warn("[Dashboard] Failed to delete course from backend", err);
+        }
+      }
       handleDelete(id);
     }
   };

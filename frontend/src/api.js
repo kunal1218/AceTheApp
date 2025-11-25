@@ -383,3 +383,16 @@ export async function getWorkspaceSyllabus(workspaceName) {
   if (res.status === 401 || res.status === 403 || res.status === 404) return null;
   return handleResponse(res, "Failed to fetch syllabus items");
 }
+
+export async function deleteCourse(courseId) {
+  const token = getToken();
+  if (!token) return null;
+  const base = API_BASE.replace(/\/$/, "");
+  const root = base.endsWith("/api") ? base.slice(0, -4) : base;
+  const res = await apiFetch(`${root}/courses/${courseId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 401 || res.status === 403 || res.status === 404) return null;
+  return handleResponse(res, "Failed to delete course");
+}

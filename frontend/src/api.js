@@ -129,53 +129,87 @@ export async function getProfile() {
     return getMockUser();
   }
   if (!token) return null;
-  const res = await apiFetch(`${API_BASE}/profile/me`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (res.status === 401 || res.status === 404) return null;
-  if (!res.ok) {
-    // Gracefully fall back instead of throwing, so the app can continue.
-    const maybeJson = await parseJsonSafe(res);
-    console.warn("[api] getProfile failed", res.status, maybeJson);
+  try {
+    const res = await apiFetch(`${API_BASE}/profile/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.status === 401 || res.status === 404) return null;
+    if (!res.ok) {
+      const maybeJson = await parseJsonSafe(res);
+      console.warn("[api] getProfile failed", res.status, maybeJson);
+      return null;
+    }
+    return handleResponse(res, "Failed to fetch profile");
+  } catch (err) {
+    console.warn("[api] getProfile error", err);
     return null;
   }
-  return handleResponse(res, "Failed to fetch profile");
 }
 
 export async function getColleges() {
   const token = getToken();
   if (!token) return [];
-  const res = await apiFetch(`${API_BASE}/profile/colleges`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (res.status === 401) return [];
-  return handleResponse(res, "Failed to fetch colleges");
+  try {
+    const res = await apiFetch(`${API_BASE}/profile/colleges`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.status === 401 || res.status === 404) return [];
+    if (!res.ok) {
+      const maybeJson = await parseJsonSafe(res);
+      console.warn("[api] getColleges failed", res.status, maybeJson);
+      return [];
+    }
+    return handleResponse(res, "Failed to fetch colleges");
+  } catch (err) {
+    console.warn("[api] getColleges error", err);
+    return [];
+  }
 }
 
 export async function addCollege(id) {
   const token = getToken();
   if (!token) return null;
-  const res = await apiFetch(`${API_BASE}/profile/colleges`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ id }),
-  });
-  if (res.status === 401) return null;
-  return handleResponse(res, "Failed to add college");
+  try {
+    const res = await apiFetch(`${API_BASE}/profile/colleges`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ id }),
+    });
+    if (res.status === 401 || res.status === 404) return null;
+    if (!res.ok) {
+      const maybeJson = await parseJsonSafe(res);
+      console.warn("[api] addCollege failed", res.status, maybeJson);
+      return null;
+    }
+    return handleResponse(res, "Failed to add college");
+  } catch (err) {
+    console.warn("[api] addCollege error", err);
+    return null;
+  }
 }
 
 export async function removeCollege(id) {
   const token = getToken();
   if (!token) return null;
-  const res = await apiFetch(`${API_BASE}/profile/colleges/${id}`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (res.status === 401) return null;
-  return handleResponse(res, "Failed to remove college");
+  try {
+    const res = await apiFetch(`${API_BASE}/profile/colleges/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.status === 401 || res.status === 404) return null;
+    if (!res.ok) {
+      const maybeJson = await parseJsonSafe(res);
+      console.warn("[api] removeCollege failed", res.status, maybeJson);
+      return null;
+    }
+    return handleResponse(res, "Failed to remove college");
+  } catch (err) {
+    console.warn("[api] removeCollege error", err);
+    return null;
+  }
 }
 
 export async function saveCollegeDoc(collegeId, docUrl) {

@@ -15,20 +15,33 @@ export function CollegeProvider({ children }) {
 
   // Add a college by id using the API and refresh
   const addCollege = async (id) => {
-    await apiAddCollege(id);
+    try {
+      await apiAddCollege(id);
+    } catch (err) {
+      console.warn("[CollegeProvider] addCollege skipped", err);
+    }
     await refreshColleges();
   };
 
   // Remove a college by id using the API and refresh
   const removeCollege = async (id) => {
-    await apiRemoveCollege(id);
+    try {
+      await apiRemoveCollege(id);
+    } catch (err) {
+      console.warn("[CollegeProvider] removeCollege skipped", err);
+    }
     await refreshColleges();
   };
 
   // Refresh from API
   const refreshColleges = async () => {
-    const ids = await getColleges();
-    setMyColleges(allColleges.filter((college) => ids.includes(college.id)));
+    try {
+      const ids = await getColleges();
+      setMyColleges(allColleges.filter((college) => ids.includes(college.id)));
+    } catch (err) {
+      console.warn("[CollegeProvider] refreshColleges skipped", err);
+      setMyColleges([]);
+    }
   };
 
   return (

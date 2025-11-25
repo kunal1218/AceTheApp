@@ -30,5 +30,9 @@ export const env = {
   REDIS_URL: requireEnv('REDIS_URL'),
   JWT_SECRET: requireEnv('JWT_SECRET'),
   ADMIN_EMAILS: parseAdminEmails(process.env.ADMIN_EMAILS),
-  CORS_ORIGINS: parseCorsOrigins(process.env.CORS_ORIGIN)
+  CORS_ORIGINS: parseCorsOrigins(process.env.CORS_ORIGIN),
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+  GOOGLE_CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL,
+  FRONTEND_ORIGIN: process.env.FRONTEND_ORIGIN ?? parseCorsOrigins(process.env.CORS_ORIGIN)[0]
 };

@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../db/prisma';
 import { env } from '../config/env';
 import { cacheUser } from '../redis/client';
+import crypto from 'crypto';
 
 const router = Router();
 
@@ -123,6 +124,105 @@ router.post('/signout', (_req: Request, res: Response) => {
     sameSite: 'lax'
   });
   res.json({ success: true, data: { message: 'Signed out' } });
+});
+
+// Google OAuth: redirect to Google's consent screen
+router.get('/google', (_req: Request, res: Response) => {
+  if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CALLBACK_URL) {
+    res.status(500).json({ success: false, error: 'Google OAuth not configured' });
+    return;
+  }
+  const params = new URLSearchParams({
+    client_id: env.GOOGLE_CLIENT_ID,
+    redirect_uri: env.GOOGLE_CALLBACK_URL,
+    response_type: 'code',
+    scope: 'openid email profile',
+    access_type: 'online',
+    prompt: 'select_account'
+  });
+  res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
+});
+
+// Google OAuth callback: exchange code, upsert user, issue JWT, redirect to frontend with token
+router.get('/google/callback', async (req: Request, res: Response) => {
+  try {
+    const code = typeof req.query.code === 'string' ? req.query.code : null;
+    if (!code) {
+      res.status(400).send('Missing authorization code');
+      return;
+    }
+    if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET || !env.GOOGLE_CALLBACK_URL) {
+      res.status(500).send('Google OAuth not configured');
+      return;
+    }
+
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: env.GOOGLE_CLIENT_ID,
+        client_secret: env.GOOGLE_CLIENT_SECRET,
+        redirect_uri: env.GOOGLE_CALLBACK_URL,
+        grant_type: 'authorization_code'
+      })
+    });
+
+    if (!tokenRes.ok) {
+      const errorText = await tokenRes.text();
+      console.error('Google token exchange failed:', errorText);
+      res.status(502).send('Failed to exchange code for tokens');
+      return;
+    }
+
+    const tokenJson = (await tokenRes.json()) as { id_token?: string; access_token?: string };
+    if (!tokenJson.id_token) {
+      res.status(502).send('No id_token returned from Google');
+      return;
+    }
+
+    const [, payload] = tokenJson.id_token.split('.');
+    const decoded = JSON.parse(Buffer.from(payload, 'base64').toString('utf8')) as {
+      email?: string;
+      name?: string;
+    };
+
+    const email = decoded.email?.toLowerCase().trim();
+    const name = decoded.name || 'Google User';
+    if (!email) {
+      res.status(502).send('No email returned from Google');
+      return;
+    }
+
+    let user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      const randomPwd = crypto.randomBytes(32).toString('hex');
+      const passwordHash = await bcrypt.hash(randomPwd, 10);
+      user = await prisma.user.create({
+        data: {
+          email,
+          passwordHash,
+          role: env.ADMIN_EMAILS.includes(email) ? 'ADMIN' : 'USER',
+          hasActiveSubscription: env.ADMIN_EMAILS.includes(email) ? true : false
+        }
+      });
+    }
+
+    const token = signToken({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      hasActiveSubscription: user.hasActiveSubscription
+    });
+    setAuthCookie(res, token);
+    await cacheUser(user);
+
+    const redirectTarget = env.FRONTEND_ORIGIN?.replace(/\/$/, '') || 'http://localhost:3000';
+    res.redirect(`${redirectTarget}/profile?token=${token}`);
+  } catch (err) {
+    console.error('Google OAuth callback error', err);
+    res.status(500).send('OAuth error');
+  }
 });
 
 export default router;

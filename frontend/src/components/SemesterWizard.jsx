@@ -54,6 +54,7 @@ export default function SemesterWizard() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("[SemesterWizard] handleSubmit fired");
     if (!name.trim()) {
       setError("Please name your semester");
       return;
@@ -64,6 +65,7 @@ export default function SemesterWizard() {
     }
     try {
       setIsUploading(true);
+      console.log("[SemesterWizard] uploading", uploads.length, "syllabus files");
       const parsedUploads = [];
       for (const u of uploads) {
         const { syllabusId, syllabus } = await uploadSyllabusFile(u.file);

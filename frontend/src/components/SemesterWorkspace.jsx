@@ -29,7 +29,10 @@ export default function SemesterWorkspace() {
   };
 
   const handleAddSyllabus = async () => {
-    if (!file) return;
+    if (!file) {
+      console.warn("[SemesterWorkspace] handleAddSyllabus called with no file");
+      return;
+    }
     setIsUploading(true);
     console.log("[SemesterWorkspace] handleAddSyllabus fired, file =", file);
     console.log("[SemesterWorkspace] uploading syllabus file", file.name);

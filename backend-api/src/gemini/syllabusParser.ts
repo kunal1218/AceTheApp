@@ -12,17 +12,12 @@ const genAI = new GoogleGenerativeAI(apiKey);
  * We only care about:
  * - course_code
  * - course_title
- * - grading_breakdown (assignment weights)
  * - schedule_entries with date + lesson title
  */
 const SYLLABUS_MINIMAL_SCHEMA_TEXT = `
 Type MinimalSyllabus = {
   course_code: string | null;
   course_title: string | null;
-  grading_breakdown: {
-    component: string;          // e.g. "Exams", "Projects", "Homework"
-    weight_percent: number | null; // number from 0 to 100 if explicitly given
-  }[];
   schedule_entries: {
     date: string | null;        // class date in YYYY-MM-DD if possible, otherwise null
     title: string;              // short lesson or lecture title, e.g. "Arrays and pointers"
@@ -33,10 +28,6 @@ Type MinimalSyllabus = {
 Rules:
 - Extract only what is explicitly present in the syllabus.
 - If a field is missing, set it to null. Arrays should be [] when missing.
-- grading_breakdown:
-  - Include only components that clearly correspond to grade categories (exams, projects, homework, quizzes, etc.).
-  - If a percentage weight is explicitly given, use it as weight_percent.
-  - If the weight is not clearly given, set weight_percent to null.
 - schedule_entries:
   - Include only entries that clearly correspond to lessons/lectures or exams with specific dates.
   - Use YYYY-MM-DD format for dates if possible; otherwise use null.
@@ -53,10 +44,6 @@ Rules:
 type MinimalSyllabusCore = {
   course_code: string | null;
   course_title: string | null;
-  grading_breakdown: {
-    component: string;
-    weight_percent: number | null;
-  }[];
   schedule_entries: {
     date: string | null;
     title: string;
@@ -79,17 +66,8 @@ function sanitizeGeminiJSON(str: string): string {
 function basicValidateMinimal(parsed: any): parsed is MinimalSyllabusCore {
   if (typeof parsed !== "object" || parsed === null) return false;
 
-  if (!("grading_breakdown" in parsed) || !Array.isArray(parsed.grading_breakdown)) {
-    return false;
-  }
   if (!("schedule_entries" in parsed) || !Array.isArray(parsed.schedule_entries)) {
     return false;
-  }
-
-  for (const gb of parsed.grading_breakdown) {
-    if (typeof gb !== "object" || gb === null) return false;
-    if (typeof gb.component !== "string") return false;
-    if (gb.weight_percent !== null && typeof gb.weight_percent !== "number") return false;
   }
 
   for (const se of parsed.schedule_entries) {
@@ -290,7 +268,7 @@ export async function parseSyllabusFromBuffer(
     location: null,
     office_hours: null,
     description: null,
-    grading_breakdown: safeMinimal.grading_breakdown,
+    grading_breakdown: [],
     major_assignments: [],
     policies: {
       late_work: null,

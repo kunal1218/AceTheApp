@@ -24,6 +24,7 @@ export default function SemesterWorkspace() {
     const now = new Date();
     return { year: now.getFullYear(), month: now.getMonth() }; // month is 0-indexed
   });
+  const [selectedEvent, setSelectedEvent] = useState(null);
 
   const upcoming = useMemo(() => {
     if (!item || !item.deadlines) return [];
@@ -121,10 +122,16 @@ export default function SemesterWorkspace() {
       const matching = monthEvents.filter((ev) => ev.date === iso);
       cells.push({ key: `day-${d}`, label: d, date: iso, events: matching });
     }
-    return {
-      title: start.toLocaleDateString(undefined, { month: "long", year: "numeric" }),
-      cells,
+    const monthLabel = start.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+    const prev = () => {
+      const prevMonth = new Date(year, month - 1, 1);
+      setCalendarMonth({ year: prevMonth.getFullYear(), month: prevMonth.getMonth() });
     };
+    const next = () => {
+      const nextMonth = new Date(year, month + 1, 1);
+      setCalendarMonth({ year: nextMonth.getFullYear(), month: nextMonth.getMonth() });
+    };
+    return { title: monthLabel, cells, prev, next };
   };
 
   React.useEffect(() => {
@@ -262,6 +269,10 @@ export default function SemesterWorkspace() {
                   <div className="pd-calendar-shell">
                     <div className="pd-calendar-header">
                       <span>{cal.title}</span>
+                      <div className="pd-calendar-nav">
+                        <button type="button" onClick={cal.prev}>Prev</button>
+                        <button type="button" onClick={cal.next}>Next</button>
+                      </div>
                       <div className="pd-calendar-weekdays">
                         {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
                           <span key={d}>{d}</span>
@@ -274,14 +285,15 @@ export default function SemesterWorkspace() {
                           <div className="pd-calendar-day-number">{cell.label}</div>
                           <div className="pd-calendar-day-events">
                             {cell.events?.map((ev) => (
-                              <div
+                              <button
                                 key={ev.id}
                                 className="pd-calendar-event-chip"
                                 style={{ background: ev.color || item.color || "#6366f1" }}
                                 title={ev.title}
+                                onClick={() => setSelectedEvent(ev)}
                               >
                                 <span>{ev.title}</span>
-                              </div>
+                              </button>
                             ))}
                           </div>
                         </div>
@@ -291,21 +303,26 @@ export default function SemesterWorkspace() {
                 );
               })()}
               <div className="pd-calendar-list">
-                {calendarEvents.length === 0 && <p className="pd-muted">No calendar events yet</p>}
-                {calendarEvents.map((ev) => (
-                  <div key={ev.id} className="pd-calendar-event">
-                    <div>
-                      <strong>{ev.title}</strong>
-                      <p className="pd-muted">{ev.date ? new Date(ev.date).toLocaleDateString() : "Date TBA"}</p>
-                    </div>
-                    <span className={`pd-chip pd-chip--${ev.source === "deadline" ? "deadline" : "syllabus"}`}>
-                      {ev.source === "deadline" ? "Deadline" : "Lesson"}
-                    </span>
+              {calendarEvents.length === 0 && <p className="pd-muted">No calendar events yet</p>}
+              {calendarEvents.map((ev) => (
+                <button
+                  key={ev.id}
+                  className="pd-calendar-event"
+                  type="button"
+                  onClick={() => setSelectedEvent(ev)}
+                >
+                  <div>
+                    <strong>{ev.title}</strong>
+                    <p className="pd-muted">{ev.date ? new Date(ev.date).toLocaleDateString() : "Date TBA"}</p>
                   </div>
-                ))}
-              </div>
+                  <span className={`pd-chip pd-chip--${ev.source === "deadline" ? "deadline" : "syllabus"}`}>
+                    {ev.source === "deadline" ? "Deadline" : "Lesson"}
+                  </span>
+                </button>
+              ))}
             </div>
-          )}
+          </div>
+        )}
 
           {activeTab === "deadlines" && (
             <div className="pd-tab-panel">
@@ -389,6 +406,21 @@ export default function SemesterWorkspace() {
           )}
         </div>
       </div>
+      {selectedEvent && (
+        <div className="pd-modal-backdrop">
+          <div className="pd-modal" role="dialog" aria-modal="true" aria-label="Event details">
+            <p className="eyebrow">{selectedEvent.source === "deadline" ? "Deadline" : "Lesson"}</p>
+            <h2>{selectedEvent.title}</h2>
+            <p className="pd-muted">{selectedEvent.date ? new Date(selectedEvent.date).toLocaleDateString() : "Date TBA"}</p>
+            {selectedEvent.description && <p>{selectedEvent.description}</p>}
+            <div className="pd-modal-actions">
+              <button className="ace-btn" type="button" onClick={() => setSelectedEvent(null)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -178,12 +178,14 @@ export async function parseSyllabusFromBuffer(
   buffer: Buffer,
   mimeType: string = "application/pdf"
 ): Promise<Syllabus> {
+  console.log("[parseSyllabusFromBuffer] Calling Gemini minimal prompt…");
   const raw = await callMinimalModel(buffer, mimeType);
+  console.log("[parseSyllabusFromBuffer] Got raw minimal response from Gemini.");
   let cleaned = sanitizeGeminiJSON(raw);
 
   let minimal: MinimalSyllabusCore | undefined;
 
-  // First attempt
+  // First attempt to parse + validate the minimal JSON
   try {
     minimal = JSON.parse(cleaned);
   } catch (err) {
@@ -192,28 +194,43 @@ export async function parseSyllabusFromBuffer(
   }
 
   if (!minimal || !basicValidateMinimal(minimal)) {
-    // Fallback: ask Gemini to repair the malformed JSON
-    const fixedRaw = await fixMalformedMinimalSyllabusJSON(raw);
+    console.warn(
+      "[parseSyllabusFromBuffer] Minimal parse/validation failed, calling fixer (second prompt)…"
+    );
+
+    // SECOND PROMPT: runs whenever first attempt fails
+    const fixedRaw = await fixMalformedMinimalSyllabusJSON(cleaned);
     const fixedCleaned = sanitizeGeminiJSON(fixedRaw);
 
     try {
       minimal = JSON.parse(fixedCleaned);
+      console.log("[parseSyllabusFromBuffer] Fallback parse succeeded.");
     } catch (err) {
       console.error("[parseSyllabusFromBuffer] Fallback JSON.parse failed (raw):", fixedRaw);
       console.error("[parseSyllabusFromBuffer] Fallback JSON.parse failed (cleaned):", fixedCleaned);
-      throw new Error("Gemini returned invalid JSON for minimal syllabus, even after repair attempt.");
+      minimal = undefined;
     }
 
-    if (!basicValidateMinimal(minimal)) {
-      console.error("[parseSyllabusFromBuffer] Repaired minimal syllabus failed validation:", minimal);
-      throw new Error("Parsed minimal syllabus did not match expected shape.");
+    if (!minimal || !basicValidateMinimal(minimal)) {
+      console.warn(
+        "[parseSyllabusFromBuffer] Repaired minimal syllabus failed validation. " +
+          "Using safe empty MinimalSyllabusCore fallback."
+      );
+      minimal = {
+        course_code: null,
+        course_title: null,
+        grading_breakdown: [],
+        schedule_entries: [],
+      };
     }
   }
 
-  // Convert minimal result into full Syllabus type
+  // At this point we KNOW minimal is defined; help TS see that.
+  const safeMinimal: MinimalSyllabusCore = minimal!;
+
   const fullSyllabus: Syllabus = {
-    course_code: minimal.course_code,
-    course_title: minimal.course_title,
+    course_code: safeMinimal.course_code,
+    course_title: safeMinimal.course_title,
     term: null,
     instructor_name: null,
     instructor_email: null,
@@ -221,14 +238,14 @@ export async function parseSyllabusFromBuffer(
     location: null,
     office_hours: null,
     description: null,
-    grading_breakdown: minimal.grading_breakdown,
+    grading_breakdown: safeMinimal.grading_breakdown,
     major_assignments: [],
     policies: {
       late_work: null,
       attendance: null,
       academic_integrity: null
     },
-    schedule_entries: minimal.schedule_entries.map((entry) => ({
+    schedule_entries: safeMinimal.schedule_entries.map((entry) => ({
       date: entry.date,
       title: entry.title,
       type: "lesson",

@@ -45,14 +45,25 @@ Rules:
 `;
 
 /**
- * Gemini sometimes wraps JSON in ```json ... ``` fences or similar.
- * Strip those and return a clean JSON string.
+ * Gemini sometimes:
+ * - wraps JSON in ```json ... ``` fences
+ * - adds trailing commas before } or ]
+ *
+ * This helper tries to normalize that into strict JSON.
  */
 function sanitizeGeminiJSON(str: string): string {
-  return str
+  let cleaned = str
+    // remove markdown fences
     .replace(/```json/gi, "")
     .replace(/```/g, "")
     .trim();
+
+  // remove trailing commas before } or ]
+  // e.g. "foo": 1, } -> "foo": 1 }
+  //      "a", ]    -> "a" ]
+  cleaned = cleaned.replace(/,\s*([}\]])/g, "$1");
+
+  return cleaned;
 }
 
 function basicValidate(parsed: any): parsed is Syllabus {
@@ -102,7 +113,8 @@ export async function parseSyllabusFromBuffer(
   try {
     parsed = JSON.parse(cleaned);
   } catch (err) {
-    console.error("[parseSyllabusFromBuffer] Invalid JSON from Gemini:", raw);
+    console.error("[parseSyllabusFromBuffer] Invalid JSON from Gemini (raw):", raw);
+    console.error("[parseSyllabusFromBuffer] Invalid JSON from Gemini (cleaned):", cleaned);
     throw new Error("Gemini returned invalid JSON for syllabus.");
   }
 

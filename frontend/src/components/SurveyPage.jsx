@@ -25,6 +25,7 @@ const OPTIONS = [
 ];
 
 const LOCAL_STORAGE_KEY = "guestSurveyAnswers";
+const SURVEY_COMPLETED_KEY = "surveyCompleted";
 
 export default function SurveyPage() {
   const navigate = useNavigate();
@@ -38,15 +39,7 @@ export default function SurveyPage() {
 
   // Load answers from backend if logged in, else from localStorage
   useEffect(() => {
-    if (getToken()) {
-      getSurveyAnswers()
-        .then((data) => {
-          if (Array.isArray(data) && data.length === QUESTIONS.length) {
-            setAnswers(data);
-          }
-        })
-        .finally(() => setLoading(false));
-    } else {
+    const loadLocal = () => {
       const local = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (local) {
         try {
@@ -56,6 +49,23 @@ export default function SurveyPage() {
           }
         } catch {}
       }
+      const completed = localStorage.getItem(SURVEY_COMPLETED_KEY) === "1";
+      if (completed) setRecap(true);
+    };
+
+    if (getToken()) {
+      getSurveyAnswers()
+        .then((data) => {
+          if (Array.isArray(data) && data.length === QUESTIONS.length) {
+            setAnswers(data);
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
+            localStorage.setItem(SURVEY_COMPLETED_KEY, "1");
+          }
+        })
+        .catch(() => loadLocal())
+        .finally(() => setLoading(false));
+    } else {
+      loadLocal();
       setLoading(false);
     }
   }, []);
@@ -79,27 +89,22 @@ export default function SurveyPage() {
     updated[current] = selected;
     setAnswers(updated);
 
-    if (!getToken()) {
-      // Save to localStorage for guests
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
-      setSelected(null);
-      if (current < QUESTIONS.length - 1) {
-        setCurrent(current + 1);
-      } else {
-        setRecap(true);
+    // Always persist locally
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
+
+    if (getToken()) {
+      try {
+        await saveSurveyAnswers(updated);
+      } catch (err) {
+        console.warn("Failed to save survey answers to backend", err);
       }
-      return;
     }
 
-    try {
-      await saveSurveyAnswers(updated);
-    } catch (err) {
-      alert("Failed to save survey answers. Please try again.");
-    }
     setSelected(null);
     if (current < QUESTIONS.length - 1) {
       setCurrent(current + 1);
     } else {
+      localStorage.setItem(SURVEY_COMPLETED_KEY, "1");
       setRecap(true);
     }
   };
@@ -243,7 +248,7 @@ export default function SurveyPage() {
             ))}
           </div>
           <div className="survey-actions">
-            <button className="outline-btn" onClick={() => navigate("/")}>
+            <button className="outline-btn" onClick={() => navigate("/dashboard")}>
               Exit
             </button>
             <button className="primary-btn" disabled={selected === null} onClick={handleNext}>

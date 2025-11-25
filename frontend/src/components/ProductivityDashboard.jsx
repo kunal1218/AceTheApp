@@ -99,7 +99,10 @@ export default function ProductivityDashboard() {
           </div>
           <button
             className="ace-btn ghost"
-            onClick={() => navigate("/survey?recap=1")}
+            onClick={() => {
+              const completed = typeof window !== "undefined" && localStorage.getItem("surveyCompleted") === "1";
+              navigate(completed ? "/" : "/survey");
+            }}
           >
             Go to Counseling
           </button>

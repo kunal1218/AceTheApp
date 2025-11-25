@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./FloatingNavButtons.css";
-import bookIcon from "../assets/book.svg";
-import gavelIcon from "../assets/gavel.webp";
-import calculatorIcon from "../assets/calculator.png";
+import collegePillarsIcon from "../assets/college-pillars.svg";
+import hammerIcon from "../assets/hammer-simple.svg";
+import calculatorIcon from "../assets/calculator-outline.svg";
 import settingsIcon from "../assets/settings.png";
 import SettingsMenu from "./SettingsMenu";
 import EditApplicationsPopup from "./EditApplicationsPopup";
@@ -57,14 +57,14 @@ export default function FloatingNavButtons() {
     <>
       <div className="floating-nav-bar">
         <button className="floating-nav-btn" title="Colleges List" onClick={() => navigate("/top-colleges")}>
-          <img src={bookIcon} alt="Colleges List" width={24} height={24} />
+          <img src={collegePillarsIcon} alt="Colleges List" width={24} height={24} />
         </button>
         <button
           className="floating-nav-btn"
           title="Edit Applications"
           onClick={handleEditApplications}
         >
-          <img src={gavelIcon} alt="Edit Applications" width={24} height={24} />
+          <img src={hammerIcon} alt="Edit Applications" width={24} height={24} />
         </button>
         <button className="floating-nav-btn" title="Affinity Calculator" onClick={() => navigate("/affinity-calc")}>
           <img src={calculatorIcon} alt="Affinity Calculator" width={24} height={24} />

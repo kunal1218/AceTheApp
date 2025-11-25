@@ -2,24 +2,25 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import express from "express";
-import mongoose from "mongoose";
 import cors from "cors";
 import authRoutes from "./routes/auth.js";
 import profileRoutes from "./routes/profile.js";
+import syllabusRoutes from "./routes/syllabusRoutes.js";
 import session from "express-session";
 import passport from "passport";
-import MongoStore from "connect-mongo";
 
 dotenv.config();
 const app = express(); // <-- MOVE THIS UP HERE
+
+if (!process.env.GOOGLE_API_KEY) {
+  throw new Error("Missing GOOGLE_API_KEY environment variable.");
+}
 
 app.use(cors({
   origin: process.env.FRONTEND_ORIGIN, // moved from hardcoded value
   credentials: true
 }));
 app.use(express.json());
-
-mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
 
 // lightweight request logger to help debug 404/401s on Vercel
 app.use((req, res, next) => {
@@ -38,9 +39,6 @@ app.use(session({
   secret: process.env.SESSION_SECRET || "devsecret",
   resave: false,
   saveUninitialized: false,
-  store: MongoStore.create({
-    mongoUrl: process.env.MONGO_URI,
-  }),
   cookie: {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -52,6 +50,7 @@ app.use(passport.session());
 
 app.use("/api/auth", authRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/syllabi", syllabusRoutes);
 
 // catch-all for unfound API requests so we can see them in logs
 app.use((req, res) => {

@@ -24,6 +24,7 @@ export default function ProductivityDashboard() {
   const [items, setItems] = useState(loadItems());
   const [justUnwrapped, setJustUnwrapped] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [uploadFlash, setUploadFlash] = useState(false);
   const navigate = useNavigate();
   const dragPreviewRef = useRef(null);
   const semesterFileInputRef = useRef(null);
@@ -51,8 +52,20 @@ export default function ProductivityDashboard() {
     setPage(0);
   };
 
+  const triggerUploadFlash = () => {
+    setUploadFlash(true);
+    setTimeout(() => setUploadFlash(false), 600);
+  };
+
   const handleSemesterFiles = (files) => {
-    const list = Array.from(files).map((file) => ({
+    const pdfs = Array.from(files).filter(
+      (file) => file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
+    );
+    if (pdfs.length === 0) {
+      triggerUploadFlash();
+      return;
+    }
+    const list = pdfs.map((file) => ({
       id: crypto.randomUUID?.() || Date.now().toString(),
       name: file.name,
     }));
@@ -362,7 +375,7 @@ export default function ProductivityDashboard() {
               </div>
             </div>
             <div
-              className="pd-upload-box"
+              className={`pd-upload-box${uploadFlash ? " pd-upload-box--error" : ""}`}
               role="button"
               tabIndex={0}
               onClick={triggerSemesterFileDialog}
@@ -382,17 +395,15 @@ export default function ProductivityDashboard() {
                 ref={semesterFileInputRef}
                 type="file"
                 multiple
+                accept="application/pdf"
                 onChange={(e) => handleSemesterFiles(e.target.files)}
               />
-              <p>Drop PDF syllabuses here (local only for now)</p>
+              <p>
+                {semesterUploads.length > 0
+                  ? semesterUploads.map((u) => u.name).join(", ")
+                  : "Drop PDF syllabuses here (local only for now)"}
+              </p>
             </div>
-            {semesterUploads.length > 0 && (
-              <div className="pd-upload-list">
-                {semesterUploads.map((u) => (
-                  <div key={u.id} className="pd-upload-item">{u.name}</div>
-                ))}
-              </div>
-            )}
             {semesterError && <div className="pd-error">{semesterError}</div>}
             <div className="pd-modal-actions">
               <button

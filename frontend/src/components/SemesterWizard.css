@@ -1,3 +1,12 @@
 .pd-upload-box input[type="file"] {
   display: none;
 }
+.pd-upload-box--error {
+  animation: pdUploadFlash 0.5s ease;
+  border-color: #ef4444;
+}
+
+@keyframes pdUploadFlash {
+  0% { background: #fee2e2; }
+  100% { background: #f8fafc; }
+}

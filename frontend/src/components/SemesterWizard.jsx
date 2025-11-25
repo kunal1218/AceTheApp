@@ -11,10 +11,25 @@ export default function SemesterWizard() {
   const [uploads, setUploads] = useState([]);
   const [error, setError] = useState("");
   const fileInputRef = useRef(null);
+  const [uploadFlash, setUploadFlash] = useState(false);
+
+  const triggerUploadFlash = () => {
+    setUploadFlash(true);
+    setTimeout(() => setUploadFlash(false), 600);
+  };
 
   const handleFiles = (files) => {
-    const list = Array.from(files).map((file) => ({ id: crypto.randomUUID?.() || Date.now().toString(), name: file.name }));
+    const pdfs = Array.from(files).filter(
+      (file) => file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
+    );
+    if (pdfs.length === 0) {
+      triggerUploadFlash();
+      setError("Please upload PDF files only.");
+      return;
+    }
+    const list = pdfs.map((file) => ({ id: crypto.randomUUID?.() || Date.now().toString(), name: file.name }));
     setUploads((prev) => [...prev, ...list]);
+    setError("");
   };
 
   const triggerFileDialog = () => {
@@ -90,7 +105,7 @@ export default function SemesterWizard() {
             </div>
           </div>
           <div
-            className="pd-upload-box"
+            className={`pd-upload-box${uploadFlash ? " pd-upload-box--error" : ""}`}
             role="button"
             tabIndex={0}
             onClick={triggerFileDialog}
@@ -110,17 +125,15 @@ export default function SemesterWizard() {
               ref={fileInputRef}
               type="file"
               multiple
+              accept="application/pdf"
               onChange={(e) => handleFiles(e.target.files)}
             />
-            <p>Drop PDF syllabuses here (local only for now)</p>
+            <p>
+              {uploads.length > 0
+                ? uploads.map((u) => u.name).join(", ")
+                : "Drop PDF syllabuses here (local only for now)"}
+            </p>
           </div>
-          {uploads.length > 0 && (
-            <div className="pd-upload-list">
-              {uploads.map((u) => (
-                <div key={u.id} className="pd-upload-item">{u.name}</div>
-              ))}
-            </div>
-          )}
           {error && <div className="pd-error">{error}</div>}
           <div className="pd-modal-actions">
             <button className="ace-btn ghost" onClick={() => navigate(-1)}>

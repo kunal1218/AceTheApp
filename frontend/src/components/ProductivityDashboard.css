@@ -333,6 +333,10 @@
   background: #f8fafc;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
+.pd-upload-box--error {
+  animation: pdUploadFlash 0.5s ease;
+  border-color: #ef4444;
+}
 .pd-upload-box input[type="file"] {
   display: none;
 }
@@ -357,6 +361,11 @@
   color: #b91c1c;
   font-weight: 600;
   margin-top: 8px;
+}
+
+@keyframes pdUploadFlash {
+  0% { background: #fee2e2; }
+  100% { background: #f8fafc; }
 }
 
 .pd-workspace {

@@ -1,0 +1,43 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Syllabus {
+  id               String           @id @default(cuid())
+  courseCode       String?          @map("course_code")
+  courseTitle      String?          @map("course_title")
+  term             String?
+  instructorName   String?          @map("instructor_name")
+  instructorEmail  String?          @map("instructor_email")
+  meetingTimes     String?          @map("meeting_times")
+  location         String?
+  officeHours      String?          @map("office_hours")
+  description      String?
+  gradingBreakdown Json?            @map("grading_breakdown")
+  majorAssignments Json?            @map("major_assignments")
+  policies         Json?
+  scheduleEntries  ScheduleEntry[]
+  rawJson          Json?            @map("raw_json")
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+}
+
+model ScheduleEntry {
+  id         String    @id @default(cuid())
+  syllabusId String
+  syllabus   Syllabus  @relation(fields: [syllabusId], references: [id], onDelete: Cascade)
+
+  date       DateTime?
+  rawDate    String?
+  title      String
+  type       String
+  details    String?
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}

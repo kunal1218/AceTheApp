@@ -101,6 +101,52 @@ function basicValidateMinimal(parsed: any): parsed is MinimalSyllabusCore {
   return true;
 }
 
+// Best-effort salvage when both primary and fixer parses fail.
+function recoverMinimalFromText(rawText: string): MinimalSyllabusCore | null {
+  const grading: MinimalSyllabusCore["grading_breakdown"] = [];
+  const schedule: MinimalSyllabusCore["schedule_entries"] = [];
+
+  // Extract grading components with weights
+  const gradingRegex = /"component"\s*:\s*"([^"]+)"[\s\S]*?"weight_percent"\s*:\s*([\d.]+)/g;
+  const seenGrade = new Set<string>();
+  let gMatch;
+  while ((gMatch = gradingRegex.exec(rawText)) !== null) {
+    const component = gMatch[1].trim();
+    const weight = Number.parseFloat(gMatch[2]);
+    const key = `${component}|${weight}`;
+    if (seenGrade.has(key)) continue;
+    seenGrade.add(key);
+    grading.push({
+      component,
+      weight_percent: Number.isFinite(weight) ? weight : null,
+    });
+  }
+
+  // Extract date/title pairs in order
+  const dateTitleRegex = /"date"\s*:\s*"([^"]+)"[\s\S]*?"title"\s*:\s*"([^"]+)"/g;
+  const seenLesson = new Set<string>();
+  let dtMatch;
+  while ((dtMatch = dateTitleRegex.exec(rawText)) !== null) {
+    const date = dtMatch[1].trim();
+    const title = dtMatch[2].trim();
+    if (!title) continue;
+    const key = `${date}|${title}`;
+    if (seenLesson.has(key)) continue;
+    seenLesson.add(key);
+    schedule.push({ date: date || null, title });
+  }
+
+  // If nothing was recovered, return null so caller can fall back further
+  if (!grading.length && !schedule.length) return null;
+
+  return {
+    course_code: null,
+    course_title: null,
+    grading_breakdown: grading,
+    schedule_entries: schedule,
+  };
+}
+
 async function callMinimalModel(buffer: Buffer, mimeType: string) {
   const model = genAI.getGenerativeModel({
     model: "gemini-2.0-flash",
@@ -212,16 +258,22 @@ export async function parseSyllabusFromBuffer(
     }
 
     if (!minimal || !basicValidateMinimal(minimal)) {
-      console.warn(
-        "[parseSyllabusFromBuffer] Repaired minimal syllabus failed validation. " +
-          "Using safe empty MinimalSyllabusCore fallback."
-      );
-      minimal = {
-        course_code: null,
-        course_title: null,
-        grading_breakdown: [],
-        schedule_entries: [],
-      };
+      console.warn("[parseSyllabusFromBuffer] Repaired minimal syllabus failed validation. Trying heuristic salvage.");
+      const salvaged = recoverMinimalFromText(fixedCleaned) || recoverMinimalFromText(raw);
+      if (salvaged && basicValidateMinimal(salvaged)) {
+        console.warn("[parseSyllabusFromBuffer] Salvage succeeded using heuristic extraction.");
+        minimal = salvaged;
+      } else {
+        console.warn(
+          "[parseSyllabusFromBuffer] Salvage failed. Using safe empty MinimalSyllabusCore fallback."
+        );
+        minimal = {
+          course_code: null,
+          course_title: null,
+          grading_breakdown: [],
+          schedule_entries: [],
+        };
+      }
     }
   }
 

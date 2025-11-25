@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./CreateAccount.css";
-import { login } from "../api";
+import { login, getApiBase } from "../api";
 import { useCollegeList } from "./CollegeProvider";
 
 export default function LoginPage({ setLoggedIn }) {
@@ -31,11 +31,7 @@ export default function LoginPage({ setLoggedIn }) {
 
   // Helper to get the correct backend URL for Google OAuth
   const getGoogleAuthUrl = () => {
-    if (window.location.hostname === "localhost") {
-      return "http://localhost:5001/api/auth/google";
-    } else {
-      return "https://ace-the-app-backend.onrender.com/api/auth/google";
-    }
+    return `${getApiBase()}/auth/google`;
   };
 
   return (

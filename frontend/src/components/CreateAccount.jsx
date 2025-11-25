@@ -1,18 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./CreateAccount.css";
-import { register } from "../api"; // <-- Import your API register function
+import { register, getApiBase } from "../api"; // <-- Import your API register function
 import { saveSurveyAnswers, getToken } from "../api";
 
 const LOCAL_STORAGE_KEY = "guestSurveyAnswers";
 
 // Helper to get the correct backend URL for Google OAuth
 const getGoogleAuthUrl = () => {
-  if (window.location.hostname === "localhost") {
-    return "http://localhost:5001/api/auth/google";
-  } else {
-    return "https://ace-the-app-backend.onrender.com/api/auth/google";
-  }
+  return `${getApiBase()}/auth/google`;
 };
 
 export default function CreateAccount({ setLoggedIn }) {

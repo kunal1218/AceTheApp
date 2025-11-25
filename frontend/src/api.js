@@ -12,6 +12,7 @@ const normalizeApiBase = (value) => {
 };
 
 const API_BASE = normalizeApiBase(import.meta.env.VITE_API_BASE_URL) ?? "http://localhost:3001";
+export const getApiBase = () => API_BASE;
 const OFFLINE_DEV = import.meta.env.VITE_OFFLINE_DEV === "1";
 console.debug("[api] API_BASE =", API_BASE);
 let jwt = localStorage.getItem("token") || null;

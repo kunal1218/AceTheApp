@@ -29,6 +29,7 @@ import SkillAssessment from "./components/SkillAssessment";
 import SemesterWizard from "./components/SemesterWizard";
 import SemesterWorkspace from "./components/SemesterWorkspace";
 import SettingsMenu from "./components/SettingsMenu";
+import BackToDashboardButton from "./components/BackToDashboardButton";
 
 
 function App() {
@@ -38,6 +39,7 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [userName, setUserName] = useState(null);
   const onCounselingHub = loggedIn && (location.pathname === "/" || location.pathname === "/home");
+  const counselingAreaPaths = ["/", "/home", "/top-colleges", "/colleges-list", "/affinity-calc"];
   const backgroundlessRoutes = ["/top-colleges", "/affinity-calc"];
   const showBackground = !onCounselingHub && !backgroundlessRoutes.includes(location.pathname);
 
@@ -100,6 +102,9 @@ function App() {
           loggedIn={loggedIn}
           onSettings={() => setSettingsOpen(true)}
         />
+        {loggedIn && counselingAreaPaths.includes(location.pathname) && (
+          <BackToDashboardButton />
+        )}
         {showBackground && (
           <div className="background-gif">
             <img src={backgroundGif} alt="background" />

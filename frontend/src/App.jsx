@@ -28,6 +28,8 @@ import 'nprogress/nprogress.css';
 import GoogleAuthHandler from "./components/GoogleAuthHandler";
 import SubgoalGenerator from "./components/SubgoalGenerator";
 import SkillAssessment from "./components/SkillAssessment";
+import SemesterWizard from "./components/SemesterWizard";
+import SemesterWorkspace from "./components/SemesterWorkspace";
 import SettingsMenu from "./components/SettingsMenu";
 import settingsIcon from "./assets/settings.png";
 
@@ -196,6 +198,8 @@ function App() {
           <Route path="/dashboard" element={<ProductivityDashboard />} />
           <Route path="/ace-onboarding" element={<AceOnboarding />} />
           {/* Protected routes */}
+          <Route path="/semester/new" element={loggedIn ? <SemesterWizard /> : <LandingPage />} />
+          <Route path="/semester/:id" element={loggedIn ? <SemesterWorkspace /> : <LandingPage />} />
           <Route path="/affinity-calc" element={
             loggedIn ? <ComingSoon emoji="🧮" /> : <LandingPage />
           } />

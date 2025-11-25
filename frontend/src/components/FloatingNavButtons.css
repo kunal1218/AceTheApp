@@ -27,7 +27,7 @@
 
 .settings-nav-button {
   position: fixed;
-  top: 24px;
+  top: 14px;
   right: 24px;
   z-index: 10000;
 }
@@ -42,8 +42,21 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.2s, transform 0.1s ease;
+  box-shadow: none;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
 }
 .settings-nav-button button:hover {
-  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  background: transparent;
+  box-shadow: none;
+}
+.settings-nav-button button:focus,
+.settings-nav-button button:focus-visible {
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+}
+.settings-nav-button button:active {
+  transform: translateY(1px);
 }

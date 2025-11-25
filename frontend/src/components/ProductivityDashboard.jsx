@@ -2,75 +2,89 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./LandingPage.css";
 import "./ProductivityDashboard.css";
+import { CARD_COLORS, loadItems, saveItems, updateItem } from "../utils/semesters";
 
 const FIRST_PAGE_CAP = 14; // reserve one slot for the + tile on first page
 const TASKS_PER_PAGE = 19;
 
 export default function ProductivityDashboard() {
   const [composerOpen, setComposerOpen] = useState(false);
+  const [choiceOpen, setChoiceOpen] = useState(false);
   const [idea, setIdea] = useState("");
+  const [selectedColor, setSelectedColor] = useState(CARD_COLORS[0]);
   const [draggingId, setDraggingId] = useState(null);
   const [page, setPage] = useState(0);
-  const [skills, setSkills] = useState(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      const stored = localStorage.getItem("pdSkills");
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [items, setItems] = useState(loadItems());
+  const [justUnwrapped, setJustUnwrapped] = useState(null);
   const navigate = useNavigate();
   const dragPreviewRef = useRef(null);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem("pdSkills", JSON.stringify(skills));
-  }, [skills]);
+    saveItems(items);
+  }, [items]);
 
   const handleDone = () => {
     if (!idea.trim()) return;
     const description = idea.trim();
     const mission = {
-      id: Date.now(),
+      id: Date.now().toString(),
       title: description,
+      type: "task",
+      color: selectedColor,
+      revealed: false,
+      createdAt: new Date().toISOString(),
     };
-    setSkills(prev => [mission, ...prev]);
+    setItems(prev => [mission, ...prev]);
     setComposerOpen(false);
+    setChoiceOpen(false);
     setIdea("");
+    setSelectedColor(CARD_COLORS[0]);
     setPage(0);
   };
 
   const openMission = (mission) => {
+    if (!mission.revealed) {
+      updateItem(mission.id, { revealed: true });
+      setItems(loadItems());
+      setJustUnwrapped(mission.id);
+      setTimeout(() => setJustUnwrapped(null), 400);
+      return;
+    }
+
+    if (mission.type === "semester") {
+      navigate(`/semester/${mission.id}`);
+      return;
+    }
+
     navigate("/ace-onboarding", { state: { idea: mission.title } });
   };
 
   const handleDelete = (id) => {
-    setSkills(prev => prev.filter(skill => skill.id !== id));
+    setItems(prev => prev.filter(item => item.id !== id));
     setDraggingId(null);
   };
 
   const confirmDelete = (id) => {
-    const skill = skills.find(s => s.id === id);
-    if (!skill) return;
-    if (window.confirm(`Delete "${skill.title}"?`)) {
+    const item = items.find(s => s.id === id);
+    if (!item) return;
+    if (window.confirm(`Delete "${item.title}"?`)) {
       handleDelete(id);
     }
   };
 
   const totalPages = useMemo(() => {
-    if (skills.length <= FIRST_PAGE_CAP) return 1;
-    const remaining = skills.length - FIRST_PAGE_CAP;
+    if (items.length <= FIRST_PAGE_CAP) return 1;
+    const remaining = items.length - FIRST_PAGE_CAP;
     return 1 + Math.ceil(remaining / TASKS_PER_PAGE);
-  }, [skills]);
+  }, [items]);
 
-  const pageSkills = useMemo(() => {
+  const pageItems = useMemo(() => {
     if (page === 0) {
-      return skills.slice(0, FIRST_PAGE_CAP);
+      return items.slice(0, FIRST_PAGE_CAP);
     }
     const start = FIRST_PAGE_CAP + (page - 1) * TASKS_PER_PAGE;
-    return skills.slice(start, start + TASKS_PER_PAGE);
-  }, [skills, page]);
+    return items.slice(start, start + TASKS_PER_PAGE);
+  }, [items, page]);
 
   useEffect(() => {
     const handleKey = (event) => {
@@ -111,36 +125,42 @@ export default function ProductivityDashboard() {
         <div className="pd-surface">
           <div className="pd-grid">
             {page === 0 && (
-              <button className="pd-template pd-template--new" onClick={() => setComposerOpen(true)}>
+              <button className="pd-template pd-template--new" onClick={() => setChoiceOpen(true)}>
                 +
               </button>
             )}
-            {pageSkills.map((mission) => (
-                <button
-                  key={mission.id}
-                  className="pd-template"
-                  onClick={() => openMission(mission)}
-                  draggable
-                  onDragStart={(e) => {
-                    e.dataTransfer.setData("text/plain", mission.id);
-                    e.dataTransfer.dropEffect = "move";
-                    if (dragPreviewRef.current) {
-                      const preview = dragPreviewRef.current;
-                      preview.innerHTML = `<strong>${mission.title}</strong>`;
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      preview.style.width = `${rect.width}px`;
-                      preview.style.height = `${rect.height}px`;
-                      const previewRect = preview.getBoundingClientRect();
-                      e.dataTransfer.setDragImage(preview, previewRect.width / 2, previewRect.height / 2);
-                    }
-                    setDraggingId(mission.id);
-                  }}
-                  onDragEnd={() => setDraggingId(null)}
-                  style={{ opacity: draggingId === mission.id ? 0 : 1 }}
-                >
-                  <strong>{mission.title}</strong>
-                </button>
-              ))}
+            {pageItems.map((item) => (
+              <button
+                key={item.id}
+                className={`pd-template ${item.type === "semester" ? "pd-template--semester" : ""} ${justUnwrapped === item.id ? "pd-template--unwrapping" : ""}`}
+                onClick={() => openMission(item)}
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData("text/plain", item.id);
+                  e.dataTransfer.dropEffect = "move";
+                  if (dragPreviewRef.current) {
+                    const preview = dragPreviewRef.current;
+                    preview.innerHTML = `<strong>${item.title}</strong>`;
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    preview.style.width = `${rect.width}px`;
+                    preview.style.height = `${rect.height}px`;
+                    const previewRect = preview.getBoundingClientRect();
+                    e.dataTransfer.setDragImage(preview, previewRect.width / 2, previewRect.height / 2);
+                  }
+                  setDraggingId(item.id);
+                }}
+                onDragEnd={() => setDraggingId(null)}
+                style={{ opacity: draggingId === item.id ? 0 : 1, background: item.revealed ? item.color : "#fdfdfd" }}
+              >
+                {!item.revealed ? (
+                  <div className="pd-gift-wrap">
+                    <div className="pd-gift-icon">🎁</div>
+                  </div>
+                ) : (
+                  <strong>{item.title}</strong>
+                )}
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -160,7 +180,7 @@ export default function ProductivityDashboard() {
           if (draggingId) return;
           const title = window.prompt("Enter the name of the skill to delete:");
           if (!title) return;
-          const match = skills.find(s => s.title === title);
+          const match = items.find(s => s.title === title);
           if (match) {
             confirmDelete(match.id);
           }
@@ -170,10 +190,34 @@ export default function ProductivityDashboard() {
         🗑️
       </button>
 
+      {choiceOpen && (
+        <div className="pd-modal-backdrop">
+          <div className="pd-modal">
+            <p className="eyebrow">Add something new</p>
+            <h2>Choose what to create</h2>
+            <div className="pd-choice-grid">
+              <button className="pd-choice-card" onClick={() => { setChoiceOpen(false); setComposerOpen(true); }}>
+                <strong>Add a task</strong>
+                <span>Track a skill sprint or project</span>
+              </button>
+              <button className="pd-choice-card" onClick={() => navigate("/semester/new")}>
+                <strong>Add a school semester</strong>
+                <span>Upload syllabuses and track deadlines</span>
+              </button>
+            </div>
+            <div className="pd-modal-actions">
+              <button className="ace-btn ghost" type="button" onClick={() => setChoiceOpen(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {composerOpen && (
         <div className="pd-modal-backdrop">
           <div className="pd-modal">
-            <p className="eyebrow">New mission</p>
+            <p className="eyebrow">New task</p>
             <h2>What are we building?</h2>
             <p>
               Give Ace a short description of the skill, challenge, or project you want to start. We&apos;ll handle the rest.
@@ -183,6 +227,20 @@ export default function ProductivityDashboard() {
               value={idea}
               onChange={(e) => setIdea(e.target.value)}
             />
+            <div className="pd-color-row">
+              <p className="eyebrow">Card color</p>
+              <div className="pd-color-swatches">
+                {CARD_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    className={`pd-color-swatch${selectedColor === c ? " is-selected" : ""}`}
+                    style={{ background: c }}
+                    onClick={() => setSelectedColor(c)}
+                    type="button"
+                  />
+                ))}
+              </div>
+            </div>
             <div className="pd-modal-actions">
               <button
                 className="ace-btn ghost"
@@ -190,6 +248,7 @@ export default function ProductivityDashboard() {
                 onClick={() => {
                   setComposerOpen(false);
                   setIdea("");
+                  setSelectedColor(CARD_COLORS[0]);
                 }}
               >
                 Cancel

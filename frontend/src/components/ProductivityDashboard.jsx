@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "./LandingPage.css";
 import "./ProductivityDashboard.css";
 import { CARD_COLORS, addSemester, loadItems, saveItems, updateItem } from "../utils/semesters";
+import { uploadSyllabusFile } from "../api";
 import settingsIcon from "../assets/settings.png";
 import SettingsMenu from "./SettingsMenu";
 
@@ -25,6 +26,7 @@ export default function ProductivityDashboard() {
   const [justUnwrapped, setJustUnwrapped] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [uploadFlash, setUploadFlash] = useState(false);
+  const [semesterIsUploading, setSemesterIsUploading] = useState(false);
   const navigate = useNavigate();
   const dragPreviewRef = useRef(null);
   const semesterFileInputRef = useRef(null);
@@ -68,6 +70,7 @@ export default function ProductivityDashboard() {
     const list = pdfs.map((file) => ({
       id: crypto.randomUUID?.() || Date.now().toString(),
       name: file.name,
+      file,
     }));
     setSemesterUploads((prev) => [...prev, ...list]);
   };
@@ -92,7 +95,7 @@ export default function ProductivityDashboard() {
     setSemesterError("");
   };
 
-  const handleSemesterSubmit = () => {
+  const handleSemesterSubmit = async () => {
     if (!semesterName.trim()) {
       setSemesterError("Please name your semester");
       return;
@@ -101,18 +104,37 @@ export default function ProductivityDashboard() {
       setSemesterError("Please upload at least one syllabus");
       return;
     }
-    const semester = addSemester({
-      title: semesterName.trim(),
-      color: semesterColor,
-      syllabus: semesterUploads,
-      deadlines: [],
-    });
-    setItems(loadItems());
-    resetSemesterComposer();
-    setChoiceOpen(false);
-    setPage(0);
-    setJustUnwrapped(null);
-    // Keep user on dashboard; no navigation needed.
+    try {
+      setSemesterIsUploading(true);
+      console.log("[Dashboard] uploading", semesterUploads.length, "syllabus files");
+      const parsedUploads = [];
+      for (const u of semesterUploads) {
+        const { syllabusId, syllabus } = await uploadSyllabusFile(u.file);
+        parsedUploads.push({
+          id: u.id,
+          name: u.name,
+          syllabusId,
+          syllabusJson: syllabus,
+        });
+      }
+      const semester = addSemester({
+        title: semesterName.trim(),
+        color: semesterColor,
+        syllabus: parsedUploads,
+        deadlines: [],
+      });
+      setItems(loadItems());
+      resetSemesterComposer();
+      setChoiceOpen(false);
+      setPage(0);
+      setJustUnwrapped(null);
+      console.log("[Dashboard] semester saved with syllabi", parsedUploads);
+    } catch (err) {
+      console.error("[Dashboard] Failed to upload/parse syllabus", err);
+      setSemesterError(err.message || "Failed to parse syllabus");
+    } finally {
+      setSemesterIsUploading(false);
+    }
   };
 
   const openMission = (mission) => {
@@ -416,10 +438,10 @@ export default function ProductivityDashboard() {
               <button
                 className="ace-btn"
                 type="button"
-                disabled={!semesterName.trim() || semesterUploads.length === 0}
+                disabled={!semesterName.trim() || semesterUploads.length === 0 || semesterIsUploading}
                 onClick={handleSemesterSubmit}
               >
-                Done
+                {semesterIsUploading ? "Uploading..." : "Done"}
               </button>
             </div>
           </div>

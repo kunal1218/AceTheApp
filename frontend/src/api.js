@@ -335,3 +335,15 @@ export async function generateSubgoals(goal) {
   });
   return handleResponse(res, "Failed to generate subgoals");
 }
+
+export async function uploadSyllabusFile(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await apiFetch(`${API_BASE}/syllabi/parse`, {
+    method: "POST",
+    body: formData,
+  });
+
+  return handleResponse(res, "Failed to parse syllabus");
+}

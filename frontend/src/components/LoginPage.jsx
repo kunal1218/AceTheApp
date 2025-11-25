@@ -32,7 +32,7 @@ export default function LoginPage({ setLoggedIn }) {
   // Helper to get the correct backend URL for Google OAuth
   const getGoogleAuthUrl = () => {
     const base = getApiBase().replace(/\/$/, "");
-    return `${base}/api/auth/google`;
+    return `${base}/auth/google`;
   };
 
   return (

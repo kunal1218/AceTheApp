@@ -60,16 +60,29 @@ export default function SemesterWorkspace() {
         }
         if (!Array.isArray(rows) || rows.length === 0) return;
         const events = rows
-          .filter((row) => row.date)
-          .map((row) => ({
-            id: row.id,
-            date: typeof row.date === "string" ? row.date.slice(0, 10) : new Date(row.date).toISOString().slice(0, 10),
-            title: row.title || "Lesson",
-            source: "syllabus",
-            syllabusId: row.id,
-            syllabusName: row.title,
-            color: item.color,
-          }));
+          .map((row) => {
+            let dateValue = row.date;
+            if (!dateValue && row.rawText) {
+              try {
+                const parsed = JSON.parse(row.rawText);
+                if (parsed?.date) dateValue = parsed.date;
+              } catch (e) {
+                // ignore parse errors, fall through
+              }
+            }
+            if (!dateValue) return null;
+            const iso = typeof dateValue === "string" ? dateValue.slice(0, 10) : new Date(dateValue).toISOString().slice(0, 10);
+            return {
+              id: row.id,
+              date: iso,
+              title: row.title || "Lesson",
+              source: "syllabus",
+              syllabusId: row.id,
+              syllabusName: row.title,
+              color: item.color,
+            };
+          })
+          .filter(Boolean);
         const updated = addCalendarEvents(id, events);
         if (!cancelled && updated) {
           setItem(hydrateItem(updated));

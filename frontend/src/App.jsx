@@ -102,7 +102,7 @@ function App() {
           loggedIn={loggedIn}
           onSettings={() => setSettingsOpen(true)}
         />
-        {loggedIn && counselingAreaPaths.includes(location.pathname) && (
+        {loggedIn && onCounselingHub && (
           <BackToDashboardButton />
         )}
         {showBackground && (

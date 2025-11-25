@@ -150,9 +150,9 @@
 
 .add-to-list-btn {
   position: fixed;
-  left: 50%;
-  bottom: 32px;
-  transform: translateX(-50%);
+  right: 24px;
+  bottom: 16px;
+  transform: none;
   z-index: 100;
   padding: 16px 32px;
   background: var(--ace-accent, #7c3aed);

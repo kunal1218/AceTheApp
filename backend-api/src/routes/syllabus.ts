@@ -1,5 +1,5 @@
 // Canonical syllabus parsing API using Gemini. Legacy JS backend has been removed.
-import { Router } from "express";
+import { Router, type Express } from "express";
 import multer from "multer";
 import { parseSyllabusFromBuffer } from "../gemini/syllabusParser";
 
@@ -8,12 +8,13 @@ const upload = multer();
 
 router.post("/parse", upload.single("file"), async (req, res) => {
   try {
-    if (!req.file) {
+    const file = req.file as Express.Multer.File | undefined;
+    if (!file) {
       return res.status(400).json({ error: "No file uploaded" });
     }
 
-    const buffer = req.file.buffer;
-    const mimeType = req.file.mimetype || "application/pdf";
+    const buffer = file.buffer;
+    const mimeType = file.mimetype || "application/pdf";
     const syllabus = await parseSyllabusFromBuffer(buffer, mimeType);
 
     return res.json({ syllabus });

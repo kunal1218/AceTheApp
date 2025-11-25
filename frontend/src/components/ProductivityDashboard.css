@@ -1,11 +1,11 @@
 .pd-root {
-  height: 100vh;
+  min-height: 100vh;
   background: var(--ace-bg);
-  padding: 48px 4vw;
+  padding: 32px 4vw 48px;
   color: var(--ace-primary);
   box-sizing: border-box;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
 }
 .pd-settings-btn {

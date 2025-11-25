@@ -230,7 +230,6 @@ export default function SemesterWorkspace() {
           <div>
             <p className="eyebrow">Semester workspace</p>
             <h1>{item.title}</h1>
-            <p>Manage upcoming deadlines and syllabuses. You can always add more.</p>
           </div>
           <button className="ace-btn ghost" onClick={() => navigate("/dashboard")}>
             Back

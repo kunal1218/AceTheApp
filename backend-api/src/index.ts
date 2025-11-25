@@ -27,6 +27,8 @@ app.use('/auth', authRoutes);
 app.use('/subscription', subscriptionRoutes);
 app.use('/courses', requireAuth, requireSubscription, coursesRouter);
 app.use('/api/syllabi', syllabusRouter);
+// Alias without /api for older frontend paths
+app.use('/syllabi', syllabusRouter);
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('Unhandled error', err);

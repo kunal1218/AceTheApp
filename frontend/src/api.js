@@ -344,7 +344,10 @@ export async function uploadSyllabusFile(file, options = {}) {
   if (options.courseName) formData.append("courseName", options.courseName);
 
   const useAuthedEndpoint = Boolean(token) && (options.courseId || options.courseName);
-  const endpoint = useAuthedEndpoint ? `${API_BASE}/syllabi/parse-and-store` : `${API_BASE}/syllabi/parse`;
+  // Backend mounts syllabus routes under /api/syllabi
+  const endpoint = useAuthedEndpoint
+    ? `${API_BASE}/api/syllabi/parse-and-store`
+    : `${API_BASE}/api/syllabi/parse`;
 
   const res = await apiFetch(endpoint, {
     method: "POST",

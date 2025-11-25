@@ -3,7 +3,7 @@ import "./RevolvingQuotes.css";
 
 export default function RevolvingQuotes({userName}) {
   const QUOTES = [
-    `"Welcome, ${userName || "Student"}"`,
+    `Welcome, ${userName || "Student"}`,
     "\"The journey of a thousand miles begins with a single step.\"",
     "\"Education is the passport to the future.\"",
     "\"Explore, dream, discover.\"",

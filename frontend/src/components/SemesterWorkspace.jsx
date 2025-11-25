@@ -134,15 +134,6 @@ export default function SemesterWorkspace() {
     return { title: monthLabel, cells, prev, next };
   };
 
-  React.useEffect(() => {
-    if (!calendarEvents.length) return;
-    const sorted = [...calendarEvents].filter((e) => e.date).sort((a, b) => new Date(a.date) - new Date(b.date));
-    if (!sorted.length) return;
-    const first = new Date(sorted[0].date);
-    if (Number.isNaN(first.getTime())) return;
-    setCalendarMonth({ year: first.getFullYear(), month: first.getMonth() });
-  }, [calendarEvents]);
-
   const handleAddDeadline = () => {
     if (!newDeadline.title || !newDeadline.date) return;
     const updated = addDeadline(id, {
@@ -299,26 +290,8 @@ export default function SemesterWorkspace() {
                   </div>
                 );
               })()}
-              <div className="pd-calendar-list">
-                {calendarEvents.map((ev) => (
-                  <button
-                    key={ev.id}
-                    className="pd-calendar-event"
-                    type="button"
-                  onClick={() => setSelectedEvent(ev)}
-                >
-                  <div>
-                    <strong>{ev.title}</strong>
-                    <p className="pd-muted">{ev.date ? new Date(ev.date).toLocaleDateString() : "Date TBA"}</p>
-                  </div>
-                  <span className={`pd-chip pd-chip--${ev.source === "deadline" ? "deadline" : "syllabus"}`}>
-                    {ev.source === "deadline" ? "Deadline" : "Lesson"}
-                  </span>
-                </button>
-              ))}
             </div>
-          </div>
-        )}
+          )}
 
           {activeTab === "deadlines" && (
             <div className="pd-tab-panel">

@@ -28,7 +28,7 @@ export default function CreateAccount({ setLoggedIn }) {
   // Redirect if already authenticated (e.g., token exists)
   useEffect(() => {
     if (localStorage.getItem("token")) {
-      navigate("/home", { replace: true });
+      navigate("/dashboard", { replace: true });
     }
   }, [navigate]);
 

@@ -81,9 +81,9 @@ function App() {
   const handleSystemOptions = () => navigate("/settings");
 
   useEffect(() => {
-    // If already logged in and sitting on auth pages, auto-redirect to home
+    // If already logged in and sitting on auth pages, auto-redirect to productivity planner
     if (loggedIn && (location.pathname === "/login" || location.pathname === "/create-account")) {
-      navigate("/home", { replace: true });
+      navigate("/dashboard", { replace: true });
     }
   }, [loggedIn, location.pathname, navigate]);
 

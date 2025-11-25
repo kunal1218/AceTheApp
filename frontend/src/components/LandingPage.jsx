@@ -101,10 +101,10 @@ export default function LandingPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (getToken()) navigate("/home");
+    if (getToken()) navigate("/dashboard");
   }, [navigate]);
 
-  const handleGetStarted = () => navigate("/dashboard");
+  const handleGetStarted = () => navigate("/create-account");
   const handleCounseling = () => navigate("/survey");
   const handleLogin = () => navigate("/login");
 

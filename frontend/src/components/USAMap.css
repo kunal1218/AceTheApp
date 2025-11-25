@@ -9,11 +9,12 @@
 }
 
 .counseling-section {
-  padding: 32px 5vw 48px;
+  padding: 8px 5vw 24px;
   background: var(--map-bg);
-  min-height: 100vh;
+  min-height: 0vh;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  margin-top: -60px;
 }
 
 .counseling-panel {

@@ -112,9 +112,7 @@ export default function LandingPage() {
     <div className="ace-lp">
       <div className="ace-background" aria-hidden />
       <header className="ace-nav">
-        <button className="ace-logo-btn" onClick={() => navigate("/")}>
-          <div className="ace-logo">Ace The App</div>
-        </button>
+        <div />
         <nav>
           <a href="#about">About</a>
           <a href="#features">Features</a>

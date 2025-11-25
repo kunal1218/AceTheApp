@@ -1,6 +1,6 @@
 .home-screen-btn {
   position: fixed;
-  top: 24px;
+  top: 12px;
   left: 32px;
   background: transparent;
   border: none;
@@ -8,11 +8,39 @@
   cursor: pointer;
   outline: none;
   padding: 8px;
-  transition: background 0.2s, box-shadow 0.2s;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.1s ease;
   z-index: 1000;
   box-shadow: none;
+  -webkit-tap-highlight-color: transparent;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
-.home-screen-btn:hover {
+.home-screen-btn:hover,
+.home-screen-btn:focus,
+.home-screen-btn:focus-visible {
   background: transparent;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  box-shadow: none;
+  outline: none;
+}
+.home-screen-btn:active {
+  transform: translateY(1px);
+}
+.home-screen-btn img {
+  width: 36px;
+  height: 36px;
+}
+.home-screen-label {
+  display: inline-block;
+  font-weight: 800;
+  font-size: 1rem;
+  color: #111827;
+  user-select: none;
+  transform: translateY(-4px);
+}
+.home-screen-btn--inline {
+  position: static;
+  padding: 0;
+  z-index: auto;
+  display: inline-flex;
 }

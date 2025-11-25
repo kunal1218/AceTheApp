@@ -8,7 +8,6 @@ export default function HomeScreenButton() {
   const navigate = useNavigate();
 
   const handleClick = () => {
-    // Check if the user is authenticated by checking for a token
     const token = getToken();
     if (token) {
       navigate("/dashboard");
@@ -24,6 +23,7 @@ export default function HomeScreenButton() {
       onClick={handleClick}
     >
       <img src={homeIcon} alt="Home" width={40} height={40} />
+      <span className="home-screen-label">Ace The App</span>
     </button>
   );
 }

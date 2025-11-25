@@ -12,8 +12,29 @@ const normalizeApiBase = (value) => {
 };
 
 const API_BASE = normalizeApiBase(import.meta.env.VITE_API_BASE_URL) ?? "http://localhost:3001";
+const OFFLINE_DEV = import.meta.env.VITE_OFFLINE_DEV === "1";
 console.debug("[api] API_BASE =", API_BASE);
 let jwt = localStorage.getItem("token") || null;
+
+const getMockUser = () => {
+  const stored = localStorage.getItem("mockUser");
+  if (stored) {
+    try {
+      return JSON.parse(stored);
+    } catch {}
+  }
+  return {
+    id: "mock-user",
+    email: "dev@example.com",
+    name: "Dev User",
+    role: "ADMIN",
+    hasActiveSubscription: true,
+  };
+};
+
+const persistMockUser = (user) => {
+  localStorage.setItem("mockUser", JSON.stringify(user));
+};
 
 export function setToken(token) {
   if (token) {
@@ -58,6 +79,13 @@ const handleResponse = async (res, fallbackMessage) => {
 
 // Auth
 export async function register({ name, email, password }) {
+  if (OFFLINE_DEV) {
+    const mock = { ...getMockUser(), name: name || "Dev User", email: email || "dev@example.com" };
+    persistMockUser(mock);
+    const token = "mock-token";
+    setToken(token);
+    return { token, user: mock };
+  }
   const res = await apiFetch(`${API_BASE}/auth/signup`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -72,6 +100,13 @@ export async function register({ name, email, password }) {
 }
 
 export async function login({ email, password }) {
+  if (OFFLINE_DEV) {
+    const mock = { ...getMockUser(), email: email || "dev@example.com" };
+    persistMockUser(mock);
+    const token = "mock-token";
+    setToken(token);
+    return mock;
+  }
   const res = await apiFetch(`${API_BASE}/auth/signin`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -89,6 +124,9 @@ export async function login({ email, password }) {
 // Profile
 export async function getProfile() {
   const token = getToken();
+  if (OFFLINE_DEV) {
+    return getMockUser();
+  }
   if (!token) return null;
   const res = await apiFetch(`${API_BASE}/profile/me`, {
     headers: { Authorization: `Bearer ${token}` },

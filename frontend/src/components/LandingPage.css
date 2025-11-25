@@ -208,6 +208,7 @@
 .ace-nav nav {
   display: flex;
   gap: 24px;
+  margin-left: 120px;
 }
 
 .ace-nav a {

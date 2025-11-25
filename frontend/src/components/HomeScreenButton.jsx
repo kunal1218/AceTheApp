@@ -11,7 +11,7 @@ export default function HomeScreenButton() {
     // Check if the user is authenticated by checking for a token
     const token = getToken();
     if (token) {
-      navigate("/home");
+      navigate("/dashboard");
     } else {
       navigate("/");
     }

@@ -60,15 +60,14 @@ export default function SurveyPage() {
     }
   }, []);
 
-  // If ?recap=1 is in the URL and answers exist, show recap immediately
+  // If ?recap=1 is in the URL OR answers are complete, show recap immediately
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    if (
-      params.get("recap") === "1" &&
-      Array.isArray(answers) &&
-      answers.length === QUESTIONS.length &&
-      answers.every(a => a !== null)
-    ) {
+    const complete = Array.isArray(answers) && answers.length === QUESTIONS.length && answers.every(a => a !== null);
+    if (complete && (params.get("recap") === "1" || params.has("recap"))) {
+      setRecap(true);
+    } else if (complete && params.get("recap") !== "0") {
+      // Auto-show recap when complete unless explicitly suppressed
       setRecap(true);
     }
   }, [location.search, answers]);
@@ -107,7 +106,12 @@ export default function SurveyPage() {
 
   // When user confirms, prompt to create account if not logged in
   const handleConfirm = () => {
-    navigate("/create-account");
+    // If logged in and answers are complete, go to counseling hub (US map)
+    if (getToken()) {
+      navigate("/", { replace: true });
+    } else {
+      navigate("/create-account");
+    }
   };
 
   const answeredCount = answers.filter(a => a !== null).length;

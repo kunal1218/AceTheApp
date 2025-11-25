@@ -97,7 +97,10 @@ export default function ProductivityDashboard() {
             <h1>Dashboard</h1>
             <p>Start Ace skill sprints, jump into counseling, and use the arrow keys to browse old projects when this fills up.</p>
           </div>
-          <button className="ace-btn ghost" onClick={() => navigate("/survey")}>
+          <button
+            className="ace-btn ghost"
+            onClick={() => navigate("/survey?recap=1")}
+          >
             Go to Counseling
           </button>
         </header>

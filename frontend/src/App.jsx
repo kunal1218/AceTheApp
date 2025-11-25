@@ -21,12 +21,15 @@ import CollegeList from "./components/CollegeList";
 import { CollegeProvider } from "./components/CollegeProvider";
 import { getToken } from "./api";
 import { getProfile } from "./api";
+import { getSurveyAnswers, setToken } from "./api";
 import UserInfoPage from "./components/UserInfoPage";
 import NProgress from 'nprogress';
 import 'nprogress/nprogress.css';
 import GoogleAuthHandler from "./components/GoogleAuthHandler";
 import SubgoalGenerator from "./components/SubgoalGenerator";
 import SkillAssessment from "./components/SkillAssessment";
+import SettingsMenu from "./components/SettingsMenu";
+import settingsIcon from "./assets/settings.png";
 
 
 function App() {
@@ -34,6 +37,7 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [globalSettingsOpen, setGlobalSettingsOpen] = useState(false);
   const [userName, setUserName] = useState(null);
 
   useEffect(() => {
@@ -80,6 +84,26 @@ function App() {
   const handleUserInfo = () => navigate("/user-info");
   const handleSystemOptions = () => navigate("/settings");
 
+  const handleGlobalEditSurvey = async () => {
+    setGlobalSettingsOpen(false);
+    try {
+      const answers = await getSurveyAnswers();
+      if (Array.isArray(answers) && answers.length === 10 && answers.every(a => a !== null && a !== "")) {
+        navigate("/survey?recap=1");
+      } else {
+        navigate("/survey");
+      }
+    } catch (e) {
+      navigate("/survey");
+    }
+  };
+
+  const handleGlobalLogout = () => {
+    setGlobalSettingsOpen(false);
+    setToken(null);
+    navigate("/", { replace: true });
+  };
+
   useEffect(() => {
     // If already logged in and sitting on auth pages, auto-redirect to productivity planner
     if (loggedIn && (location.pathname === "/login" || location.pathname === "/create-account")) {
@@ -95,6 +119,30 @@ function App() {
           loggedIn={loggedIn}
           onSettings={() => setSettingsOpen(true)}
         />
+        {loggedIn && (
+          <>
+            <div className="settings-nav-button">
+              <button title="Settings" onClick={() => setGlobalSettingsOpen(true)}>
+                <img src={settingsIcon} alt="Settings" width={24} height={24} />
+              </button>
+            </div>
+            {globalSettingsOpen && (
+              <SettingsMenu
+                onClose={() => setGlobalSettingsOpen(false)}
+                onOptions={() => {
+                  setGlobalSettingsOpen(false);
+                  navigate("/settings");
+                }}
+                onEditSurvey={handleGlobalEditSurvey}
+                onLogout={handleGlobalLogout}
+                onEditAssignments={() => {
+                  setGlobalSettingsOpen(false);
+                  navigate("/assignments");
+                }}
+              />
+            )}
+          </>
+        )}
         <div className="background-gif">
           <img src={backgroundGif} alt="background" />
         </div>

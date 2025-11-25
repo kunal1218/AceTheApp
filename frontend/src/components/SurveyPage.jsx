@@ -248,7 +248,7 @@ export default function SurveyPage() {
             ))}
           </div>
           <div className="survey-actions">
-            <button className="outline-btn" onClick={() => navigate("/dashboard")}>
+            <button className="outline-btn" onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/dashboard"))}>
               Exit
             </button>
             <button className="primary-btn" disabled={selected === null} onClick={handleNext}>

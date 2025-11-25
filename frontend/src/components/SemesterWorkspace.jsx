@@ -43,6 +43,28 @@ export default function SemesterWorkspace() {
     return [...lessonEvents, ...deadlineEvents].sort((a, b) => new Date(a.date) - new Date(b.date));
   }, [item]);
 
+  const buildCalendarDays = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const start = new Date(year, month, 1);
+    const end = new Date(year, month + 1, 0);
+    const startOffset = start.getDay(); // 0-6
+    const cells = [];
+    for (let i = 0; i < startOffset; i++) {
+      cells.push({ key: `empty-${i}`, label: "", date: null });
+    }
+    for (let d = 1; d <= end.getDate(); d++) {
+      const iso = new Date(year, month, d).toISOString().slice(0, 10);
+      const matching = calendarEvents.filter((ev) => ev.date === iso);
+      cells.push({ key: `day-${d}`, label: d, date: iso, events: matching });
+    }
+    return {
+      title: start.toLocaleDateString(undefined, { month: "long", year: "numeric" }),
+      cells,
+    };
+  };
+
   const handleAddDeadline = () => {
     if (!newDeadline.title || !newDeadline.date) return;
     const updated = addDeadline(id, {
@@ -152,9 +174,40 @@ export default function SemesterWorkspace() {
           </div>
 
           {activeTab === "calendar" && (
-            <div className="pd-workspace-column">
+            <div className="pd-tab-panel">
               <h3>Calendar</h3>
               <p className="pd-muted">Lessons from syllabus uploads are posted here automatically. Deadlines also appear here.</p>
+              {(() => {
+                const cal = buildCalendarDays();
+                return (
+                  <div className="pd-calendar-shell">
+                    <div className="pd-calendar-header">
+                      <span>{cal.title}</span>
+                      <div className="pd-calendar-weekdays">
+                        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+                          <span key={d}>{d}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="pd-calendar-grid">
+                      {cal.cells.map((cell) => (
+                        <div key={cell.key} className="pd-calendar-day">
+                          <div className="pd-calendar-day-number">{cell.label}</div>
+                          <div className="pd-calendar-day-dots">
+                            {cell.events?.map((ev) => (
+                              <span
+                                key={ev.id}
+                                className={`pd-dot pd-dot--${ev.source === "deadline" ? "deadline" : "syllabus"}`}
+                                title={ev.title}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
               <div className="pd-calendar-list">
                 {calendarEvents.length === 0 && <p className="pd-muted">No calendar events yet</p>}
                 {calendarEvents.map((ev) => (
@@ -173,7 +226,7 @@ export default function SemesterWorkspace() {
           )}
 
           {activeTab === "deadlines" && (
-            <div className="pd-workspace-column">
+            <div className="pd-tab-panel">
               <h3>Upcoming deadlines</h3>
               <div className="pd-field-row">
                 <input
@@ -218,7 +271,7 @@ export default function SemesterWorkspace() {
           )}
 
           {activeTab === "syllabi" && (
-            <div className="pd-workspace-column">
+            <div className="pd-tab-panel">
               <h3>Syllabuses</h3>
               <div className="pd-field-row">
                 <input

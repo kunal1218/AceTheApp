@@ -20,6 +20,10 @@ export default function SemesterWorkspace() {
   const [uploadName, setUploadName] = useState("");
   const [file, setFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() }; // month is 0-indexed
+  });
 
   const upcoming = useMemo(() => {
     if (!item || !item.deadlines) return [];
@@ -98,9 +102,8 @@ export default function SemesterWorkspace() {
   }, [id, item?.courseId, item?.title, item?.color]);
 
   const buildCalendarDays = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth();
+    const year = calendarMonth.year;
+    const month = calendarMonth.month;
     const start = new Date(year, month, 1);
     const end = new Date(year, month + 1, 0);
     const startOffset = start.getDay(); // 0-6
@@ -123,6 +126,15 @@ export default function SemesterWorkspace() {
       cells,
     };
   };
+
+  React.useEffect(() => {
+    if (!calendarEvents.length) return;
+    const sorted = [...calendarEvents].filter((e) => e.date).sort((a, b) => new Date(a.date) - new Date(b.date));
+    if (!sorted.length) return;
+    const first = new Date(sorted[0].date);
+    if (Number.isNaN(first.getTime())) return;
+    setCalendarMonth({ year: first.getFullYear(), month: first.getMonth() });
+  }, [calendarEvents]);
 
   const handleAddDeadline = () => {
     if (!newDeadline.title || !newDeadline.date) return;

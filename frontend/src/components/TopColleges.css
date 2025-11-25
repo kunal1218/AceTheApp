@@ -1,24 +1,29 @@
-.top-colleges-container {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 32px 16px;
+.top-colleges-page {
+  min-height: 100vh;
+  background: var(--ace-bg);
+  color: var(--ace-primary);
+  padding: 24px 32px 140px 32px;
+  box-sizing: border-box;
+  overflow-y: auto;
 }
-
 .top-colleges-container h1,
 .top-colleges-title {
   font-size: 2.2rem;
-  font-weight: bold;
+  font-weight: 800;
   text-align: center;
-  margin-bottom: 24px;
-  color: #1a73e8;
+  margin-bottom: 12px;
+  color: var(--ace-primary);
 }
 
 .top-colleges-flex {
   display: flex;
   align-items: flex-start;
   gap: 32px;
-  padding-left: 16px;
-  padding-right: 16px;
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+  max-width: 1280px;
+  margin: 0 auto;
 }
 
 .colleges-list {
@@ -27,8 +32,10 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
-  margin-left: 360px;
+  margin: 0 auto;
   width: 100%;
+  margin-left: 400px; 
+  max-width: 860px;
   box-sizing: border-box;
 }
 
@@ -41,26 +48,27 @@
 .college-card {
   display: flex;
   background: #fff;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  border-radius: 18px;
+  box-shadow: var(--ace-shadow, 0 10px 30px rgba(15,23,42,0.12));
+  border: 1px solid var(--ace-border, #e5e7eb);
   padding: 18px 22px;
   align-items: flex-start;
   transition: box-shadow 0.2s;
   margin-left: auto;
   margin-right: auto;
-  width: 88%;
-  max-width: 680px;
+  width: 100%;
+  max-width: 900px;
   box-sizing: border-box;
 }
 
 .college-card:hover {
-  box-shadow: 0 4px 16px rgba(0,0,0,0.13);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12);
 }
 
 .college-rank {
   font-size: 2rem;
   font-weight: 700;
-  color: #1a73e8;
+  color: var(--ace-primary);
   margin-right: 28px;
   min-width: 60px;
   text-align: center;
@@ -128,8 +136,8 @@
 }
 
 .selectable-card.selected {
-  border: 2px solid #1a73e8;
-  background: #eaf1fb;
+  border: 2px solid var(--ace-accent, #7c3aed);
+  background: rgba(124, 58, 237, 0.07);
 }
 
 .selectable-card input[type="checkbox"] {
@@ -147,19 +155,19 @@
   transform: translateX(-50%);
   z-index: 100;
   padding: 16px 32px;
-  background: #1a73e8;
+  background: var(--ace-accent, #7c3aed);
   color: #fff;
   border: none;
   border-radius: 32px;
-  font-size: 1.2rem;
-  font-weight: bold;
-  box-shadow: 0 4px 16px rgba(26, 115, 232, 0.15);
+  font-size: 1.1rem;
+  font-weight: 700;
+  box-shadow: 0 14px 30px rgba(124, 58, 237, 0.2);
   cursor: pointer;
   transition: background 0.2s;
 }
 
 .add-to-list-btn:disabled {
-  background: #b0c4de;
+  background: #cbd5e1;
   cursor: not-allowed;
 }
 
@@ -168,33 +176,33 @@
   width: 320px;
   min-width: 260px;
   max-width: 340px;
-  background: #f8fafc;
+  background: #fff;
   border-radius: 16px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+  box-shadow: var(--ace-shadow, 0 10px 30px rgba(15,23,42,0.12));
+  border: 1px solid var(--ace-border, #e5e7eb);
   padding: 10px 18px 12px;
   position: relative;
   height: fit-content;
-  margin-left: 24px;
+  margin-left: 0;
 }
 
 .filters-sidebar-fixed {
   position: fixed;
-  top: 90px;
-  left: 0;
-  z-index: 100;
-  max-height: calc(100vh - 140px);
+  top: 60px;
+  left: 225px;
+  z-index: 10;
+  max-height: calc(100vh - 80px);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   align-items: stretch;
+  padding-bottom: 16px;
 }
 
 .sticky-filters {
   display: flex;
   flex-direction: column;
-  gap: 22px;
-  position: sticky;
-  top: 24px;
+  gap: 18px;
 }
 
 .search-bar-wrap {
@@ -209,7 +217,7 @@
   max-width: 240px;
   padding: 10px 14px;
   border-radius: 8px;
-  border: 1px solid #cfd8dc;
+  border: 1px solid var(--ace-border, #e5e7eb);
   font-size: 1.08em;
   background: #fff;
   margin: 0 auto;
@@ -263,7 +271,7 @@
   height: 32px;
   margin: 0;
   appearance: none;
-  accent-color: #1976d2;
+  accent-color: var(--ace-accent, #7c3aed);
 }
 
 .slider-thumb-min::-webkit-slider-thumb,
@@ -276,7 +284,7 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #1976d2;
+  background: var(--ace-accent, #7c3aed);
   border: 2px solid #fff;
   box-shadow: 0 2px 6px rgba(0,0,0,0.13);
   cursor: pointer;
@@ -285,7 +293,7 @@
 .slider-track-highlight {
   position: absolute;
   height: 6px;
-  background: #1976d2;
+  background: var(--ace-accent, #7c3aed);
   border-radius: 3px;
   top: 13px;
   z-index: 4;
@@ -295,21 +303,21 @@
 .slider-num {
   width: 60px;
   padding: 2px 6px;
-  border-radius: 4px;
-  border: 1px solid #cfd8dc;
+  border-radius: 8px;
+  border: 1px solid var(--ace-border, #e5e7eb);
   font-size: 1em;
 }
 
 .slider-value {
   font-weight: 600;
-  color: #1976d2;
+  color: var(--ace-accent, #7c3aed);
 }
 
 .apply-filters-btn {
   padding: 10px 22px;
   border-radius: 8px;
   border: none;
-  background: #1976d2;
+  background: var(--ace-accent, #7c3aed);
   color: #fff;
   font-weight: 600;
   font-size: 1.08em;
@@ -319,7 +327,7 @@
 }
 
 .apply-filters-btn:hover {
-  background: #1256a0;
+  background: #6a2dd5;
 }
 
 @media (max-width: 1200px) {
@@ -332,21 +340,24 @@
 }
 
 @media (max-width: 900px) {
-  .top-colleges-flex {
-    flex-direction: column;
+  .top-colleges-page {
+    padding: 24px 16px 140px;
   }
-  .filters-sidebar,
   .filters-sidebar-fixed {
     position: static;
     width: 100%;
     max-width: 100%;
     margin-bottom: 24px;
-    left: 0;
-    top: 0;
-    z-index: 1;
+    max-height: none;
+  }
+  .top-colleges-flex {
+    flex-direction: column;
+    padding-left: 0;
+    padding-right: 0;
   }
   .colleges-list {
     margin-left: 0;
+    max-width: 100%;
   }
   .colleges-list-with-padding {
     padding-top: 0;
@@ -408,7 +419,7 @@
   position: absolute;
   top: 14px;
   height: 6px;
-  background: #1976d2;
+  background: var(--ace-accent, #7c3aed);
   border-radius: 4px;
   z-index: 1;
   pointer-events: none;
@@ -420,7 +431,7 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #1976d2;
+  background: var(--ace-accent, #7c3aed);
   cursor: pointer;
   border: none;
   margin-top: -6px; /* center vertically */
@@ -432,7 +443,7 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #1976d2;
+  background: var(--ace-accent, #7c3aed);
   cursor: pointer;
   border: none;
   position: relative;

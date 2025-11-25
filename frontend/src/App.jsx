@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import USAMap from './components/USAMap';
-import TopCollegesButton from './components/TopCollegesButton';
 import FloatingNavButtons from "./components/FloatingNavButtons";
 import ComingSoon from "./components/ComingSoon";
 import RevolvingQuotes from "./components/RevolvingQuotes";
@@ -21,7 +20,6 @@ import CollegeList from "./components/CollegeList";
 import { CollegeProvider } from "./components/CollegeProvider";
 import { getToken } from "./api";
 import { getProfile } from "./api";
-import { getSurveyAnswers, setToken } from "./api";
 import UserInfoPage from "./components/UserInfoPage";
 import NProgress from 'nprogress';
 import 'nprogress/nprogress.css';
@@ -31,7 +29,6 @@ import SkillAssessment from "./components/SkillAssessment";
 import SemesterWizard from "./components/SemesterWizard";
 import SemesterWorkspace from "./components/SemesterWorkspace";
 import SettingsMenu from "./components/SettingsMenu";
-import settingsIcon from "./assets/settings.png";
 
 
 function App() {
@@ -39,10 +36,10 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [globalSettingsOpen, setGlobalSettingsOpen] = useState(false);
   const [userName, setUserName] = useState(null);
   const onCounselingHub = loggedIn && (location.pathname === "/" || location.pathname === "/home");
-  const showBackground = !onCounselingHub;
+  const backgroundlessRoutes = ["/top-colleges", "/affinity-calc"];
+  const showBackground = !onCounselingHub && !backgroundlessRoutes.includes(location.pathname);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,27 +85,6 @@ function App() {
   const handleUserInfo = () => navigate("/user-info");
   const handleSystemOptions = () => navigate("/settings");
 
-  const handleGlobalEditSurvey = async () => {
-    setGlobalSettingsOpen(false);
-    try {
-      const answers = await getSurveyAnswers();
-      if (Array.isArray(answers) && answers.length === 10 && answers.every(a => a !== null && a !== "")) {
-        navigate("/survey?recap=1");
-      } else {
-        navigate("/survey");
-      }
-    } catch (e) {
-      navigate("/survey");
-    }
-  };
-
-  const handleGlobalLogout = () => {
-    setGlobalSettingsOpen(false);
-    setToken(null);
-    setLoggedIn(false);
-    navigate("/", { replace: true });
-  };
-
   useEffect(() => {
     // If already logged in and sitting on auth pages, auto-redirect to productivity planner
     if (loggedIn && (location.pathname === "/login" || location.pathname === "/create-account")) {
@@ -124,30 +100,6 @@ function App() {
           loggedIn={loggedIn}
           onSettings={() => setSettingsOpen(true)}
         />
-        {loggedIn && (
-          <>
-            <div className="settings-nav-button">
-              <button title="Settings" onClick={() => setGlobalSettingsOpen(true)}>
-                <img src={settingsIcon} alt="Settings" width={24} height={24} />
-              </button>
-            </div>
-            {globalSettingsOpen && (
-              <SettingsMenu
-                onClose={() => setGlobalSettingsOpen(false)}
-                onOptions={() => {
-                  setGlobalSettingsOpen(false);
-                  navigate("/settings");
-                }}
-                onEditSurvey={handleGlobalEditSurvey}
-                onLogout={handleGlobalLogout}
-                onEditAssignments={() => {
-                  setGlobalSettingsOpen(false);
-                  navigate("/assignments");
-                }}
-              />
-            )}
-          </>
-        )}
         {showBackground && (
           <div className="background-gif">
             <img src={backgroundGif} alt="background" />
@@ -171,7 +123,6 @@ function App() {
               <div className={`app ${onCounselingHub ? "app--counseling" : ""}`}>
                 {userName === null ? null : <RevolvingQuotes userName={userName} />}
                 <USAMap />
-                <TopCollegesButton />
                 <FloatingNavButtons />
               </div>
             ) : (
@@ -185,7 +136,6 @@ function App() {
                 {userName === null ? null : <RevolvingQuotes userName={userName} />}
                 <USAMap />
                 <FloatingNavButtons />
-                <TopCollegesButton />
               </div>
             ) : (
               <LandingPage />

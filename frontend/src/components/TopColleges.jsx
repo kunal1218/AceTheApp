@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import "./TopColleges.css";
-import { useNavigate } from "react-router-dom";
 import { allColleges } from "./CollegeList";
 import { useCollegeList } from "./CollegeProvider";
 import defaultCollegePic from '../assets/collegepictures/default.jpg'; // fallback image
@@ -33,6 +32,14 @@ function getEnrollment(college) {
 }
 
 export default function TopColleges() {
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "auto";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, []);
+
   const [selected, setSelected] = useState([]);
   const [filters, setFilters] = useState({
     ranking: [1, 100],
@@ -61,7 +68,6 @@ export default function TopColleges() {
     acceptanceRate: [String(filters.acceptanceRate[0]), String(filters.acceptanceRate[1])],
   });
 
-  const navigate = useNavigate();
   const { myColleges, refreshColleges, addCollege } = useCollegeList();
   const alreadyAdded = myColleges.map((c) => c.id);
 
@@ -300,7 +306,8 @@ export default function TopColleges() {
   }
 
   return (
-    <div className="top-colleges-flex">
+    <div className="top-colleges-page">
+      <div className="top-colleges-flex">
       <aside className="filters-sidebar-fixed">
         <div className="sticky-filters">
           <h1 className="top-colleges-title">Top Colleges</h1>
@@ -521,7 +528,7 @@ export default function TopColleges() {
             </select>
           </div>
 
-          <div style={{ display: "flex", justifyContent: "center", marginTop: 16 }}>
+          <div style={{ display: "flex", justifyContent: "center", marginTop: 10 }}>
             <button
               className="reset-filters-btn"
               onClick={handleResetFilters}
@@ -540,7 +547,7 @@ export default function TopColleges() {
               Reset Filters
             </button>
           </div>
-          <div style={{ marginTop: 18, fontSize: 13, color: "#666", textAlign: "center" }}>
+          <div style={{ marginTop: 10, fontSize: 13, color: "#666", textAlign: "center" }}>
             *Private institutions have equal In-State and Out-State tuitions
           </div>
         </div>
@@ -610,6 +617,7 @@ export default function TopColleges() {
       >
         Add to List
       </button>
+      </div>
     </div>
   );
 }

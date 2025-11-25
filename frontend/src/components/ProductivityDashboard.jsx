@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./LandingPage.css";
 import "./ProductivityDashboard.css";
-import { CARD_COLORS, loadItems, saveItems, updateItem } from "../utils/semesters";
+import { CARD_COLORS, addSemester, loadItems, saveItems, updateItem } from "../utils/semesters";
 
 const FIRST_PAGE_CAP = 14; // reserve one slot for the + tile on first page
 const TASKS_PER_PAGE = 19;
@@ -12,12 +12,18 @@ export default function ProductivityDashboard() {
   const [choiceOpen, setChoiceOpen] = useState(false);
   const [idea, setIdea] = useState("");
   const [selectedColor, setSelectedColor] = useState(CARD_COLORS[0]);
+  const [semesterComposerOpen, setSemesterComposerOpen] = useState(false);
+  const [semesterName, setSemesterName] = useState("");
+  const [semesterColor, setSemesterColor] = useState(CARD_COLORS[0]);
+  const [semesterUploads, setSemesterUploads] = useState([]);
+  const [semesterError, setSemesterError] = useState("");
   const [draggingId, setDraggingId] = useState(null);
   const [page, setPage] = useState(0);
   const [items, setItems] = useState(loadItems());
   const [justUnwrapped, setJustUnwrapped] = useState(null);
   const navigate = useNavigate();
   const dragPreviewRef = useRef(null);
+  const semesterFileInputRef = useRef(null);
 
   useEffect(() => {
     saveItems(items);
@@ -40,6 +46,57 @@ export default function ProductivityDashboard() {
     setIdea("");
     setSelectedColor(CARD_COLORS[0]);
     setPage(0);
+  };
+
+  const handleSemesterFiles = (files) => {
+    const list = Array.from(files).map((file) => ({
+      id: crypto.randomUUID?.() || Date.now().toString(),
+      name: file.name,
+    }));
+    setSemesterUploads((prev) => [...prev, ...list]);
+  };
+
+  const handleSemesterDrop = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.dataTransfer?.files?.length) {
+      handleSemesterFiles(event.dataTransfer.files);
+    }
+  };
+
+  const triggerSemesterFileDialog = () => {
+    semesterFileInputRef.current?.click();
+  };
+
+  const resetSemesterComposer = () => {
+    setSemesterComposerOpen(false);
+    setSemesterName("");
+    setSemesterColor(CARD_COLORS[0]);
+    setSemesterUploads([]);
+    setSemesterError("");
+  };
+
+  const handleSemesterSubmit = () => {
+    if (!semesterName.trim()) {
+      setSemesterError("Please name your semester");
+      return;
+    }
+    if (semesterUploads.length === 0) {
+      setSemesterError("Please upload at least one syllabus");
+      return;
+    }
+    const semester = addSemester({
+      title: semesterName.trim(),
+      color: semesterColor,
+      syllabus: semesterUploads,
+      deadlines: [],
+    });
+    setItems(loadItems());
+    resetSemesterComposer();
+    setChoiceOpen(false);
+    setPage(0);
+    setJustUnwrapped(null);
+    // Keep user on dashboard; no navigation needed.
   };
 
   const openMission = (mission) => {
@@ -200,7 +257,13 @@ export default function ProductivityDashboard() {
                 <strong>Add a task</strong>
                 <span>Track a skill sprint or project</span>
               </button>
-              <button className="pd-choice-card" onClick={() => navigate("/semester/new")}>
+              <button
+                className="pd-choice-card"
+                onClick={() => {
+                  setChoiceOpen(false);
+                  setSemesterComposerOpen(true);
+                }}
+              >
                 <strong>Add a school semester</strong>
                 <span>Upload syllabuses and track deadlines</span>
               </button>
@@ -254,6 +317,86 @@ export default function ProductivityDashboard() {
                 Cancel
               </button>
               <button className="ace-btn" type="button" onClick={handleDone} disabled={!idea.trim()}>
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {semesterComposerOpen && (
+        <div className="pd-modal-backdrop">
+          <div className="pd-modal" style={{ maxWidth: 720 }}>
+            <label className="pd-field">
+              <span>Semester name</span>
+              <input
+                type="text"
+                value={semesterName}
+                onChange={(e) => setSemesterName(e.target.value)}
+                placeholder="Spring 2025"
+              />
+            </label>
+            <div className="pd-color-row">
+              <p className="eyebrow">Card color</p>
+              <div className="pd-color-swatches">
+                {CARD_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    className={`pd-color-swatch${semesterColor === c ? " is-selected" : ""}`}
+                    style={{ background: c }}
+                    onClick={() => setSemesterColor(c)}
+                    type="button"
+                  />
+                ))}
+              </div>
+            </div>
+            <div
+              className="pd-upload-box"
+              role="button"
+              tabIndex={0}
+              onClick={triggerSemesterFileDialog}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  triggerSemesterFileDialog();
+                }
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onDrop={handleSemesterDrop}
+            >
+              <input
+                ref={semesterFileInputRef}
+                type="file"
+                multiple
+                onChange={(e) => handleSemesterFiles(e.target.files)}
+              />
+              <p>Drop PDF syllabuses here (local only for now)</p>
+            </div>
+            {semesterUploads.length > 0 && (
+              <div className="pd-upload-list">
+                {semesterUploads.map((u) => (
+                  <div key={u.id} className="pd-upload-item">{u.name}</div>
+                ))}
+              </div>
+            )}
+            {semesterError && <div className="pd-error">{semesterError}</div>}
+            <div className="pd-modal-actions">
+              <button
+                className="ace-btn ghost"
+                type="button"
+                onClick={resetSemesterComposer}
+              >
+                Cancel
+              </button>
+              <button
+                className="ace-btn"
+                type="button"
+                disabled={!semesterName.trim() || semesterUploads.length === 0}
+                onClick={handleSemesterSubmit}
+              >
                 Done
               </button>
             </div>

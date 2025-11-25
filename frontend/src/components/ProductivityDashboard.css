@@ -311,6 +311,9 @@
   background: #f8fafc;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
+.pd-upload-box input[type="file"] {
+  display: none;
+}
 .pd-upload-box:hover,
 .pd-upload-box:focus-within {
   border-color: #94a3b8;

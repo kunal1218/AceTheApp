@@ -55,22 +55,21 @@ export default function FloatingNavButtons() {
 
   return (
     <>
-      <div className="floating-nav-buttons">
-        <button title="Colleges List" onClick={() => navigate('/colleges-list')}>
+      <div className="floating-nav-bar">
+        <button className="floating-nav-btn" title="Colleges List" onClick={() => navigate("/top-colleges")}>
           <img src={bookIcon} alt="Colleges List" width={24} height={24} />
         </button>
         <button
+          className="floating-nav-btn"
           title="Edit Applications"
           onClick={handleEditApplications}
         >
           <img src={gavelIcon} alt="Edit Applications" width={24} height={24} />
         </button>
-        <button title="Affinity Calculator" onClick={() => navigate('/affinity-calc')}>
+        <button className="floating-nav-btn" title="Affinity Calculator" onClick={() => navigate("/affinity-calc")}>
           <img src={calculatorIcon} alt="Affinity Calculator" width={24} height={24} />
         </button>
-      </div>
-      <div className="settings-nav-button">
-        <button title="Settings" onClick={handleSettingsClick}>
+        <button className="floating-nav-btn floating-nav-btn--settings" title="Settings" onClick={handleSettingsClick}>
           <img src={settingsIcon} alt="Settings" width={24} height={24} />
         </button>
       </div>

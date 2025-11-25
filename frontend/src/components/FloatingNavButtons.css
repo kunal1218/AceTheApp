@@ -1,37 +1,13 @@
-.floating-nav-buttons {
-  position: fixed;
-  bottom: 24px;
-  left: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  z-index: 10000;
-}
-.floating-nav-buttons button {
-  background: transparent;
-  color: #222;
-  border: none;
-  border-radius: 50%;
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-.floating-nav-buttons button:hover {
-  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
-
-}
-
-.settings-nav-button {
+.floating-nav-bar {
   position: fixed;
   top: 14px;
-  right: 24px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   z-index: 10000;
 }
-.settings-nav-button button {
+.floating-nav-btn {
   background: transparent;
   color: #222;
   border: none;
@@ -42,21 +18,18 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.2s, transform 0.1s ease;
+  transition: transform 0.1s ease;
   box-shadow: none;
   outline: none;
   -webkit-tap-highlight-color: transparent;
 }
-.settings-nav-button button:hover {
+.floating-nav-btn:hover,
+.floating-nav-btn:focus,
+.floating-nav-btn:focus-visible {
   background: transparent;
   box-shadow: none;
-}
-.settings-nav-button button:focus,
-.settings-nav-button button:focus-visible {
   outline: none;
-  box-shadow: none;
-  background: transparent;
 }
-.settings-nav-button button:active {
+.floating-nav-btn:active {
   transform: translateY(1px);
 }

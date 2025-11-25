@@ -79,7 +79,15 @@ router.post("/parse-and-store", requireAuth, upload.single("file"), async (req, 
     }
 
     const entries = Array.isArray(syllabus.schedule_entries) ? syllabus.schedule_entries : [];
-    const payload = entries.map((entry) => {
+    const filteredEntries = entries.filter((entry) => entry && (entry.title || entry.date));
+
+    if (!filteredEntries.length) {
+      return res.status(422).json({
+        error: "We couldn't find any dated lessons in that syllabus. Please try again with a clearer PDF or add dates."
+      });
+    }
+
+    const payload = filteredEntries.map((entry) => {
       const dt = entry.date ? new Date(entry.date) : null;
       const dateValue = dt && !Number.isNaN(dt.getTime()) ? dt : null;
       const entryWithWorkspace = { ...entry, "workspace-name": workspaceName };
@@ -103,9 +111,7 @@ router.post("/parse-and-store", requireAuth, upload.single("file"), async (req, 
       rawText: JSON.stringify(syllabusWithWorkspace)
     };
 
-    let created = { count: 0 };
-    const toInsert = payload.length ? [...payload, aggregatedRow] : [aggregatedRow];
-    created = await prisma.syllabusItem.createMany({ data: toInsert });
+    const created = await prisma.syllabusItem.createMany({ data: [...payload, aggregatedRow] });
 
     return res.json({ courseId, syllabusId, syllabus: syllabusWithWorkspace, createdCount: created.count });
   } catch (err) {

@@ -41,26 +41,18 @@ Rules:
 - If you can’t confidently find a date, set date to null rather than guessing.
 - Use schedule_entries for weekly lesson plans, important class meetings, and major assignment or exam dates.
 - Do not invent or hallucinate information.
-- Return ONLY one JSON object matching the Syllabus shape. No markdown or extra text.
+- Return ONLY one JSON object matching the Syllabus shape.
+- Do NOT include markdown, code fences, comments, or text outside the JSON object.
 `;
 
-/**
- * Gemini sometimes:
- * - wraps JSON in ```json ... ``` fences
- * - adds trailing commas before } or ]
- *
- * This helper tries to normalize that into strict JSON.
- */
+// we can keep the sanitizer as a small safety net, but it should now be mostly unnecessary
 function sanitizeGeminiJSON(str: string): string {
   let cleaned = str
-    // remove markdown fences
     .replace(/```json/gi, "")
     .replace(/```/g, "")
     .trim();
 
-  // remove trailing commas before } or ]
-  // e.g. "foo": 1, } -> "foo": 1 }
-  //      "a", ]    -> "a" ]
+  // still strip any trailing commas, just in case
   cleaned = cleaned.replace(/,\s*([}\]])/g, "$1");
 
   return cleaned;
@@ -82,7 +74,7 @@ export async function parseSyllabusFromBuffer(
     model: "gemini-2.0-flash",
     systemInstruction:
       "You are a parser that extracts structured data from a university course syllabus. " +
-      "Use the Syllabus schema and rules below and return only JSON."
+      "Use the Syllabus schema and rules below and return only valid JSON."
   });
 
   const result = await model.generateContent({
@@ -102,7 +94,9 @@ export async function parseSyllabusFromBuffer(
     ],
     generationConfig: {
       temperature: 0.1,
-      maxOutputTokens: 1024
+      maxOutputTokens: 1024,
+      // 👇 this is the important new part
+      responseMimeType: "application/json"
     }
   });
 

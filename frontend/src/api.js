@@ -93,7 +93,7 @@ export async function getProfile() {
   const res = await apiFetch(`${API_BASE}/profile/me`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  if (res.status === 401) return null;
+  if (res.status === 401 || res.status === 404) return null;
   if (!res.ok) {
     // Gracefully fall back instead of throwing, so the app can continue.
     const maybeJson = await parseJsonSafe(res);
@@ -208,7 +208,12 @@ export async function getSurveyAnswers() {
   const res = await apiFetch(`${API_BASE}/profile/survey-answers`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  if (res.status === 401) return null;
+  if (res.status === 401 || res.status === 404) return [];
+  if (!res.ok) {
+    const maybeJson = await parseJsonSafe(res);
+    console.warn("[api] getSurveyAnswers failed", res.status, maybeJson);
+    return [];
+  }
   return handleResponse(res, "Failed to fetch survey answers");
 }
 
@@ -223,7 +228,12 @@ export async function saveSurveyAnswers(answers) {
     },
     body: JSON.stringify({ answers }),
   });
-  if (res.status === 401) return null;
+  if (res.status === 401 || res.status === 404) return null;
+  if (!res.ok) {
+    const maybeJson = await parseJsonSafe(res);
+    console.warn("[api] saveSurveyAnswers failed", res.status, maybeJson);
+    return null;
+  }
   return handleResponse(res, "Failed to save survey answers");
 }
 

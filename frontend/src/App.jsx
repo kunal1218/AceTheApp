@@ -103,6 +103,7 @@ function App() {
   const handleGlobalLogout = () => {
     setGlobalSettingsOpen(false);
     setToken(null);
+    setLoggedIn(false);
     navigate("/", { replace: true });
   };
 

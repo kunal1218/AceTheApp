@@ -376,6 +376,28 @@
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 16px;
 }
+.pd-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  width: 100%;
+}
+.pd-tab {
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #0f172a;
+  transition: all 0.12s ease;
+}
+.pd-tab.is-active {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #3730a3;
+  box-shadow: 0 6px 16px rgba(55, 48, 163, 0.12);
+}
 .pd-workspace-column {
   display: flex;
   flex-direction: column;

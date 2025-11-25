@@ -9,7 +9,8 @@ const LOCAL_STORAGE_KEY = "guestSurveyAnswers";
 // Helper to get the correct backend URL for Google OAuth
 const getGoogleAuthUrl = () => {
   const base = getApiBase().replace(/\/$/, "");
-  return `${base}/auth/google`;
+  const hasApiSuffix = /\/api$/.test(base);
+  return hasApiSuffix ? `${base}/auth/google` : `${base}/api/auth/google`;
 };
 
 export default function CreateAccount({ setLoggedIn }) {

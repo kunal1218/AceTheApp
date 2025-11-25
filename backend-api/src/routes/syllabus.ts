@@ -20,7 +20,8 @@ router.post("/parse", upload.single("file"), async (req, res) => {
     return res.json({ syllabus });
   } catch (err) {
     console.error("[/api/syllabi/parse] failed:", err);
-    return res.status(500).json({ error: "Failed to parse syllabus" });
+    const message = err instanceof Error ? err.message : "Failed to parse syllabus";
+    return res.status(500).json({ error: "Failed to parse syllabus", details: message });
   }
 });
 

@@ -53,35 +53,28 @@ function basicValidate(parsed: any): parsed is Syllabus {
 }
 
 export async function parseSyllabusFromBuffer(buffer: Buffer, mimeType: string = "application/pdf"): Promise<Syllabus> {
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
-  const prompt = [
-    {
-      role: "system" as const,
-      parts: [
-        {
-          text:
-            "You are a parser that extracts structured data from a university course syllabus." +
-            " Use the Syllabus schema and rules below and return only JSON."
-        }
-      ]
-    },
-    {
-      role: "user" as const,
-      parts: [
-        { text: SYLLABUS_SCHEMA_TEXT },
-        {
-          inlineData: {
-            data: buffer.toString("base64"),
-            mimeType
-          }
-        }
-      ]
-    }
-  ];
+  const model = genAI.getGenerativeModel({
+    model: "gemini-2.0-flash",
+    systemInstruction:
+      "You are a parser that extracts structured data from a university course syllabus. " +
+      "Use the Syllabus schema and rules below and return only JSON."
+  });
 
   const result = await model.generateContent({
-    contents: prompt,
+    contents: [
+      {
+        role: "user",
+        parts: [
+          { text: SYLLABUS_SCHEMA_TEXT },
+          {
+            inlineData: {
+              data: buffer.toString("base64"),
+              mimeType
+            }
+          }
+        ]
+      }
+    ],
     generationConfig: {
       temperature: 0.1,
       maxOutputTokens: 1024

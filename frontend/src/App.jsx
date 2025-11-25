@@ -39,6 +39,8 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [globalSettingsOpen, setGlobalSettingsOpen] = useState(false);
   const [userName, setUserName] = useState(null);
+  const onCounselingHub = loggedIn && (location.pathname === "/" || location.pathname === "/home");
+  const showBackground = !onCounselingHub;
 
   useEffect(() => {
     let cancelled = false;
@@ -143,9 +145,11 @@ function App() {
             )}
           </>
         )}
-        <div className="background-gif">
-          <img src={backgroundGif} alt="background" />
-        </div>
+        {showBackground && (
+          <div className="background-gif">
+            <img src={backgroundGif} alt="background" />
+          </div>
+        )}
         {settingsOpen && (
           <SettingsMenu
             onLogout={handleLogout}
@@ -161,7 +165,7 @@ function App() {
           {/* Home route: protected */}
           <Route path="/" element={
             loggedIn ? (
-              <div className="app">
+              <div className={`app ${onCounselingHub ? "app--counseling" : ""}`}>
                 {userName === null ? null : <RevolvingQuotes userName={userName} />}
                 <USAMap />
                 <TopCollegesButton />
@@ -174,7 +178,7 @@ function App() {
           {/* Also allow /home as an alias for home page */}
           <Route path="/home" element={
             loggedIn ? (
-              <div className="app">
+              <div className={`app ${onCounselingHub ? "app--counseling" : ""}`}>
                 {userName === null ? null : <RevolvingQuotes userName={userName} />}
                 <USAMap />
                 <FloatingNavButtons />

@@ -44,6 +44,17 @@ Rules:
 - Return ONLY one JSON object matching the Syllabus shape. No markdown or extra text.
 `;
 
+/**
+ * Gemini sometimes wraps JSON in ```json ... ``` fences or similar.
+ * Strip those and return a clean JSON string.
+ */
+function sanitizeGeminiJSON(str: string): string {
+  return str
+    .replace(/```json/gi, "")
+    .replace(/```/g, "")
+    .trim();
+}
+
 function basicValidate(parsed: any): parsed is Syllabus {
   if (typeof parsed !== "object" || parsed === null) return false;
   if (!Array.isArray(parsed.grading_breakdown)) return false;
@@ -52,7 +63,10 @@ function basicValidate(parsed: any): parsed is Syllabus {
   return true;
 }
 
-export async function parseSyllabusFromBuffer(buffer: Buffer, mimeType: string = "application/pdf"): Promise<Syllabus> {
+export async function parseSyllabusFromBuffer(
+  buffer: Buffer,
+  mimeType: string = "application/pdf"
+): Promise<Syllabus> {
   const model = genAI.getGenerativeModel({
     model: "gemini-2.0-flash",
     systemInstruction:
@@ -82,9 +96,11 @@ export async function parseSyllabusFromBuffer(buffer: Buffer, mimeType: string =
   });
 
   const raw = result.response.text().trim();
+  const cleaned = sanitizeGeminiJSON(raw);
+
   let parsed: Syllabus;
   try {
-    parsed = JSON.parse(raw);
+    parsed = JSON.parse(cleaned);
   } catch (err) {
     console.error("[parseSyllabusFromBuffer] Invalid JSON from Gemini:", raw);
     throw new Error("Gemini returned invalid JSON for syllabus.");

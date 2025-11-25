@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "./ProductivityDashboard.css";
 import "./SemesterWizard.css";
 import { CARD_COLORS, addSemester } from "../utils/semesters";
+import { uploadSyllabusFile } from "../api";
 
 export default function SemesterWizard() {
   const navigate = useNavigate();
@@ -12,6 +13,7 @@ export default function SemesterWizard() {
   const [error, setError] = useState("");
   const fileInputRef = useRef(null);
   const [uploadFlash, setUploadFlash] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const triggerUploadFlash = () => {
     setUploadFlash(true);
@@ -27,7 +29,11 @@ export default function SemesterWizard() {
       setError("Please upload PDF files only.");
       return;
     }
-    const list = pdfs.map((file) => ({ id: crypto.randomUUID?.() || Date.now().toString(), name: file.name }));
+    const list = pdfs.map((file) => ({
+      id: crypto.randomUUID?.() || Date.now().toString(),
+      name: file.name,
+      file,
+    }));
     setUploads((prev) => [...prev, ...list]);
     setError("");
   };
@@ -46,7 +52,8 @@ export default function SemesterWizard() {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     if (!name.trim()) {
       setError("Please name your semester");
       return;
@@ -55,13 +62,31 @@ export default function SemesterWizard() {
       setError("Please upload at least one syllabus");
       return;
     }
-    const semester = addSemester({
-      title: name.trim(),
-      color,
-      syllabus: uploads,
-      deadlines: [],
-    });
-    navigate("/dashboard", { replace: true, state: { newSemester: semester.id } });
+    try {
+      setIsUploading(true);
+      const parsedUploads = [];
+      for (const u of uploads) {
+        const { syllabusId, syllabus } = await uploadSyllabusFile(u.file);
+        parsedUploads.push({
+          id: u.id,
+          name: u.name,
+          syllabusId,
+          syllabusJson: syllabus,
+        });
+      }
+      const semester = addSemester({
+        title: name.trim(),
+        color,
+        syllabus: parsedUploads,
+        deadlines: [],
+      });
+      navigate("/dashboard", { replace: true, state: { newSemester: semester.id } });
+    } catch (err) {
+      console.error("Failed to upload/parse syllabus", err);
+      setError(err.message || "Something went wrong");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -80,7 +105,7 @@ export default function SemesterWizard() {
       </div>
 
       <div className="pd-modal-backdrop pd-modal-backdrop--wizard">
-        <div className="pd-modal" style={{ maxWidth: 720 }}>
+          <div className="pd-modal" style={{ maxWidth: 720 }}>
           <label className="pd-field">
             <span>Semester name</span>
             <input

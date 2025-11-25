@@ -189,10 +189,16 @@
   font: inherit;
   color: inherit;
   transition: transform 0.1s ease;
+  box-shadow: none;
 }
 
-.ace-logo-btn:focus {
+.ace-logo-btn:focus,
+.ace-logo-btn:focus-visible,
+.ace-logo-btn:hover {
   outline: none;
+  box-shadow: none;
+  background: none;
+  transform: none;
 }
 
 .ace-logo-btn:active {

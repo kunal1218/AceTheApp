@@ -19,6 +19,7 @@ const normalizeItems = (raw) => {
       revealed: item.revealed !== undefined ? item.revealed : false,
       syllabus: item.syllabus || [],
       deadlines: item.deadlines || [],
+      calendarEvents: item.calendarEvents || [],
       createdAt: item.createdAt || new Date().toISOString(),
     };
   });
@@ -49,6 +50,7 @@ export const addSemester = (semester) => {
     color: semester.color || CARD_COLORS[0],
     syllabus: semester.syllabus || [],
     deadlines: semester.deadlines || [],
+    calendarEvents: semester.calendarEvents || [],
     revealed: false,
     createdAt: new Date().toISOString(),
   };
@@ -78,4 +80,24 @@ export const addSyllabusEntry = (id, entry) => {
   if (!item) return null;
   const updated = updateItem(id, { syllabus: [...(item.syllabus || []), entry] });
   return updated;
+};
+
+const dedupeCalendarEvents = (existing = [], incoming = []) => {
+  const seen = new Set(existing.map((e) => `${e.date || 'nodate'}|${e.title}`));
+  const merged = [...existing];
+  for (const ev of incoming) {
+    const key = `${ev.date || 'nodate'}|${ev.title}`;
+    if (seen.has(key)) continue;
+    merged.push(ev);
+    seen.add(key);
+  }
+  return merged;
+};
+
+export const addCalendarEvents = (id, events) => {
+  if (!Array.isArray(events) || events.length === 0) return getItemById(id) || null;
+  const item = getItemById(id);
+  if (!item) return null;
+  const merged = dedupeCalendarEvents(item.calendarEvents || [], events);
+  return updateItem(id, { calendarEvents: merged });
 };

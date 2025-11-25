@@ -402,6 +402,38 @@
   padding: 12px;
   background: #fff;
 }
+.pd-calendar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pd-calendar-event {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.pd-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.pd-chip--syllabus {
+  background: #eef2ff;
+  color: #4338ca;
+}
+.pd-chip--deadline {
+  background: #fef2f2;
+  color: #991b1b;
+}
 .pd-muted {
   color: #94a3b8;
 }

@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "./ProductivityDashboard.css";
-import { addDeadline, addSyllabusEntry, getItemById } from "../utils/semesters";
+import { addCalendarEvents, addDeadline, addSyllabusEntry, getItemById } from "../utils/semesters";
 import { uploadSyllabusFile } from "../api"; // <--- make sure this path is correct
 
 export default function SemesterWorkspace() {
@@ -16,6 +16,23 @@ export default function SemesterWorkspace() {
   const upcoming = useMemo(() => {
     if (!item || !item.deadlines) return [];
     return [...item.deadlines].sort((a, b) => new Date(a.date) - new Date(b.date));
+  }, [item]);
+
+  const calendarEvents = useMemo(() => {
+    if (!item) return [];
+    const lessonEvents = Array.isArray(item.calendarEvents) ? item.calendarEvents : [];
+    const deadlineEvents =
+      Array.isArray(item.deadlines) && item.deadlines.length > 0
+        ? item.deadlines
+            .filter((d) => d.date)
+            .map((d) => ({
+              id: `deadline-${d.id}`,
+              date: d.date,
+              title: d.title,
+              source: "deadline",
+            }))
+        : [];
+    return [...lessonEvents, ...deadlineEvents].sort((a, b) => new Date(a.date) - new Date(b.date));
   }, [item]);
 
   const handleAddDeadline = () => {
@@ -51,7 +68,22 @@ export default function SemesterWorkspace() {
         syllabusId,
       });
 
-      setItem(updated);
+      let nextItem = updated;
+      const lessons = Array.isArray(syllabus?.schedule_entries) ? syllabus.schedule_entries : [];
+      const datedLessons = lessons.filter((entry) => entry?.date);
+      if (datedLessons.length) {
+        nextItem =
+          addCalendarEvents(id, datedLessons.map((entry) => ({
+            id: crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`,
+            date: entry.date,
+            title: entry.title || "Lesson",
+            source: "syllabus",
+            syllabusId,
+            syllabusName: displayName,
+          }))) || updated;
+      }
+
+      setItem(nextItem);
       setUploadName("");
       setFile(null);
     } catch (err) {
@@ -164,6 +196,26 @@ export default function SemesterWorkspace() {
               {item.syllabus?.map((s) => (
                 <div key={s.id} className="pd-upload-item">
                   {s.name}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Calendar column */}
+          <div className="pd-workspace-column">
+            <h3>Calendar</h3>
+            <p className="pd-muted">Lessons from syllabus uploads are posted here automatically.</p>
+            <div className="pd-calendar-list">
+              {calendarEvents.length === 0 && <p className="pd-muted">No calendar events yet</p>}
+              {calendarEvents.map((ev) => (
+                <div key={ev.id} className="pd-calendar-event">
+                  <div>
+                    <strong>{ev.title}</strong>
+                    <p className="pd-muted">{ev.date ? new Date(ev.date).toLocaleDateString() : "Date TBA"}</p>
+                  </div>
+                  <span className={`pd-chip pd-chip--${ev.source === "deadline" ? "deadline" : "syllabus"}`}>
+                    {ev.source === "deadline" ? "Deadline" : "Lesson"}
+                  </span>
                 </div>
               ))}
             </div>

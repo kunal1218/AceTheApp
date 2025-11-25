@@ -108,6 +108,7 @@ export default function ProductivityDashboard() {
       setSemesterIsUploading(true);
       console.log("[Dashboard] uploading", semesterUploads.length, "syllabus files");
       const parsedUploads = [];
+      const calendarEvents = [];
       for (const u of semesterUploads) {
         const { syllabusId, syllabus } = await uploadSyllabusFile(u.file);
         parsedUploads.push({
@@ -116,12 +117,25 @@ export default function ProductivityDashboard() {
           syllabusId,
           syllabusJson: syllabus,
         });
+        const lessons = Array.isArray(syllabus?.schedule_entries) ? syllabus.schedule_entries : [];
+        const datedLessons = lessons.filter((entry) => entry?.date);
+        calendarEvents.push(
+          ...datedLessons.map((entry) => ({
+            id: crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`,
+            date: entry.date,
+            title: entry.title || "Lesson",
+            source: "syllabus",
+            syllabusId,
+            syllabusName: u.name,
+          }))
+        );
       }
       const semester = addSemester({
         title: semesterName.trim(),
         color: semesterColor,
         syllabus: parsedUploads,
         deadlines: [],
+        calendarEvents,
       });
       setItems(loadItems());
       resetSemesterComposer();

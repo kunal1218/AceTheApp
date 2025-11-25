@@ -1,7 +1,10 @@
 .pd-root {
   min-height: 100vh;
   background: var(--ace-bg);
-  padding: 32px 4vw 48px;
+  padding-top: 32px;
+  padding-right: 4vw;
+  padding-bottom: 48px;
+  padding-left: 4vw;
   color: var(--ace-primary);
   box-sizing: border-box;
   display: flex;
@@ -68,6 +71,7 @@
   display: flex;
   flex-direction: column;
   overflow: visible;
+  margin-top: var(--pd-surface-top, -10px); /* adjust to nudge only the workspace container */
 }
 .pd-surface--centered {
   align-items: center;
@@ -480,7 +484,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   font-weight: 600;
   color: #0f172a;
 }
@@ -504,6 +508,7 @@
   grid-template-columns: repeat(7, 1fr);
   color: #94a3b8;
   font-size: 0.9rem;
+  margin-bottom: 6px;
 }
 .pd-calendar-weekdays span {
   text-align: center;

@@ -260,8 +260,6 @@ export default function SemesterWorkspace() {
 
           {activeTab === "calendar" && (
             <div className="pd-tab-panel">
-              <h3>Calendar</h3>
-              <p className="pd-muted">Lessons from syllabus uploads are posted here automatically. Deadlines also appear here.</p>
               {(() => {
                 const cal = buildCalendarDays();
                 return (
@@ -272,11 +270,11 @@ export default function SemesterWorkspace() {
                         <button type="button" onClick={cal.prev}>Prev</button>
                         <button type="button" onClick={cal.next}>Next</button>
                       </div>
-                      <div className="pd-calendar-weekdays">
-                        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-                          <span key={d}>{d}</span>
-                        ))}
-                      </div>
+                    </div>
+                    <div className="pd-calendar-weekdays">
+                      {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+                        <span key={d}>{d}</span>
+                      ))}
                     </div>
                     <div className="pd-calendar-grid">
                       {cal.cells.map((cell) => (
@@ -302,12 +300,11 @@ export default function SemesterWorkspace() {
                 );
               })()}
               <div className="pd-calendar-list">
-              {calendarEvents.length === 0 && <p className="pd-muted">No calendar events yet</p>}
-              {calendarEvents.map((ev) => (
-                <button
-                  key={ev.id}
-                  className="pd-calendar-event"
-                  type="button"
+                {calendarEvents.map((ev) => (
+                  <button
+                    key={ev.id}
+                    className="pd-calendar-event"
+                    type="button"
                   onClick={() => setSelectedEvent(ev)}
                 >
                   <div>

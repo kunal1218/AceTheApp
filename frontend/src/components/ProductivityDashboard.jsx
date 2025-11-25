@@ -109,8 +109,15 @@ export default function ProductivityDashboard() {
       console.log("[Dashboard] uploading", semesterUploads.length, "syllabus files");
       const parsedUploads = [];
       const calendarEvents = [];
+      let courseId = null;
       for (const u of semesterUploads) {
-        const { syllabusId, syllabus } = await uploadSyllabusFile(u.file);
+        const { syllabusId, syllabus, courseId: returnedCourseId } = await uploadSyllabusFile(u.file, {
+          courseId,
+          courseName: semesterName.trim(),
+        });
+        if (!courseId && returnedCourseId) {
+          courseId = returnedCourseId;
+        }
         parsedUploads.push({
           id: u.id,
           name: u.name,
@@ -135,6 +142,7 @@ export default function ProductivityDashboard() {
         color: semesterColor,
         syllabus: parsedUploads,
         deadlines: [],
+        courseId,
         calendarEvents,
       });
       setItems(loadItems());

@@ -336,12 +336,19 @@ export async function generateSubgoals(goal) {
   return handleResponse(res, "Failed to generate subgoals");
 }
 
-export async function uploadSyllabusFile(file) {
+export async function uploadSyllabusFile(file, options = {}) {
+  const token = getToken();
   const formData = new FormData();
   formData.append("file", file);
+  if (options.courseId) formData.append("courseId", options.courseId);
+  if (options.courseName) formData.append("courseName", options.courseName);
 
-  const res = await apiFetch(`${API_BASE}/syllabi/parse`, {
+  const useAuthedEndpoint = Boolean(token) && (options.courseId || options.courseName);
+  const endpoint = useAuthedEndpoint ? `${API_BASE}/syllabi/parse-and-store` : `${API_BASE}/syllabi/parse`;
+
+  const res = await apiFetch(endpoint, {
     method: "POST",
+    headers: useAuthedEndpoint ? { Authorization: `Bearer ${token}` } : undefined,
     body: formData,
   });
 

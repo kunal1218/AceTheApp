@@ -20,6 +20,7 @@ const normalizeItems = (raw) => {
       syllabus: item.syllabus || [],
       deadlines: item.deadlines || [],
       calendarEvents: item.calendarEvents || [],
+      courseId: item.courseId || null,
       createdAt: item.createdAt || new Date().toISOString(),
     };
   });
@@ -51,6 +52,7 @@ export const addSemester = (semester) => {
     syllabus: semester.syllabus || [],
     deadlines: semester.deadlines || [],
     calendarEvents: semester.calendarEvents || [],
+    courseId: semester.courseId || null,
     revealed: false,
     createdAt: new Date().toISOString(),
   };

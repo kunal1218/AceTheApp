@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "./ProductivityDashboard.css";
-import { addCalendarEvents, addDeadline, addSyllabusEntry, getItemById } from "../utils/semesters";
+import { addCalendarEvents, addDeadline, addSyllabusEntry, getItemById, updateItem } from "../utils/semesters";
 import { uploadSyllabusFile } from "../api"; // <--- make sure this path is correct
 
 export default function SemesterWorkspace() {
@@ -85,13 +85,16 @@ export default function SemesterWorkspace() {
     console.log("[SemesterWorkspace] uploading syllabus file", file.name);
 
     try {
-      // Call backend: /api/syllabi/parse
-      const { syllabusId, syllabus } = await uploadSyllabusFile(file);
+      const { syllabusId, syllabus, courseId: returnedCourseId } = await uploadSyllabusFile(file, {
+        courseId: item.courseId,
+        courseName: item.title,
+      });
+      let nextCourseId = item.courseId || returnedCourseId || null;
+
       console.log("[SemesterWorkspace] parsed syllabus", { syllabusId, syllabus });
 
       const displayName = uploadName.trim() || file.name;
 
-      // Persist to local semester state
       const updated = addSyllabusEntry(id, {
         id: crypto.randomUUID?.() || Date.now().toString(),
         name: displayName,
@@ -99,6 +102,9 @@ export default function SemesterWorkspace() {
       });
 
       let nextItem = updated;
+      if (nextCourseId && !updated.courseId) {
+        nextItem = updateItem(id, { courseId: nextCourseId });
+      }
       const lessons = Array.isArray(syllabus?.schedule_entries) ? syllabus.schedule_entries : [];
       const datedLessons = lessons.filter((entry) => entry?.date);
       if (datedLessons.length) {

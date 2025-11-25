@@ -68,8 +68,15 @@ export default function SemesterWizard() {
       console.log("[SemesterWizard] uploading", uploads.length, "syllabus files");
       const parsedUploads = [];
       const calendarEvents = [];
+      let courseId = null;
       for (const u of uploads) {
-        const { syllabusId, syllabus } = await uploadSyllabusFile(u.file);
+        const { syllabusId, syllabus, courseId: returnedCourseId } = await uploadSyllabusFile(u.file, {
+          courseId,
+          courseName: name.trim(),
+        });
+        if (!courseId && returnedCourseId) {
+          courseId = returnedCourseId;
+        }
         parsedUploads.push({
           id: u.id,
           name: u.name,
@@ -95,6 +102,7 @@ export default function SemesterWizard() {
         syllabus: parsedUploads,
         deadlines: [],
         calendarEvents,
+        courseId,
       });
       navigate("/dashboard", { replace: true, state: { newSemester: semester.id } });
     } catch (err) {

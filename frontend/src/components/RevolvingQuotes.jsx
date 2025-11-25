@@ -3,11 +3,11 @@ import "./RevolvingQuotes.css";
 
 export default function RevolvingQuotes({userName}) {
   const QUOTES = [
-    `Welcome, ${userName || "Student"}`,
-    "The journey of a thousand miles begins with a single step.",
-    "Education is the passport to the future.",
-    "Explore, dream, discover.",
-    "Success is not the key to happiness. Happiness is the key to success."
+    `"Welcome, ${userName || "Student"}"`,
+    "\"The journey of a thousand miles begins with a single step.\"",
+    "\"Education is the passport to the future.\"",
+    "\"Explore, dream, discover.\"",
+    "\"Success is not the key to happiness. Happiness is the key to success.\""
   ];
 
   const [index, setIndex] = useState(0);

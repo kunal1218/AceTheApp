@@ -11,24 +11,5 @@
   text-align: center;
   letter-spacing: 0.01em;
   min-height: 2.5em;
-  position: relative;
   /*border: 1.5px solid #dbeafe;*/
-}
-
-.revolving-quote::before, .revolving-quote::after {
-  content: '"';
-  color: #b6c2d1;
-  font-size: 2em;
-  vertical-align: top;
-  position: absolute;
-}
-
-.revolving-quote::before {
-  left: 16px;
-  top: 0;
-}
-
-.revolving-quote::after {
-  right: 16px;
-  bottom: 0;
 }

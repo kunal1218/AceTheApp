@@ -173,7 +173,7 @@ async function callMinimalModel(buffer: Buffer, mimeType: string) {
     ],
     generationConfig: {
       temperature: 0.1,
-      maxOutputTokens: 512,
+      maxOutputTokens: 640,
       responseMimeType: "application/json"
     }
   });

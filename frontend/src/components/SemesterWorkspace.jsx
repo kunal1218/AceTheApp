@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "./ProductivityDashboard.css";
 import { addDeadline, addSyllabusEntry, getItemById } from "../utils/semesters";
-import { uploadSyllabusFile } from "../api";
+import { uploadSyllabusFile } from "../api"; // <--- make sure this path is correct
 
 export default function SemesterWorkspace() {
   const { id } = useParams();
@@ -31,17 +31,20 @@ export default function SemesterWorkspace() {
   const handleAddSyllabus = async () => {
     if (!file) return;
     setIsUploading(true);
-    try {
-      // Call backend to parse + save syllabus
-      const { syllabusId, syllabus } = await uploadSyllabusFile(file);
+    console.log("[SemesterWorkspace] uploading syllabus file", file.name);
 
-      // Store a reference locally (you can shape this however you want)
+    try {
+      // Call backend: /api/syllabi/parse
+      const { syllabusId, syllabus } = await uploadSyllabusFile(file);
+      console.log("[SemesterWorkspace] parsed syllabus", { syllabusId, syllabus });
+
       const displayName = uploadName.trim() || file.name;
+
+      // Persist to local semester state
       const updated = addSyllabusEntry(id, {
         id: crypto.randomUUID?.() || Date.now().toString(),
         name: displayName,
-        syllabusId,     // id in your DB
-        syllabusJson: syllabus, // optional: keep parsed data locally
+        syllabusId,
       });
 
       setItem(updated);
@@ -83,6 +86,7 @@ export default function SemesterWorkspace() {
         </header>
 
         <div className="pd-surface pd-workspace" style={{ borderColor: item.color }}>
+          {/* Deadlines column */}
           <div className="pd-workspace-column">
             <h3>Upcoming deadlines</h3>
             <div className="pd-field-row">
@@ -110,7 +114,9 @@ export default function SemesterWorkspace() {
               </button>
             </div>
             <div className="pd-deadline-list">
-              {upcoming.length === 0 && <p className="pd-muted">No deadlines yet</p>}
+              {upcoming.length === 0 && (
+                <p className="pd-muted">No deadlines yet</p>
+              )}
               {upcoming.map((d) => (
                 <div key={d.id} className="pd-deadline-card">
                   <div>
@@ -124,6 +130,7 @@ export default function SemesterWorkspace() {
             </div>
           </div>
 
+          {/* Syllabuses column */}
           <div className="pd-workspace-column">
             <h3>Syllabuses</h3>
             <div className="pd-field-row">

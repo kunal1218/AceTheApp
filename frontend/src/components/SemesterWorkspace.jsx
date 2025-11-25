@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "./ProductivityDashboard.css";
 import { addCalendarEvents, addDeadline, addSyllabusEntry, getItemById, updateItem } from "../utils/semesters";
-import { uploadSyllabusFile, getCourseSyllabus } from "../api"; // <--- make sure this path is correct
+import { uploadSyllabusFile, getCourseSyllabus, getWorkspaceSyllabus } from "../api"; // <--- make sure this path is correct
 
 export default function SemesterWorkspace() {
   const { id } = useParams();
@@ -46,10 +46,18 @@ export default function SemesterWorkspace() {
   React.useEffect(() => {
     let cancelled = false;
     const hydrateFromDb = async () => {
-      if (!item?.courseId) return;
+      if (!item) return;
       try {
-        const res = await getCourseSyllabus(item.courseId);
-        const rows = res?.data?.syllabus || res?.syllabus || res || [];
+        let rows = [];
+        if (item.courseId) {
+          const res = await getCourseSyllabus(item.courseId);
+          rows = res?.data?.syllabus || res?.syllabus || res?.items || res || [];
+        }
+        if ((!rows || rows.length === 0) && item.title) {
+          const resByWorkspace = await getWorkspaceSyllabus(item.title);
+          const items = resByWorkspace?.items || resByWorkspace?.data || resByWorkspace || [];
+          rows = Array.isArray(items) ? items : [];
+        }
         if (!Array.isArray(rows) || rows.length === 0) return;
         const events = rows
           .filter((row) => row.date)
@@ -74,7 +82,7 @@ export default function SemesterWorkspace() {
     return () => {
       cancelled = true;
     };
-  }, [id, item?.courseId]);
+  }, [id, item?.courseId, item?.title, item?.color]);
 
   const buildCalendarDays = () => {
     const today = new Date();
@@ -126,6 +134,7 @@ export default function SemesterWorkspace() {
       const { syllabusId, syllabus, courseId: returnedCourseId } = await uploadSyllabusFile(file, {
         courseId: item.courseId,
         courseName: item.title,
+        workspaceName: item.title,
       });
       let nextCourseId = item.courseId || returnedCourseId || null;
 

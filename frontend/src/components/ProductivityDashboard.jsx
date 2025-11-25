@@ -114,6 +114,7 @@ export default function ProductivityDashboard() {
         const { syllabusId, syllabus, courseId: returnedCourseId } = await uploadSyllabusFile(u.file, {
           courseId,
           courseName: semesterName.trim(),
+          workspaceName: semesterName.trim(),
         });
         if (!courseId && returnedCourseId) {
           courseId = returnedCourseId;

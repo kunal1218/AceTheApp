@@ -73,6 +73,7 @@ export default function SemesterWizard() {
         const { syllabusId, syllabus, courseId: returnedCourseId } = await uploadSyllabusFile(u.file, {
           courseId,
           courseName: name.trim(),
+          workspaceName: name.trim(),
         });
         if (!courseId && returnedCourseId) {
           courseId = returnedCourseId;

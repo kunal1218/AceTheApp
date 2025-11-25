@@ -342,9 +342,10 @@ export async function uploadSyllabusFile(file, options = {}) {
   formData.append("file", file);
   if (options.courseId) formData.append("courseId", options.courseId);
   if (options.courseName) formData.append("courseName", options.courseName);
+  if (options.workspaceName) formData.append("workspaceName", options.workspaceName);
 
-  const useAuthedEndpoint = Boolean(token) && (options.courseId || options.courseName);
-  const endpoint = useAuthedEndpoint ? `${API_BASE}/syllabi/parse-and-store` : `${API_BASE}/syllabi/parse`;
+  const useAuthedEndpoint = Boolean(token) && (options.courseId || options.courseName || options.workspaceName);
+  const endpoint = useAuthedEndpoint ? `${API_BASE}/api/syllabi/parse-and-store` : `${API_BASE}/api/syllabi/parse`;
 
   const res = await apiFetch(endpoint, {
     method: "POST",
@@ -359,6 +360,17 @@ export async function getCourseSyllabus(courseId) {
   const token = getToken();
   if (!token) return null;
   const res = await apiFetch(`${API_BASE}/courses/${courseId}/syllabus`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 401 || res.status === 403 || res.status === 404) return null;
+  return handleResponse(res, "Failed to fetch syllabus items");
+}
+
+export async function getWorkspaceSyllabus(workspaceName) {
+  const token = getToken();
+  if (!token) return null;
+  const params = new URLSearchParams({ name: workspaceName });
+  const res = await apiFetch(`${API_BASE}/api/syllabi/by-workspace?${params.toString()}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (res.status === 401 || res.status === 403 || res.status === 404) return null;

@@ -38,11 +38,17 @@ router.post("/parse-and-store", requireAuth, upload.single("file"), async (req, 
 
     const courseIdRaw = typeof req.body?.courseId === "string" ? req.body.courseId.trim() : "";
     const courseNameRaw = typeof req.body?.courseName === "string" ? req.body.courseName.trim() : "";
+    const workspaceName = typeof req.body?.workspaceName === "string" ? req.body.workspaceName.trim() : "";
+
+    if (!workspaceName) {
+      return res.status(400).json({ error: "workspaceName is required" });
+    }
 
     const buffer = file.buffer;
     const mimeType = file.mimetype || "application/pdf";
     const syllabus = await parseSyllabusFromBuffer(buffer, mimeType);
     const syllabusId = crypto.randomUUID();
+    const syllabusWithWorkspace = { ...syllabus, "workspace-name": workspaceName };
 
     let courseId = courseIdRaw || null;
 
@@ -54,40 +60,78 @@ router.post("/parse-and-store", requireAuth, upload.single("file"), async (req, 
         return res.status(404).json({ error: "Course not found for this user" });
       }
     } else {
-      const name = courseNameRaw || "Untitled Course";
-      const newCourse = await prisma.course.create({
-        data: {
-          name,
-          userId: req.user!.id
-        }
+      const name = courseNameRaw || workspaceName || "Untitled Course";
+      // Reuse an existing course with the same name for this user if present
+      const existing = await prisma.course.findFirst({
+        where: { name, userId: req.user!.id }
       });
-      courseId = newCourse.id;
+      if (existing) {
+        courseId = existing.id;
+      } else {
+        const newCourse = await prisma.course.create({
+          data: {
+            name,
+            userId: req.user!.id
+          }
+        });
+        courseId = newCourse.id;
+      }
     }
 
     const entries = Array.isArray(syllabus.schedule_entries) ? syllabus.schedule_entries : [];
     const payload = entries.map((entry) => {
       const dt = entry.date ? new Date(entry.date) : null;
       const dateValue = dt && !Number.isNaN(dt.getTime()) ? dt : null;
+      const entryWithWorkspace = { ...entry, "workspace-name": workspaceName };
       return {
         courseId: courseId!,
         title: entry.title || "Lesson",
-        description: entry.details ?? null,
+        description: workspaceName, // tag workspace name for easy lookup
         type: entry.type ?? "lesson",
         date: dateValue,
-        rawText: JSON.stringify(entry)
+        rawText: JSON.stringify(entryWithWorkspace)
       };
     });
 
-    let created = { count: 0 };
-    if (payload.length) {
-      created = await prisma.syllabusItem.createMany({ data: payload });
-    }
+    // Also store one aggregated row with the full syllabus (includes workspace-name)
+    const aggregatedRow = {
+      courseId: courseId!,
+      title: "Syllabus JSON",
+      description: workspaceName,
+      type: "syllabus-json",
+      date: null,
+      rawText: JSON.stringify(syllabusWithWorkspace)
+    };
 
-    return res.json({ courseId, syllabusId, syllabus, createdCount: created.count });
+    let created = { count: 0 };
+    const toInsert = payload.length ? [...payload, aggregatedRow] : [aggregatedRow];
+    created = await prisma.syllabusItem.createMany({ data: toInsert });
+
+    return res.json({ courseId, syllabusId, syllabus: syllabusWithWorkspace, createdCount: created.count });
   } catch (err) {
     console.error("[/api/syllabi/parse-and-store] failed:", err);
     const message = err instanceof Error ? err.message : "Failed to parse and store syllabus";
     return res.status(500).json({ error: "Failed to parse and store syllabus", details: message });
+  }
+});
+
+router.get("/by-workspace", requireAuth, async (req, res) => {
+  try {
+    const name = typeof req.query.name === "string" ? req.query.name.trim() : "";
+    if (!name) {
+      return res.status(400).json({ error: "name is required" });
+    }
+    const items = await prisma.syllabusItem.findMany({
+      where: {
+        description: name,
+        course: { userId: req.user!.id }
+      },
+      orderBy: { date: "asc" }
+    });
+    return res.json({ items });
+  } catch (err) {
+    console.error("[/api/syllabi/by-workspace] failed:", err);
+    return res.status(500).json({ error: "Failed to fetch syllabus items" });
   }
 });
 

@@ -8,6 +8,28 @@
   align-items: center;
   justify-content: center;
 }
+.pd-settings-btn {
+  position: fixed;
+  top: 14px;
+  right: 24px;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+  box-shadow: none;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  z-index: 1000;
+}
+.pd-settings-btn:active {
+  transform: translateY(1px);
+}
 
 .pd-shell {
   max-width: 1100px;

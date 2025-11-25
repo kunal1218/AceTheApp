@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import "./LandingPage.css";
 import "./ProductivityDashboard.css";
 import { CARD_COLORS, addSemester, loadItems, saveItems, updateItem } from "../utils/semesters";
+import settingsIcon from "../assets/settings.png";
+import SettingsMenu from "./SettingsMenu";
 
 const FIRST_PAGE_CAP = 14; // reserve one slot for the + tile on first page
 const TASKS_PER_PAGE = 19;
@@ -21,6 +23,7 @@ export default function ProductivityDashboard() {
   const [page, setPage] = useState(0);
   const [items, setItems] = useState(loadItems());
   const [justUnwrapped, setJustUnwrapped] = useState(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const navigate = useNavigate();
   const dragPreviewRef = useRef(null);
   const semesterFileInputRef = useRef(null);
@@ -161,6 +164,14 @@ export default function ProductivityDashboard() {
 
   return (
     <div className="pd-root">
+      <button
+        className="pd-settings-btn"
+        title="Settings"
+        onClick={() => setSettingsOpen(true)}
+        type="button"
+      >
+        <img src={settingsIcon} alt="Settings" width={24} height={24} />
+      </button>
       <div className="pd-shell">
         <header className="pd-header">
           <div>
@@ -404,6 +415,28 @@ export default function ProductivityDashboard() {
         </div>
       )}
       <div ref={dragPreviewRef} className="pd-drag-preview" />
+      {settingsOpen && (
+        <SettingsMenu
+          onClose={() => setSettingsOpen(false)}
+          onOptions={() => {
+            setSettingsOpen(false);
+            navigate("/settings");
+          }}
+          onEditSurvey={() => {
+            setSettingsOpen(false);
+            navigate("/survey");
+          }}
+          onEditAssignments={() => {
+            setSettingsOpen(false);
+            navigate("/assignments");
+          }}
+          onLogout={() => {
+            localStorage.removeItem("token");
+            setSettingsOpen(false);
+            window.location.href = "/";
+          }}
+        />
+      )}
     </div>
   );
 }

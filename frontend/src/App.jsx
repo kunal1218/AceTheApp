@@ -42,7 +42,6 @@ function App() {
   const counselingAreaPaths = ["/", "/home", "/top-colleges", "/colleges-list", "/affinity-calc"];
   const backgroundlessRoutes = ["/top-colleges", "/affinity-calc"];
   const showBackground = !onCounselingHub && !backgroundlessRoutes.includes(location.pathname);
-  const showDashboardSettings = loggedIn && !onCounselingHub;
 
   useEffect(() => {
     let cancelled = false;
@@ -103,13 +102,6 @@ function App() {
           loggedIn={loggedIn}
           onSettings={() => setSettingsOpen(true)}
         />
-        {showDashboardSettings && (
-          <div className="global-settings-btn">
-            <button title="Settings" onClick={() => setSettingsOpen(true)}>
-              <img src={settingsIcon} alt="Settings" width={24} height={24} />
-            </button>
-          </div>
-        )}
         {loggedIn && counselingAreaPaths.includes(location.pathname) && (
           <BackToDashboardButton />
         )}

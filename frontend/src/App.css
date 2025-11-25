@@ -52,31 +52,6 @@ body {
   user-select: none;
 }
 
-.global-settings-btn {
-  position: fixed;
-  top: 14px;
-  right: 24px;
-  z-index: 11000;
-}
-.global-settings-btn button {
-  background: transparent;
-  border: none;
-  border-radius: 50%;
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: transform 0.1s ease;
-  box-shadow: none;
-  outline: none;
-  -webkit-tap-highlight-color: transparent;
-}
-.global-settings-btn button:active {
-  transform: translateY(1px);
-}
-
 /* Change NProgress bar color */
 #nprogress .bar {
   background: #ffffff !important; /* Use any color you like */

@@ -345,7 +345,10 @@ export async function uploadSyllabusFile(file, options = {}) {
   if (options.workspaceName) formData.append("workspaceName", options.workspaceName);
 
   const useAuthedEndpoint = Boolean(token) && (options.courseId || options.courseName || options.workspaceName);
-  const endpoint = useAuthedEndpoint ? `${API_BASE}/api/syllabi/parse-and-store` : `${API_BASE}/api/syllabi/parse`;
+  const base = API_BASE.replace(/\/$/, "");
+  const wantsApiPrefix = !base.endsWith("/api");
+  const path = useAuthedEndpoint ? "/syllabi/parse-and-store" : "/syllabi/parse";
+  const endpoint = `${base}${wantsApiPrefix ? "/api" : ""}${path}`;
 
   const res = await apiFetch(endpoint, {
     method: "POST",
@@ -359,7 +362,9 @@ export async function uploadSyllabusFile(file, options = {}) {
 export async function getCourseSyllabus(courseId) {
   const token = getToken();
   if (!token) return null;
-  const res = await apiFetch(`${API_BASE}/courses/${courseId}/syllabus`, {
+  const base = API_BASE.replace(/\/$/, "");
+  const root = base.endsWith("/api") ? base.slice(0, -4) : base;
+  const res = await apiFetch(`${root}/courses/${courseId}/syllabus`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (res.status === 401 || res.status === 403 || res.status === 404) return null;
@@ -370,7 +375,9 @@ export async function getWorkspaceSyllabus(workspaceName) {
   const token = getToken();
   if (!token) return null;
   const params = new URLSearchParams({ name: workspaceName });
-  const res = await apiFetch(`${API_BASE}/api/syllabi/by-workspace?${params.toString()}`, {
+  const base = API_BASE.replace(/\/$/, "");
+  const wantsApiPrefix = !base.endsWith("/api");
+  const res = await apiFetch(`${base}${wantsApiPrefix ? "/api" : ""}/syllabi/by-workspace?${params.toString()}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (res.status === 401 || res.status === 403 || res.status === 404) return null;

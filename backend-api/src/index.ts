@@ -27,6 +27,8 @@ app.use('/auth', authRoutes);
 app.use('/subscription', subscriptionRoutes);
 app.use('/courses', requireAuth, requireSubscription, coursesRouter);
 app.use('/api/syllabi', syllabusRouter);
+// backwards-compatible alias (old clients hit /syllabi)
+app.use('/syllabi', syllabusRouter);
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('Unhandled error', err);

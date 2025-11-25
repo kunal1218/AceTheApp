@@ -31,6 +31,7 @@ export default function SemesterWorkspace() {
   const handleAddSyllabus = async () => {
     if (!file) return;
     setIsUploading(true);
+    console.log("[SemesterWorkspace] handleAddSyllabus fired, file =", file);
     console.log("[SemesterWorkspace] uploading syllabus file", file.name);
 
     try {

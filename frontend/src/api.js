@@ -389,10 +389,27 @@ export async function deleteCourse(courseId) {
   if (!token) return null;
   const base = API_BASE.replace(/\/$/, "");
   const root = base.endsWith("/api") ? base.slice(0, -4) : base;
-  const res = await apiFetch(`${root}/courses/${courseId}`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (res.status === 401 || res.status === 403 || res.status === 404) return null;
-  return handleResponse(res, "Failed to delete course");
+  // Prefer syllabus deletion endpoint (auth only), fallback to courses (subscription-gated)
+  const targets = [
+    `${root}/api/syllabi/course/${courseId}`,
+    `${root}/courses/${courseId}`,
+  ];
+  let lastErr = null;
+  for (const url of targets) {
+    try {
+      const res = await apiFetch(url, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.status === 401 || res.status === 403 || res.status === 404) {
+        lastErr = new Error(`Delete failed with status ${res.status}`);
+        continue;
+      }
+      return handleResponse(res, "Failed to delete course");
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  if (lastErr) throw lastErr;
+  return null;
 }

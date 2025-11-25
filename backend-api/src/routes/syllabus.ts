@@ -135,4 +135,22 @@ router.get("/by-workspace", requireAuth, async (req, res) => {
   }
 });
 
+// Delete a course (and cascading syllabus items) for the current user without requiring subscription
+router.delete("/course/:courseId", requireAuth, async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const existing = await prisma.course.findFirst({
+      where: { id: courseId, userId: req.user!.id }
+    });
+    if (!existing) {
+      return res.status(404).json({ error: "Course not found" });
+    }
+    await prisma.course.delete({ where: { id: courseId } });
+    return res.json({ success: true, data: { deleted: true } });
+  } catch (err) {
+    console.error("[/api/syllabi/course/:courseId] failed:", err);
+    return res.status(500).json({ error: "Failed to delete course" });
+  }
+});
+
 export default router;

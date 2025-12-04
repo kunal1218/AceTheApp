@@ -24,8 +24,11 @@ app.get('/health', (_req, res) => {
 });
 
 app.use('/auth', authRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/subscription', subscriptionRoutes);
+app.use('/api/subscription', subscriptionRoutes);
 app.use('/courses', requireAuth, requireSubscription, coursesRouter);
+app.use('/api/courses', requireAuth, requireSubscription, coursesRouter);
 app.use('/api/syllabi', syllabusRouter);
 // backwards-compatible alias (old clients hit /syllabi)
 app.use('/syllabi', syllabusRouter);

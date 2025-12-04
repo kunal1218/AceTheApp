@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "./LandingPage.css";
 import "./ProductivityDashboard.css";
 import { CARD_COLORS, addSemester, loadItems, saveItems, updateItem } from "../utils/semesters";
-import { uploadSyllabusFile, deleteCourse } from "../api";
+import { uploadSyllabusFile, deleteCourse, logout } from "../api";
 import settingsIcon from "../assets/settings.png";
 import SettingsMenu from "./SettingsMenu";
 
@@ -494,9 +494,13 @@ export default function ProductivityDashboard() {
             setSettingsOpen(false);
             navigate("/assignments");
           }}
-          onLogout={() => {
-            localStorage.removeItem("token");
+          onLogout={async () => {
             setSettingsOpen(false);
+            try {
+              await logout();
+            } catch (err) {
+              console.warn("[Dashboard] logout failed", err);
+            }
             window.location.href = "/";
           }}
         />

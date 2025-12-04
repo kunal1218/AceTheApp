@@ -48,6 +48,18 @@ export function getToken() {
   return localStorage.getItem("token");
 }
 
+export async function logout() {
+  setToken(null);
+  try {
+    await apiFetch(`${API_BASE}/auth/signout`, {
+      method: "POST",
+      credentials: "include",
+    });
+  } catch (err) {
+    console.warn("[api] logout failed", err);
+  }
+}
+
 // Helper to wrap fetch with NProgress
 export async function apiFetch(url, options) {
   NProgress.start();

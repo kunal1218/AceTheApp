@@ -9,6 +9,7 @@ import SurveyPage from "./components/SurveyPage";
 import HomeScreenButton from "./components/HomeScreenButton";
 import LandingPage from "./components/LandingPage";
 import ProductivityDashboard from "./components/ProductivityDashboard";
+import WizardGate from "./components/WizardGate";
 import AceOnboarding from "./components/AceOnboarding";
 import CreateAccount from "./components/CreateAccount";
 import LoginPage from "./components/LoginPage";
@@ -18,8 +19,7 @@ import AssignmentsPage from "./components/AssignmentsPage";
 import TopColleges from "./components/TopColleges";
 import CollegeList from "./components/CollegeList";
 import { CollegeProvider } from "./components/CollegeProvider";
-import { getToken } from "./api";
-import { getProfile } from "./api";
+import { getProfile, getToken, logout } from "./api";
 import UserInfoPage from "./components/UserInfoPage";
 import NProgress from 'nprogress';
 import 'nprogress/nprogress.css';
@@ -42,6 +42,7 @@ function App() {
   const counselingAreaPaths = ["/", "/home", "/top-colleges", "/colleges-list", "/affinity-calc"];
   const backgroundlessRoutes = ["/top-colleges", "/affinity-calc"];
   const showBackground = !onCounselingHub && !backgroundlessRoutes.includes(location.pathname);
+  const protect = (node) => (loggedIn ? node : <LandingPage />);
 
   useEffect(() => {
     let cancelled = false;
@@ -77,10 +78,14 @@ function App() {
   }, []);
 
   // Logout handler
-  const handleLogout = () => {
-    localStorage.removeItem("token");
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (err) {
+      console.warn("[App] Failed to log out", err);
+    }
     setLoggedIn(false);
-    navigate("/"); // Redirect to landing page
+    navigate("/", { replace: true }); // Redirect to landing page
   };
 
   // Add handlers for SettingsMenu
@@ -150,8 +155,9 @@ function App() {
           <Route path="/create-account" element={<CreateAccount setLoggedIn={setLoggedIn} />} />
           <Route path="/login" element={<LoginPage setLoggedIn={setLoggedIn} />} />
           <Route path="/survey" element={<SurveyPage />} />
-          <Route path="/dashboard" element={<ProductivityDashboard />} />
-          <Route path="/ace-onboarding" element={<AceOnboarding />} />
+          <Route path="/dashboard" element={protect(<WizardGate />)} />
+          <Route path="/dashboard/main" element={protect(<ProductivityDashboard />)} />
+          <Route path="/ace-onboarding" element={protect(<AceOnboarding />)} />
           {/* Protected routes */}
           <Route path="/semester/new" element={loggedIn ? <SemesterWizard /> : <LandingPage />} />
           <Route path="/semester/:id" element={loggedIn ? <SemesterWorkspace /> : <LandingPage />} />
@@ -173,11 +179,11 @@ function App() {
           <Route path="/colleges-list" element={
             loggedIn ? <CollegeList /> : <LandingPage />
           } />
-          <Route path="/user-info" element={<UserInfoPage />} />
+          <Route path="/user-info" element={protect(<UserInfoPage />)} />
           {/* Add /profile route for Google OAuth redirect, but route to home page */}
           <Route path="/profile" element={<GoogleAuthHandler setLoggedIn={setLoggedIn} />} />
-          <Route path="/subgoals" element={<SubgoalGenerator />} />
-          <Route path="/skill-assessment" element={<SkillAssessment />} />
+          <Route path="/subgoals" element={protect(<SubgoalGenerator />)} />
+          <Route path="/skill-assessment" element={protect(<SkillAssessment />)} />
         </Routes>
       </>
     </CollegeProvider>

@@ -7,8 +7,7 @@ import calculatorIcon from "../assets/calculator-outline.svg";
 import settingsIcon from "../assets/settings.png";
 import SettingsMenu from "./SettingsMenu";
 import EditApplicationsPopup from "./EditApplicationsPopup";
-import { setToken } from "../api"; // <-- Import setToken to clear token on logout
-import { getSurveyAnswers } from "../api"; // Add this import
+import { logout, getSurveyAnswers } from "../api";
 
 
 export default function FloatingNavButtons() {
@@ -42,9 +41,13 @@ export default function FloatingNavButtons() {
     navigate("/assignments");
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setShowSettings(false);
-    setToken(null); // Remove token from localStorage and memory
+    try {
+      await logout();
+    } catch (err) {
+      console.warn("[FloatingNavButtons] logout failed", err);
+    }
     window.location.href = "/";
   };
 

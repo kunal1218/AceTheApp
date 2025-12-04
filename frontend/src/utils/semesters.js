@@ -1,9 +1,10 @@
-const STORAGE_KEY = 'pdSkills';
-
 export const CARD_COLORS = [
   '#6366F1', '#EF4444', '#10B981', '#F59E0B', '#3B82F6',
   '#EC4899', '#8B5CF6', '#14B8A6', '#F97316', '#0EA5E9'
 ];
+
+// In-memory store; no longer persisted to localStorage.
+let memoryItems = [];
 
 const normalizeItems = (raw) => {
   if (!Array.isArray(raw)) return [];
@@ -26,20 +27,10 @@ const normalizeItems = (raw) => {
   });
 };
 
-export const loadItems = () => {
-  if (typeof window === 'undefined') return [];
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-  if (!raw) return [];
-  try {
-    return normalizeItems(JSON.parse(raw));
-  } catch {
-    return [];
-  }
-};
+export const loadItems = () => normalizeItems(memoryItems);
 
 export const saveItems = (items) => {
-  if (typeof window === 'undefined') return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  memoryItems = normalizeItems(items);
 };
 
 export const addSemester = (semester) => {

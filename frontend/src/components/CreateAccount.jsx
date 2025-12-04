@@ -26,6 +26,7 @@ export default function CreateAccount({ setLoggedIn }) {
   // Redirect if already authenticated (e.g., token exists)
   useEffect(() => {
     if (localStorage.getItem("token")) {
+      localStorage.removeItem("wizardGatePassed");
       navigate("/dashboard", { replace: true });
     }
   }, [navigate]);
@@ -90,7 +91,7 @@ export default function CreateAccount({ setLoggedIn }) {
         }
       }
       // -----------------------------------------------
-      navigate("/home", { replace: true });
+      navigate("/dashboard", { replace: true });
     } catch (err) {
       // Show backend error message if available
       if (err && err.message) {

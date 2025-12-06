@@ -46,24 +46,34 @@ function App() {
 
   useEffect(() => {
     let cancelled = false;
-    if (loggedIn) {
-      getProfile()
-        .then(profile => {
-          if (cancelled) return;
-          setUserName(profile?.name || "");
-        })
-        .catch(err => {
-          console.warn("[App] Failed to fetch profile", err);
-          if (cancelled) return;
-          setUserName(""); // fall back to empty so UI can still render
-        });
-    } else {
-      setUserName("");
-    }
+
+    const verifySession = async () => {
+      const token = getToken();
+      if (!loggedIn || !token) {
+        if (!token && loggedIn) {
+          setLoggedIn(false);
+        }
+        setUserName("");
+        return;
+      }
+
+      const profile = await getProfile();
+      if (cancelled) return;
+
+      if (!profile) {
+        await handleLogout();
+        return;
+      }
+
+      setUserName(profile?.name || "");
+    };
+
+    verifySession();
+
     return () => {
       cancelled = true;
     };
-  }, [loggedIn]);
+  }, [loggedIn, location.pathname]);
 
   useEffect(() => {
     const onStorage = () => setLoggedIn(!!localStorage.getItem("token"));

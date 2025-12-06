@@ -141,21 +141,35 @@ export async function getProfile() {
     return getMockUser();
   }
   if (!token) return null;
-  try {
-    const res = await apiFetch(`${API_BASE}/profile/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (res.status === 401 || res.status === 404) return null;
-    if (!res.ok) {
-      const maybeJson = await parseJsonSafe(res);
-      console.warn("[api] getProfile failed", res.status, maybeJson);
+
+  const fetchProfile = async (url, allowFallback) => {
+    try {
+      const res = await apiFetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: "include",
+      });
+
+      if (res.status === 404 && allowFallback) return undefined; // try the next endpoint
+      if (res.status === 401 || res.status === 404) return null;
+      if (!res.ok) {
+        const maybeJson = await parseJsonSafe(res);
+        console.warn(`[api] getProfile failed (${url})`, res.status, maybeJson);
+        return null;
+      }
+      const data = await handleResponse(res, "Failed to fetch profile");
+      return data?.user ?? data?.data?.user ?? data;
+    } catch (err) {
+      console.warn("[api] getProfile error", err);
       return null;
     }
-    return handleResponse(res, "Failed to fetch profile");
-  } catch (err) {
-    console.warn("[api] getProfile error", err);
-    return null;
+  };
+
+  // Prefer the auth-protected endpoint; fall back to the legacy profile route if present
+  let profile = await fetchProfile(`${API_BASE}/auth/me`, true);
+  if (profile === undefined) {
+    profile = await fetchProfile(`${API_BASE}/profile/me`, false);
   }
+  return profile ?? null;
 }
 
 export async function getColleges() {

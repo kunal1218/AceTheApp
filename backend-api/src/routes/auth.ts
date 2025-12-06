@@ -5,6 +5,7 @@ import { prisma } from '../db/prisma';
 import { env } from '../config/env';
 import { cacheUser } from '../redis/client';
 import crypto from 'crypto';
+import { requireAuth } from '../middleware/auth';
 
 const router = Router();
 
@@ -124,6 +125,14 @@ router.post('/signout', (_req: Request, res: Response) => {
     sameSite: 'lax'
   });
   res.json({ success: true, data: { message: 'Signed out' } });
+});
+
+router.get('/me', requireAuth, (req: Request, res: Response) => {
+  if (!req.user) {
+    res.status(401).json({ success: false, error: 'Authentication required' });
+    return;
+  }
+  res.json({ success: true, data: { user: sanitizeUser(req.user) } });
 });
 
 // Google OAuth: redirect to Google's consent screen

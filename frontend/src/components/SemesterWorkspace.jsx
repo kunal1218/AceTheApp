@@ -23,6 +23,7 @@ export default function SemesterWorkspace() {
   const [icsFile, setIcsFile] = useState(null);
   const [icsStatus, setIcsStatus] = useState("");
   const [icsLoading, setIcsLoading] = useState(false);
+  const [icsModalOpen, setIcsModalOpen] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const now = new Date();
     return { year: now.getFullYear(), month: now.getMonth() }; // month is 0-indexed
@@ -252,6 +253,21 @@ export default function SemesterWorkspace() {
     }
   };
 
+  const closeIcsModal = () => {
+    setIcsModalOpen(false);
+    setIcsFile(null);
+    setIcsStatus("");
+  };
+
+  const handleIcsDrop = (e) => {
+    e.preventDefault();
+    const dropped = e.dataTransfer?.files?.[0];
+    if (dropped) {
+      setIcsFile(dropped);
+      setIcsStatus("");
+    }
+  };
+
   if (!item) {
     return (
       <div className="pd-root">
@@ -279,53 +295,44 @@ export default function SemesterWorkspace() {
         </header>
 
         <div className="pd-surface pd-workspace" style={{ borderColor: item.color }}>
-          <div className="pd-tabs">
-            <button
-              className={`pd-tab ${activeTab === "calendar" ? "is-active" : ""}`}
-              onClick={() => setActiveTab("calendar")}
-            >
-              Calendar
-            </button>
-            <button
-              className={`pd-tab ${activeTab === "deadlines" ? "is-active" : ""}`}
-              onClick={() => setActiveTab("deadlines")}
-            >
-              Deadlines
-            </button>
-            <button
-              className={`pd-tab ${activeTab === "syllabi" ? "is-active" : ""}`}
-              onClick={() => setActiveTab("syllabi")}
-            >
-              Syllabi
-            </button>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
+            <div className="pd-tabs">
+              <button
+                className={`pd-tab ${activeTab === "calendar" ? "is-active" : ""}`}
+                onClick={() => setActiveTab("calendar")}
+              >
+                Calendar
+              </button>
+              <button
+                className={`pd-tab ${activeTab === "deadlines" ? "is-active" : ""}`}
+                onClick={() => setActiveTab("deadlines")}
+              >
+                Deadlines
+              </button>
+              <button
+                className={`pd-tab ${activeTab === "syllabi" ? "is-active" : ""}`}
+                onClick={() => setActiveTab("syllabi")}
+              >
+                Syllabi
+              </button>
+            </div>
+            {activeTab === "calendar" && (
+              <button
+                className="ace-btn"
+                type="button"
+                onClick={() => {
+                  setIcsModalOpen(true);
+                  setIcsStatus("");
+                  setIcsFile(null);
+                }}
+              >
+                Sync with Canvas
+              </button>
+            )}
           </div>
 
           {activeTab === "calendar" && (
             <div className="pd-tab-panel">
-              <div className="pd-field-row" style={{ alignItems: "center", gap: "12px", marginBottom: "16px" }}>
-                <div style={{ flex: 1 }}>
-                  <p className="eyebrow">Import Canvas / ICS calendar</p>
-                  <div className="pd-field-row">
-                    <input
-                      type="file"
-                      accept=".ics,text/calendar"
-                      onChange={(e) => {
-                        setIcsFile(e.target.files?.[0] || null);
-                        setIcsStatus("");
-                      }}
-                    />
-                    <button
-                      className="ace-btn"
-                      type="button"
-                      onClick={handleImportIcs}
-                      disabled={!icsFile || icsLoading}
-                    >
-                      {icsLoading ? "Importing..." : "Import ICS"}
-                    </button>
-                  </div>
-                  {icsStatus && <p className="pd-muted" style={{ marginTop: "4px" }}>{icsStatus}</p>}
-                </div>
-              </div>
               {(() => {
                 const cal = buildCalendarDays();
                 return (
@@ -460,6 +467,60 @@ export default function SemesterWorkspace() {
             <div className="pd-modal-actions">
               <button className="ace-btn" type="button" onClick={() => setSelectedEvent(null)}>
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {icsModalOpen && (
+        <div className="pd-modal-backdrop">
+          <div className="pd-modal" role="dialog" aria-modal="true" aria-label="Sync with Canvas">
+            <p className="eyebrow">Sync with Canvas</p>
+            <h2>Import your Canvas / ICS calendar</h2>
+            <p className="pd-muted">
+              In Canvas, open your calendar, click “Calendar Feed / Live Feed”, download the .ics file, then drop it here.
+            </p>
+            <div
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={handleIcsDrop}
+              style={{
+                border: "2px dashed #cbd5e1",
+                borderRadius: "12px",
+                padding: "16px",
+                textAlign: "center",
+                marginTop: "12px",
+                cursor: "pointer",
+              }}
+              onClick={() => document.getElementById("ics-file-input")?.click()}
+            >
+              <input
+                id="ics-file-input"
+                type="file"
+                accept=".ics,text/calendar"
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  setIcsFile(e.target.files?.[0] || null);
+                  setIcsStatus("");
+                }}
+              />
+              {icsFile ? (
+                <p><strong>{icsFile.name}</strong></p>
+              ) : (
+                <p className="pd-muted">Click to browse or drag an .ics file here</p>
+              )}
+            </div>
+            {icsStatus && <p className="pd-muted" style={{ marginTop: "8px" }}>{icsStatus}</p>}
+            <div className="pd-modal-actions" style={{ marginTop: "12px" }}>
+              <button className="ace-btn ghost" type="button" onClick={closeIcsModal} disabled={icsLoading}>
+                Cancel
+              </button>
+              <button
+                className="ace-btn"
+                type="button"
+                onClick={handleImportIcs}
+                disabled={!icsFile || icsLoading}
+              >
+                {icsLoading ? "Importing..." : "Import"}
               </button>
             </div>
           </div>

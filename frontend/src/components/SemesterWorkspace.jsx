@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "./ProductivityDashboard.css";
 import { addCalendarEvents, addDeadline, addSyllabusEntry, getItemById, updateItem } from "../utils/semesters";
-import { uploadSyllabusFile, getCourseSyllabus, getWorkspaceSyllabus } from "../api"; // <--- make sure this path is correct
+import { uploadSyllabusFile, getCourseSyllabus, getWorkspaceSyllabus, getCalendarEvents, importCalendarIcs } from "../api"; // <--- make sure this path is correct
 
 export default function SemesterWorkspace() {
   const { id } = useParams();
@@ -20,6 +20,9 @@ export default function SemesterWorkspace() {
   const [uploadName, setUploadName] = useState("");
   const [file, setFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [icsFile, setIcsFile] = useState(null);
+  const [icsStatus, setIcsStatus] = useState("");
+  const [icsLoading, setIcsLoading] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const now = new Date();
     return { year: now.getFullYear(), month: now.getMonth() }; // month is 0-indexed
@@ -101,6 +104,36 @@ export default function SemesterWorkspace() {
       cancelled = true;
     };
   }, [id, item?.courseId, item?.title, item?.color]);
+
+  const refreshCalendarEvents = React.useCallback(async () => {
+    const current = getItemById(id);
+    if (!current) return;
+    try {
+      const events = await getCalendarEvents();
+      const mapped = Array.isArray(events)
+        ? events
+            .filter((ev) => ev?.dueAt)
+            .map((ev) => ({
+              id: ev.id,
+              date: new Date(ev.dueAt).toISOString().slice(0, 10),
+              title: ev.title || "Event",
+              source: ev.source || "calendar",
+              description: ev.description || "",
+              color: current.color,
+            }))
+        : [];
+      if (mapped.length) {
+        const updated = addCalendarEvents(id, mapped);
+        if (updated) setItem(hydrateItem(updated));
+      }
+    } catch (err) {
+      console.warn("[SemesterWorkspace] Failed to refresh calendar events", err);
+    }
+  }, [id]);
+
+  React.useEffect(() => {
+    refreshCalendarEvents();
+  }, [refreshCalendarEvents]);
 
   const buildCalendarDays = () => {
     const year = calendarMonth.year;
@@ -201,6 +234,24 @@ export default function SemesterWorkspace() {
     }
   };
 
+  const handleImportIcs = async () => {
+    if (!icsFile) return;
+    setIcsLoading(true);
+    setIcsStatus("");
+    try {
+      const result = await importCalendarIcs(icsFile);
+      await refreshCalendarEvents();
+      const imported = result?.imported ?? 0;
+      const updated = result?.updated ?? 0;
+      setIcsStatus(`Imported ${imported} new events, updated ${updated} existing events.`);
+      setIcsFile(null);
+    } catch (err) {
+      setIcsStatus(err.message || "Failed to import ICS file");
+    } finally {
+      setIcsLoading(false);
+    }
+  };
+
   if (!item) {
     return (
       <div className="pd-root">
@@ -251,6 +302,30 @@ export default function SemesterWorkspace() {
 
           {activeTab === "calendar" && (
             <div className="pd-tab-panel">
+              <div className="pd-field-row" style={{ alignItems: "center", gap: "12px", marginBottom: "16px" }}>
+                <div style={{ flex: 1 }}>
+                  <p className="eyebrow">Import Canvas / ICS calendar</p>
+                  <div className="pd-field-row">
+                    <input
+                      type="file"
+                      accept=".ics,text/calendar"
+                      onChange={(e) => {
+                        setIcsFile(e.target.files?.[0] || null);
+                        setIcsStatus("");
+                      }}
+                    />
+                    <button
+                      className="ace-btn"
+                      type="button"
+                      onClick={handleImportIcs}
+                      disabled={!icsFile || icsLoading}
+                    >
+                      {icsLoading ? "Importing..." : "Import ICS"}
+                    </button>
+                  </div>
+                  {icsStatus && <p className="pd-muted" style={{ marginTop: "4px" }}>{icsStatus}</p>}
+                </div>
+              </div>
               {(() => {
                 const cal = buildCalendarDays();
                 return (

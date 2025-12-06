@@ -473,3 +473,36 @@ export async function deleteCourse(courseId) {
   if (lastErr) throw lastErr;
   return null;
 }
+
+export async function importCalendarIcs(file) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+  const base = API_BASE.replace(/\/$/, "");
+  const wantsApiPrefix = !base.endsWith("/api");
+  const url = `${base}${wantsApiPrefix ? "/api" : ""}/calendar/import-ics`;
+  const form = new FormData();
+  form.append("file", file);
+
+  const res = await apiFetch(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+
+  return handleResponse(res, "Failed to import calendar events");
+}
+
+export async function getCalendarEvents() {
+  const token = getToken();
+  if (!token) return [];
+  const base = API_BASE.replace(/\/$/, "");
+  const wantsApiPrefix = !base.endsWith("/api");
+  const url = `${base}${wantsApiPrefix ? "/api" : ""}/calendar/events`;
+
+  const res = await apiFetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 401) return [];
+  const data = await handleResponse(res, "Failed to fetch calendar events");
+  return data?.events ?? data?.data?.events ?? data ?? [];
+}

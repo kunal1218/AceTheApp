@@ -29,6 +29,7 @@ model User {
 
   subscriptions          Subscription[]
   courses                Course[]
+  calendarEvents         CalendarEvent[]
 }
 
 model Subscription {
@@ -72,4 +73,23 @@ model SyllabusItem {
 
   @@index([courseId])
   @@index([date])
+}
+
+model CalendarEvent {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  source      String
+  sourceId    String
+  title       String
+  description String?
+  courseId    String?
+  courseName  String?
+  dueAt       DateTime
+  htmlUrl     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, source, sourceId])
+  @@index([userId, dueAt])
 }

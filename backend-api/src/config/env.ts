@@ -22,7 +22,7 @@ const parseAdminEmails = (raw: string | undefined): string[] =>
   parseCommaList(raw, 'kunaldsingh26@gmail.com').map((email) => email.toLowerCase());
 
 const parseCorsOrigins = (raw: string | undefined): string[] =>
-  parseCommaList(raw, 'http://localhost:3000');
+  parseCommaList(raw, 'http://localhost:3000,https://ace-the-app-navy.vercel.app');
 
 export const env = {
   PORT: parseInt(process.env.PORT ?? '3001', 10),

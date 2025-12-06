@@ -106,15 +106,24 @@ export const addSyllabusEntry = (id, entry) => {
 };
 
 const dedupeCalendarEvents = (existing = [], incoming = []) => {
-  const seen = new Set(existing.map((e) => `${e.date || 'nodate'}|${e.title}`));
-  const merged = [...existing];
+  const index = new Map();
+  existing.forEach((e) => {
+    const key = `${e.date || 'nodate'}|${e.title}`;
+    index.set(key, e);
+  });
+
   for (const ev of incoming) {
     const key = `${ev.date || 'nodate'}|${ev.title}`;
-    if (seen.has(key)) continue;
-    merged.push(ev);
-    seen.add(key);
+    if (index.has(key)) {
+      // Update with any new fields (e.g., color) while preserving original id if missing.
+      const prev = index.get(key);
+      index.set(key, { ...prev, ...ev, id: prev.id || ev.id });
+    } else {
+      index.set(key, ev);
+    }
   }
-  return merged;
+
+  return Array.from(index.values());
 };
 
 export const addCalendarEvents = (id, events) => {

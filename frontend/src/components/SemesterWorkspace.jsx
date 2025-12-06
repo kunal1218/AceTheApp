@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "./ProductivityDashboard.css";
-import { addCalendarEvents, addDeadline, addSyllabusEntry, getItemById, updateItem } from "../utils/semesters";
+import { addCalendarEvents, addDeadline, addSyllabusEntry, getItemById, updateItem, CARD_COLORS } from "../utils/semesters";
 import { uploadSyllabusFile, getCourseSyllabus, getWorkspaceSyllabus, getCalendarEvents, importCalendarIcs } from "../api"; // <--- make sure this path is correct
 
 export default function SemesterWorkspace() {
@@ -109,6 +109,48 @@ export default function SemesterWorkspace() {
   const refreshCalendarEvents = React.useCallback(async () => {
     const current = getItemById(id);
     if (!current) return;
+    const colorMapKey = "ace-course-colors";
+    const loadColorMap = () => {
+      try {
+        const raw = localStorage.getItem(colorMapKey);
+        return raw ? JSON.parse(raw) : {};
+      } catch {
+        return {};
+      }
+    };
+    const saveColorMap = (map) => {
+      try {
+        localStorage.setItem(colorMapKey, JSON.stringify(map));
+      } catch {
+        // ignore storage errors
+      }
+    };
+    const colorMap = loadColorMap();
+    const nextColor = () => {
+      const used = Object.keys(colorMap).length;
+      return CARD_COLORS[used % CARD_COLORS.length];
+    };
+    const getColorForCourse = (courseKey) => {
+      if (!courseKey) return current.color;
+      if (!colorMap[courseKey]) {
+        colorMap[courseKey] = nextColor();
+      }
+      return colorMap[courseKey];
+    };
+
+    const extractCourseKey = (ev) => {
+      if (ev.courseId) return ev.courseId;
+      if (ev.courseName) return ev.courseName;
+      // Try to pull a course code from title like "[FA25 COMPSCI 407 001]"
+      if (ev.title) {
+        const bracketMatch = ev.title.match(/\[([^\]]+)\]/);
+        if (bracketMatch) return bracketMatch[1];
+        const tokens = ev.title.match(/[A-Z]{2,}\s?\d{3,}/);
+        if (tokens && tokens.length) return tokens[0];
+      }
+      return ev.sourceId || ev.title || null;
+    };
+
     try {
       const events = await getCalendarEvents();
       const mapped = Array.isArray(events)
@@ -120,12 +162,13 @@ export default function SemesterWorkspace() {
               title: ev.title || "Event",
               source: ev.source || "calendar",
               description: ev.description || "",
-              color: current.color,
+              color: getColorForCourse(extractCourseKey(ev)),
             }))
         : [];
       if (mapped.length) {
         const updated = addCalendarEvents(id, mapped);
         if (updated) setItem(hydrateItem(updated));
+        saveColorMap(colorMap);
       }
     } catch (err) {
       console.warn("[SemesterWorkspace] Failed to refresh calendar events", err);

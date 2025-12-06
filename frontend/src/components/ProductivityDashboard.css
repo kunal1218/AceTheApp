@@ -1,5 +1,7 @@
 .pd-root {
   min-height: 100vh;
+  max-height: 100vh;
+  overflow-y: auto;
   background: var(--ace-bg);
   padding-top: 32px;
   padding-right: 4vw;

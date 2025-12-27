@@ -16,18 +16,14 @@
 }
 .wg-character {
   position: absolute;
-  background: #1e293b;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 3px 6px rgba(15, 23, 42, 0.25));
+  transform-origin: center;
+  will-change: transform, background-position;
 }
-.wg-face {
-  width: 12px;
-  height: 12px;
-  background: #fbbf24;
-  border-radius: 3px;
+.wg-character--left {
+  transform: scaleX(-1);
 }
 .wg-wizard {
   position: absolute;

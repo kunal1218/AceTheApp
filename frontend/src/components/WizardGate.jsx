@@ -6,7 +6,7 @@ import walkSprite from "../assets/characters/mainChar/WALK.png";
 
 const SPRITE_FRAME_WIDTH = 96;
 const SPRITE_FRAME_HEIGHT = 84;
-const SPRITE_SCALE = 1;
+const SPRITE_SCALE = 25;
 const PLAYER_WIDTH = SPRITE_FRAME_WIDTH * SPRITE_SCALE;
 const PLAYER_HEIGHT = SPRITE_FRAME_HEIGHT * SPRITE_SCALE;
 const WIZARD_SIZE = 30;

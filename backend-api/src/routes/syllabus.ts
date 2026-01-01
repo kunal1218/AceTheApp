@@ -25,7 +25,10 @@ router.post("/parse", upload.single("file"), async (req, res) => {
   } catch (err) {
     console.error("[/api/syllabi/parse] failed:", err);
     const message = err instanceof Error ? err.message : "Failed to parse syllabus";
-    return res.status(500).json({ error: "Failed to parse syllabus", details: message });
+    if (message.includes("Missing GOOGLE_API_KEY")) {
+      return res.status(503).json({ error: "Syllabus parser not configured", details: message });
+    }
+    return res.status(500).json({ error: message, details: message });
   }
 });
 
@@ -120,7 +123,10 @@ router.post("/parse-and-store", requireAuth, upload.single("file"), async (req, 
   } catch (err) {
     console.error("[/api/syllabi/parse-and-store] failed:", err);
     const message = err instanceof Error ? err.message : "Failed to parse and store syllabus";
-    return res.status(500).json({ error: "Failed to parse and store syllabus", details: message });
+    if (message.includes("Missing GOOGLE_API_KEY")) {
+      return res.status(503).json({ error: "Syllabus parser not configured", details: message });
+    }
+    return res.status(500).json({ error: message, details: message });
   }
 });
 

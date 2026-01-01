@@ -1,12 +1,17 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { Syllabus } from "../types/syllabus";
 
-const apiKey = process.env.GOOGLE_API_KEY;
-if (!apiKey) {
-  throw new Error("Missing GOOGLE_API_KEY environment variable.");
-}
+let cachedGenAI: GoogleGenerativeAI | null = null;
 
-const genAI = new GoogleGenerativeAI(apiKey);
+const getGenAI = (): GoogleGenerativeAI => {
+  if (cachedGenAI) return cachedGenAI;
+  const apiKey = process.env.GOOGLE_API_KEY;
+  if (!apiKey) {
+    throw new Error("Missing GOOGLE_API_KEY environment variable.");
+  }
+  cachedGenAI = new GoogleGenerativeAI(apiKey);
+  return cachedGenAI;
+};
 
 /**
  * We only care about:
@@ -108,7 +113,7 @@ function recoverMinimalFromText(rawText: string): MinimalSyllabusCore | null {
 }
 
 async function callMinimalModel(buffer: Buffer, mimeType: string) {
-  const model = genAI.getGenerativeModel({
+  const model = getGenAI().getGenerativeModel({
     model: "gemini-2.0-flash",
     systemInstruction:
       "You are a parser that extracts minimal structured data from a university course syllabus. " +
@@ -145,7 +150,7 @@ async function callMinimalModel(buffer: Buffer, mimeType: string) {
  * into valid MinimalSyllabus JSON.
  */
 async function fixMalformedMinimalSyllabusJSON(badText: string): Promise<string> {
-  const fixerModel = genAI.getGenerativeModel({
+  const fixerModel = getGenAI().getGenerativeModel({
     model: "gemini-2.0-flash",
     systemInstruction:
       "You receive malformed or partially incorrect JSON-like text that is supposed to represent " +

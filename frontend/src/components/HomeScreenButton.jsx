@@ -1,28 +1,19 @@
 import React from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import homeIcon from "../assets/home.png";
 import "./HomeScreenButton.css";
 import { getToken } from "../api"; // Import your token getter
 
 export default function HomeScreenButton() {
   const navigate = useNavigate();
-  const location = useLocation();
 
   const handleClick = () => {
     const token = getToken();
-    const counselingPaths = ["/", "/home", "/top-colleges", "/colleges-list", "/affinity-calc"];
-    const onCounselingArea = counselingPaths.includes(location.pathname);
-
     if (!token) {
       navigate("/");
       return;
     }
-
-    if (onCounselingArea) {
-      navigate("/", { replace: true });
-    } else {
-      navigate("/dashboard", { replace: true });
-    }
+    navigate("/dashboard/main", { replace: true });
   };
 
   return (

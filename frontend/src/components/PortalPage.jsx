@@ -17,6 +17,7 @@ const BRIDGE_THICKNESS = 8;
 const PLAYER_START_OFFSET = 18;
 const MIN_EDGE_PADDING = 24;
 const POPUP_OFFSET = 12;
+const SPECIAL_NODE_COUNT = 4;
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
@@ -190,7 +191,7 @@ export default function PortalPage() {
   }, [portal, lessons.length, cols, rows]);
 
   const layout = useMemo(() => {
-    const edgeGapX = Math.max(PLAYER_WIDTH * 0.6, POINT_SIZE * 2, MIN_EDGE_PADDING);
+    const edgeGapX = Math.max(PLAYER_WIDTH * 0.8, POINT_SIZE * 3, MIN_EDGE_PADDING);
     const edgeGapY = Math.max(PLAYER_HEIGHT * 0.25, POINT_SIZE * 2, MIN_EDGE_PADDING);
     const minX = Math.min(edgeGapX, mapSize.width / 2);
     const maxX = Math.max(mapSize.width - edgeGapX, minX);
@@ -234,7 +235,7 @@ export default function PortalPage() {
   }, [mapSize, path, cols, rows]);
   const specialIndices = useMemo(() => {
     const count = lessons.length;
-    const total = Math.min(4, Math.max(count - 2, 0));
+    const total = Math.min(SPECIAL_NODE_COUNT, Math.max(count - 2, 0));
     const indices = new Set();
     if (!total) return indices;
     const stride = (count - 1) / (total + 1);
@@ -247,6 +248,47 @@ export default function PortalPage() {
     }
     return indices;
   }, [lessons.length]);
+  const activeLessonTitle = lessons[activeIndex]?.title || `Lesson ${activeIndex + 1}`;
+  const isActiveSpecial = specialIndices.has(activeIndex);
+  useLayoutEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.repeat) return;
+      const key = event.key.toLowerCase();
+      const dir =
+        key === "a" || key === "arrowleft" ? "left"
+          : key === "d" || key === "arrowright" ? "right"
+            : key === "w" || key === "arrowup" ? "up"
+              : key === "s" || key === "arrowdown" ? "down"
+                : null;
+      if (!dir) return;
+      if (!layout.points.length) return;
+      event.preventDefault();
+      const currentIndex = selectedIndex;
+      const currentPoint = layout.points[currentIndex] || layout.points[0];
+      let bestIndex = null;
+      let bestDistance = Number.POSITIVE_INFINITY;
+      layout.points.forEach((point, index) => {
+        if (index === currentIndex) return;
+        const dx = point.x - currentPoint.x;
+        const dy = point.y - currentPoint.y;
+        if (dir === "left" && dx >= 0) return;
+        if (dir === "right" && dx <= 0) return;
+        if (dir === "up" && dy >= 0) return;
+        if (dir === "down" && dy <= 0) return;
+        const distance = Math.hypot(dx, dy);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestIndex = index;
+        }
+      });
+      if (bestIndex === null) return;
+      setSelectedIndex(bestIndex);
+      setActiveIndex(bestIndex);
+      setHasSelected(true);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [layout.points, selectedIndex]);
 
   const activePoint = layout.points[selectedIndex] || layout.points[0];
   const playerOffset = hasSelected ? 0 : PLAYER_START_OFFSET;
@@ -279,12 +321,11 @@ export default function PortalPage() {
         <div className="portal-map__card">
           <h1>{portal?.title || "World Map"}</h1>
           <div className="portal-map__meta">
-            <span>{lessons.length} Lessons</span>
-            <span>{specialIndices.size} Special Nodes</span>
+            <span>{isActiveSpecial ? `Special Level: ${activeLessonTitle}` : activeLessonTitle}</span>
           </div>
         </div>
-        <button className="portal-back" type="button" onClick={() => navigate("/dashboard/main")}>
-          Back to Oracle
+        <button className="portal-start" type="button">
+          Start Lesson
         </button>
       </div>
       {layout.bridges.map((bridge) => (
@@ -303,9 +344,10 @@ export default function PortalPage() {
               setHasSelected(true);
               setActiveIndex(index);
             }}
-            aria-label={lessons[index]?.title || `Lesson ${index + 1}`}
+            aria-label={`${isSpecial ? "Special Level: " : ""}${lessons[index]?.title || `Lesson ${index + 1}`}`}
           >
             <span className="portal-node__pulse" />
+            {isSpecial && <span className="portal-node__badge">S</span>}
           </button>
         );
       })}
@@ -315,6 +357,7 @@ export default function PortalPage() {
           className="portal-popup"
           style={{ left: popup.left, top: popup.top - POPUP_OFFSET }}
         >
+          {isActiveSpecial && <span className="portal-popup__tag">Special Level</span>}
           {lessons[activeIndex]?.title || `Lesson ${activeIndex + 1}`}
         </div>
       )}

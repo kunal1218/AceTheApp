@@ -1,5 +1,5 @@
 import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import "./PortalPage.css";
 import { loadItems } from "../utils/semesters";
 import idleSprite from "../assets/characters/mainChar/IDLE.png";
@@ -16,8 +16,10 @@ const POINT_SIZE = 20;
 const BRIDGE_THICKNESS = 8;
 const PLAYER_START_OFFSET = 18;
 const MIN_EDGE_PADDING = 24;
-const POPUP_OFFSET = 12;
 const SPECIAL_NODE_COUNT = 4;
+const HUD_SAFE_WIDTH = 320;
+const HUD_SAFE_HEIGHT = 140;
+const HUD_SAFE_PADDING = 24;
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
@@ -57,7 +59,7 @@ const computeGrid = (count) => {
   return { cols, rows };
 };
 
-const generatePath = (count, cols, rows, rng) => {
+const generatePath = (count, cols, rows, rng, forbidden) => {
   const start = { x: 0, y: rows - 1 };
   const end = { x: cols - 1, y: 0 };
   const path = [start];
@@ -80,7 +82,8 @@ const generatePath = (count, cols, rows, rng) => {
         y: current.y + dir.dy,
       }))
       .filter((pos) => pos.x >= 0 && pos.x < cols && pos.y >= 0 && pos.y < rows)
-      .filter((pos) => manhattan(pos, end) <= remaining - 1);
+      .filter((pos) => manhattan(pos, end) <= remaining - 1)
+      .filter((pos) => !forbidden.has(`${pos.x},${pos.y}`));
 
     if (candidates.length === 0) {
       candidates = directions
@@ -88,7 +91,8 @@ const generatePath = (count, cols, rows, rng) => {
           x: current.x + dir.dx,
           y: current.y + dir.dy,
         }))
-        .filter((pos) => pos.x >= 0 && pos.x < cols && pos.y >= 0 && pos.y < rows);
+        .filter((pos) => pos.x >= 0 && pos.x < cols && pos.y >= 0 && pos.y < rows)
+        .filter((pos) => !forbidden.has(`${pos.x},${pos.y}`));
     }
 
     const weighted = candidates.map((pos) => {
@@ -149,9 +153,10 @@ const normalizeLessons = (portal) => {
 
 export default function PortalPage() {
   const { id } = useParams();
-  const navigate = useNavigate();
   const containerRef = useRef(null);
+  const hudRef = useRef(null);
   const [mapSize, setMapSize] = useState({ width: 0, height: 0 });
+  const [hudSize, setHudSize] = useState({ width: 0, height: 0 });
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [hasSelected, setHasSelected] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -170,33 +175,73 @@ export default function PortalPage() {
       date: "",
     }));
   }, [portal]);
+  const nodeMeta = useMemo(() => {
+    const lessonCount = lessons.length;
+    const specialCount = Math.min(SPECIAL_NODE_COUNT, Math.max(lessonCount - 1, 0));
+    if (!specialCount) {
+      return lessons.map((lesson, index) => ({ type: "lesson", lessonIndex: index, title: lesson.title }));
+    }
+    const insertAfter = new Set();
+    const stride = lessonCount / (specialCount + 1);
+    for (let i = 1; i <= specialCount; i += 1) {
+      let idx = Math.round(stride * i);
+      idx = clamp(idx, 1, lessonCount - 1);
+      while (insertAfter.has(idx) && idx < lessonCount - 1) idx += 1;
+      while (insertAfter.has(idx) && idx > 1) idx -= 1;
+      insertAfter.add(idx);
+    }
+    let filled = insertAfter.size;
+    for (let idx = 1; idx < lessonCount && filled < specialCount; idx += 1) {
+      if (!insertAfter.has(idx)) {
+        insertAfter.add(idx);
+        filled += 1;
+      }
+    }
+    const nodes = [];
+    lessons.forEach((lesson, index) => {
+      nodes.push({ type: "lesson", lessonIndex: index, title: lesson.title });
+      if (insertAfter.has(index + 1)) {
+        nodes.push({ type: "special", lessonIndex: null, title: "Special Level" });
+      }
+    });
+    return nodes;
+  }, [lessons]);
 
   useLayoutEffect(() => {
     const updateSize = () => {
       const rect = containerRef.current?.getBoundingClientRect();
       if (!rect) return;
       setMapSize({ width: rect.width, height: rect.height });
+      const hudRect = hudRef.current?.getBoundingClientRect();
+      if (hudRect) {
+        setHudSize({ width: hudRect.width, height: hudRect.height });
+      }
     };
     updateSize();
     window.addEventListener("resize", updateSize);
     return () => window.removeEventListener("resize", updateSize);
   }, []);
 
-  const { cols, rows } = useMemo(() => computeGrid(lessons.length), [lessons.length]);
+  const { cols, rows } = useMemo(() => computeGrid(nodeMeta.length), [nodeMeta.length]);
 
   const path = useMemo(() => {
-    const seedBase = portal ? `${portal.id}-${portal.title}-${lessons.length}` : `${lessons.length}`;
+    const seedBase = portal ? `${portal.id}-${portal.title}-${nodeMeta.length}` : `${nodeMeta.length}`;
     const rng = seededRandom(hashString(seedBase));
-    return generatePath(lessons.length, cols, rows, rng);
-  }, [portal, lessons.length, cols, rows]);
+    const forbidden = new Set([`${cols - 1},${rows - 1}`]);
+    return generatePath(nodeMeta.length, cols, rows, rng, forbidden);
+  }, [portal, nodeMeta.length, cols, rows]);
 
   const layout = useMemo(() => {
     const edgeGapX = Math.max(PLAYER_WIDTH * 0.8, POINT_SIZE * 3, MIN_EDGE_PADDING);
     const edgeGapY = Math.max(PLAYER_HEIGHT * 0.25, POINT_SIZE * 2, MIN_EDGE_PADDING);
+    const safeWidth = Math.max(hudSize.width, HUD_SAFE_WIDTH);
+    const safeHeight = Math.max(hudSize.height, HUD_SAFE_HEIGHT);
     const minX = Math.min(edgeGapX, mapSize.width / 2);
-    const maxX = Math.max(mapSize.width - edgeGapX, minX);
+    const safeRight = Math.max(mapSize.width - safeWidth - HUD_SAFE_PADDING, minX);
+    const maxX = Math.max(Math.min(mapSize.width - edgeGapX, safeRight), minX);
     const minY = Math.min(edgeGapY, mapSize.height / 2);
-    const maxY = Math.max(mapSize.height - edgeGapY, minY);
+    const safeBottom = Math.max(mapSize.height - safeHeight - HUD_SAFE_PADDING, minY);
+    const maxY = Math.max(Math.min(mapSize.height - edgeGapY, safeBottom), minY);
     const usableWidth = Math.max(maxX - minX, 0);
     const usableHeight = Math.max(maxY - minY, 0);
     const colStep = cols > 1 ? usableWidth / (cols - 1) : 0;
@@ -232,24 +277,11 @@ export default function PortalPage() {
     });
 
     return { points, bridges };
-  }, [mapSize, path, cols, rows]);
-  const specialIndices = useMemo(() => {
-    const count = lessons.length;
-    const total = Math.min(SPECIAL_NODE_COUNT, Math.max(count - 2, 0));
-    const indices = new Set();
-    if (!total) return indices;
-    const stride = (count - 1) / (total + 1);
-    for (let i = 1; i <= total; i += 1) {
-      let idx = Math.round(stride * i);
-      idx = clamp(idx, 1, count - 2);
-      while (indices.has(idx) && idx < count - 2) idx += 1;
-      while (indices.has(idx) && idx > 1) idx -= 1;
-      indices.add(idx);
-    }
-    return indices;
-  }, [lessons.length]);
-  const activeLessonTitle = lessons[activeIndex]?.title || `Lesson ${activeIndex + 1}`;
-  const isActiveSpecial = specialIndices.has(activeIndex);
+  }, [mapSize, hudSize, path, cols, rows]);
+  const activeNode = nodeMeta[activeIndex];
+  const activeLessonTitle = activeNode?.type === "lesson"
+    ? activeNode.title || `Lesson ${activeIndex + 1}`
+    : "Special Level";
   useLayoutEffect(() => {
     const handleKeyDown = (event) => {
       if (event.repeat) return;
@@ -308,20 +340,13 @@ export default function PortalPage() {
     }
     : null;
 
-  const popup = playerStyle && layout.points[activeIndex]
-    ? {
-      left: Number(playerStyle.left) + PLAYER_WIDTH / 2,
-      top: Number(playerStyle.top),
-    }
-    : null;
-
   return (
     <div className="portal-map" ref={containerRef}>
-      <div className="portal-map__hud">
+      <div className="portal-map__hud" ref={hudRef}>
         <div className="portal-map__card">
           <h1>{portal?.title || "World Map"}</h1>
           <div className="portal-map__meta">
-            <span>{isActiveSpecial ? `Special Level: ${activeLessonTitle}` : activeLessonTitle}</span>
+            <span>{activeLessonTitle}</span>
           </div>
         </div>
         <button className="portal-start" type="button">
@@ -332,7 +357,10 @@ export default function PortalPage() {
         <div key={bridge.key} className="portal-bridge" style={bridge} />
       ))}
       {layout.points.map((point, index) => {
-        const isSpecial = specialIndices.has(index);
+        const isSpecial = nodeMeta[index]?.type === "special";
+        const label = nodeMeta[index]?.type === "lesson"
+          ? nodeMeta[index]?.title || `Lesson ${index + 1}`
+          : "Special Level";
         return (
           <button
             key={`node-${index}`}
@@ -344,7 +372,7 @@ export default function PortalPage() {
               setHasSelected(true);
               setActiveIndex(index);
             }}
-            aria-label={`${isSpecial ? "Special Level: " : ""}${lessons[index]?.title || `Lesson ${index + 1}`}`}
+            aria-label={label}
           >
             <span className="portal-node__pulse" />
             {isSpecial && <span className="portal-node__badge">S</span>}
@@ -352,15 +380,6 @@ export default function PortalPage() {
         );
       })}
       {playerStyle && <div className="portal-player" style={playerStyle} />}
-      {popup && (
-        <div
-          className="portal-popup"
-          style={{ left: popup.left, top: popup.top - POPUP_OFFSET }}
-        >
-          {isActiveSpecial && <span className="portal-popup__tag">Special Level</span>}
-          {lessons[activeIndex]?.title || `Lesson ${activeIndex + 1}`}
-        </div>
-      )}
     </div>
   );
 }

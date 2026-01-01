@@ -293,34 +293,32 @@ export default function PortalPage() {
               : key === "s" || key === "arrowdown" ? "down"
                 : null;
       if (!dir) return;
-      if (!layout.points.length) return;
+      if (!path.length) return;
       event.preventDefault();
       const currentIndex = selectedIndex;
-      const currentPoint = layout.points[currentIndex] || layout.points[0];
-      let bestIndex = null;
-      let bestDistance = Number.POSITIVE_INFINITY;
-      layout.points.forEach((point, index) => {
-        if (index === currentIndex) return;
-        const dx = point.x - currentPoint.x;
-        const dy = point.y - currentPoint.y;
-        if (dir === "left" && dx >= 0) return;
-        if (dir === "right" && dx <= 0) return;
-        if (dir === "up" && dy >= 0) return;
-        if (dir === "down" && dy <= 0) return;
-        const distance = Math.hypot(dx, dy);
-        if (distance < bestDistance) {
-          bestDistance = distance;
-          bestIndex = index;
-        }
+      const currentCell = path[currentIndex] || path[0];
+      const neighbors = [];
+      if (currentIndex > 0) neighbors.push(currentIndex - 1);
+      if (currentIndex < path.length - 1) neighbors.push(currentIndex + 1);
+      const nextIndex = neighbors.find((index) => {
+        const cell = path[index];
+        if (!cell || !currentCell) return false;
+        const dx = cell.x - currentCell.x;
+        const dy = cell.y - currentCell.y;
+        if (dir === "left") return dx === -1;
+        if (dir === "right") return dx === 1;
+        if (dir === "up") return dy === -1;
+        if (dir === "down") return dy === 1;
+        return false;
       });
-      if (bestIndex === null) return;
-      setSelectedIndex(bestIndex);
-      setActiveIndex(bestIndex);
+      if (nextIndex == null) return;
+      setSelectedIndex(nextIndex);
+      setActiveIndex(nextIndex);
       setHasSelected(true);
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [layout.points, selectedIndex]);
+  }, [path, selectedIndex]);
 
   const activePoint = layout.points[selectedIndex] || layout.points[0];
   const playerOffset = hasSelected ? 0 : PLAYER_START_OFFSET;

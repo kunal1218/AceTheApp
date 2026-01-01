@@ -4,7 +4,7 @@ import homeIcon from "../assets/home.png";
 import "./HomeScreenButton.css";
 import { getToken } from "../api"; // Import your token getter
 
-export default function HomeScreenButton() {
+export default function HomeScreenButton({ align = "right" }) {
   const navigate = useNavigate();
 
   const handleClick = () => {
@@ -18,7 +18,7 @@ export default function HomeScreenButton() {
 
   return (
     <button
-      className="home-screen-btn"
+      className={`home-screen-btn${align === "left" ? " home-screen-btn--left" : ""}`}
       title="Go Home"
       onClick={handleClick}
     >

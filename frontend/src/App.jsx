@@ -40,6 +40,7 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [userName, setUserName] = useState(null);
   const onCounselingHub = loggedIn && (location.pathname === "/" || location.pathname === "/home");
+  const onLandingPage = !loggedIn && (location.pathname === "/" || location.pathname === "/home");
   const counselingAreaPaths = ["/", "/home", "/top-colleges", "/colleges-list", "/affinity-calc"];
   const backgroundlessRoutes = ["/top-colleges", "/affinity-calc"];
   const showBackground = !onCounselingHub && !backgroundlessRoutes.includes(location.pathname);
@@ -114,6 +115,7 @@ function App() {
     <CollegeProvider>
       <>
         <HomeScreenButton
+          align={onLandingPage ? "left" : "right"}
           onLogout={handleLogout}
           loggedIn={loggedIn}
           onSettings={() => setSettingsOpen(true)}

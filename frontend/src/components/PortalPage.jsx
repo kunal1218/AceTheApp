@@ -353,10 +353,8 @@ export default function PortalPage() {
           <div className="portal-map__meta">
             <span>{activeLessonTitle}</span>
           </div>
+          <div className="portal-map__hint">hit enter to enter level</div>
         </div>
-        <button className="portal-start" type="button">
-          Start Lesson
-        </button>
       </div>
       {layout.bridges.map((bridge) => (
         <div key={bridge.key} className="portal-bridge" style={bridge} />

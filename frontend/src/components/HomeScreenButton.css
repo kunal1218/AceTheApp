@@ -16,6 +16,11 @@
   align-items: center;
   gap: 8px;
 }
+
+.home-screen-btn--left {
+  left: 32px;
+  right: auto;
+}
 .home-screen-btn:hover,
 .home-screen-btn:focus,
 .home-screen-btn:focus-visible {

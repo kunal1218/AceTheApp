@@ -16,6 +16,7 @@ const POINT_SIZE = 20;
 const BRIDGE_THICKNESS = 8;
 const PLAYER_START_OFFSET = 18;
 const MIN_EDGE_PADDING = 24;
+const POPUP_OFFSET = 12;
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
@@ -265,10 +266,10 @@ export default function PortalPage() {
     }
     : null;
 
-  const popup = layout.points[activeIndex]
+  const popup = playerStyle && layout.points[activeIndex]
     ? {
-      left: layout.points[activeIndex].x,
-      top: layout.points[activeIndex].y,
+      left: Number(playerStyle.left) + PLAYER_WIDTH / 2,
+      top: Number(playerStyle.top),
     }
     : null;
 
@@ -313,7 +314,7 @@ export default function PortalPage() {
       {popup && (
         <div
           className="portal-popup"
-          style={{ left: popup.left, top: popup.top - POINT_SIZE - 16 }}
+          style={{ left: popup.left, top: popup.top - POPUP_OFFSET }}
         >
           {lessons[activeIndex]?.title || `Lesson ${activeIndex + 1}`}
         </div>

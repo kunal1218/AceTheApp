@@ -1,7 +1,7 @@
 .home-screen-btn {
   position: fixed;
   top: 12px;
-  left: 32px;
+  right: 32px;
   background: transparent;
   border: none;
   border-radius: 12px;

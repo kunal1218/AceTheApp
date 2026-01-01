@@ -56,14 +56,20 @@ const computeGrid = (count) => {
       break;
     }
   }
+  const distance = (cols - 1) + (rows - 1);
+  if ((distance % 2) !== ((count - 1) % 2) && distance <= count - 2) {
+    if (cols <= rows) {
+      cols += 1;
+    } else {
+      rows += 1;
+    }
+  }
   return { cols, rows };
 };
 
-const generatePath = (count, cols, rows, rng, forbidden) => {
+const generatePath = (count, cols, rows, seedBase, forbidden) => {
   const start = { x: 0, y: rows - 1 };
   const end = { x: cols - 1, y: 0 };
-  const path = [start];
-  const visited = new Set([`${start.x},${start.y}`]);
   const directions = [
     { dx: 1, dy: 0 },
     { dx: -1, dy: 0 },
@@ -73,54 +79,59 @@ const generatePath = (count, cols, rows, rng, forbidden) => {
 
   const manhattan = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 
-  let current = start;
-  for (let step = 0; step < count - 1; step += 1) {
-    const remaining = count - 1 - step;
-    let candidates = directions
-      .map((dir) => ({
-        x: current.x + dir.dx,
-        y: current.y + dir.dy,
-      }))
-      .filter((pos) => pos.x >= 0 && pos.x < cols && pos.y >= 0 && pos.y < rows)
-      .filter((pos) => manhattan(pos, end) <= remaining - 1)
-      .filter((pos) => !forbidden.has(`${pos.x},${pos.y}`));
+  if (count <= 1) return [start];
 
-    if (candidates.length === 0) {
-      candidates = directions
-        .map((dir) => ({
-          x: current.x + dir.dx,
-          y: current.y + dir.dy,
-        }))
-        .filter((pos) => pos.x >= 0 && pos.x < cols && pos.y >= 0 && pos.y < rows)
-        .filter((pos) => !forbidden.has(`${pos.x},${pos.y}`));
+  const shuffle = (items, rng) => {
+    const list = [...items];
+    for (let i = list.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(rng() * (i + 1));
+      [list[i], list[j]] = [list[j], list[i]];
     }
+    return list;
+  };
 
-    const weighted = candidates.map((pos) => {
-      const key = `${pos.x},${pos.y}`;
-      const distDelta = manhattan(current, end) - manhattan(pos, end);
-      let weight = visited.has(key) ? 1 : 3;
-      if (distDelta > 0) weight += 2;
-      if (distDelta === 0) weight += 1;
-      return { pos, weight };
-    });
+  const buildPath = (rng) => {
+    const path = [start];
+    const visited = new Set([`${start.x},${start.y}`]);
+    let expansions = 0;
+    const maxExpansions = cols * rows * 40;
 
-    const totalWeight = weighted.reduce((sum, item) => sum + item.weight, 0);
-    let roll = rng() * totalWeight;
-    let chosen = weighted[0]?.pos ?? current;
-    for (const entry of weighted) {
-      roll -= entry.weight;
-      if (roll <= 0) {
-        chosen = entry.pos;
-        break;
+    const walk = (current) => {
+      if (path.length === count) {
+        return current.x === end.x && current.y === end.y;
       }
-    }
+      if (expansions > maxExpansions) return false;
+      expansions += 1;
+      const remaining = count - path.length;
+      const orderedDirs = shuffle(directions, rng);
+      for (const dir of orderedDirs) {
+        const next = { x: current.x + dir.dx, y: current.y + dir.dy };
+        const key = `${next.x},${next.y}`;
+        if (next.x < 0 || next.x >= cols || next.y < 0 || next.y >= rows) continue;
+        if (forbidden.has(key)) continue;
+        if (visited.has(key)) continue;
+        if (manhattan(next, end) > remaining - 1) continue;
+        visited.add(key);
+        path.push(next);
+        if (walk(next)) return true;
+        path.pop();
+        visited.delete(key);
+      }
+      return false;
+    };
 
-    current = chosen;
-    path.push(current);
-    visited.add(`${current.x},${current.y}`);
+    return walk(start) ? path : null;
+  };
+
+  const maxAttempts = 12;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const rng = seededRandom(hashString(`${seedBase}-${attempt}`));
+    const path = buildPath(rng);
+    if (path) return path;
   }
 
-  return path;
+  const fallbackRng = seededRandom(hashString(`${seedBase}-fallback`));
+  return buildPath(fallbackRng) || [start];
 };
 
 const normalizeLessons = (portal) => {
@@ -226,9 +237,8 @@ export default function PortalPage() {
 
   const path = useMemo(() => {
     const seedBase = portal ? `${portal.id}-${portal.title}-${nodeMeta.length}` : `${nodeMeta.length}`;
-    const rng = seededRandom(hashString(seedBase));
     const forbidden = new Set([`${cols - 1},${rows - 1}`]);
-    return generatePath(nodeMeta.length, cols, rows, rng, forbidden);
+    return generatePath(nodeMeta.length, cols, rows, seedBase, forbidden);
   }, [portal, nodeMeta.length, cols, rows]);
 
   const layout = useMemo(() => {

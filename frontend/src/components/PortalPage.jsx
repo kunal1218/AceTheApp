@@ -15,6 +15,7 @@ const PLAYER_FOOT_OFFSET = PLAYER_FOOT_PADDING * PLAYER_SCALE;
 const POINT_SIZE = 20;
 const BRIDGE_THICKNESS = 8;
 const PLAYER_START_OFFSET = 18;
+const MIN_EDGE_PADDING = 24;
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
@@ -188,14 +189,19 @@ export default function PortalPage() {
   }, [portal, lessons.length, cols, rows]);
 
   const layout = useMemo(() => {
-    const padding = Math.min(80, Math.max(40, Math.min(mapSize.width, mapSize.height) * 0.1));
-    const usableWidth = Math.max(mapSize.width - padding * 2, 0);
-    const usableHeight = Math.max(mapSize.height - padding * 2, 0);
+    const edgeGapX = Math.max(PLAYER_WIDTH * 0.6, POINT_SIZE * 2, MIN_EDGE_PADDING);
+    const edgeGapY = Math.max(PLAYER_HEIGHT * 0.25, POINT_SIZE * 2, MIN_EDGE_PADDING);
+    const minX = Math.min(edgeGapX, mapSize.width / 2);
+    const maxX = Math.max(mapSize.width - edgeGapX, minX);
+    const minY = Math.min(edgeGapY, mapSize.height / 2);
+    const maxY = Math.max(mapSize.height - edgeGapY, minY);
+    const usableWidth = Math.max(maxX - minX, 0);
+    const usableHeight = Math.max(maxY - minY, 0);
     const colStep = cols > 1 ? usableWidth / (cols - 1) : 0;
     const rowStep = rows > 1 ? usableHeight / (rows - 1) : 0;
     const points = path.map((point) => ({
-      x: padding + point.x * colStep,
-      y: padding + point.y * rowStep,
+      x: clamp(minX + point.x * colStep, minX, maxX),
+      y: clamp(minY + point.y * rowStep, minY, maxY),
     }));
 
     const bridges = points.slice(0, -1).map((point, index) => {
@@ -225,6 +231,21 @@ export default function PortalPage() {
 
     return { points, bridges };
   }, [mapSize, path, cols, rows]);
+  const specialIndices = useMemo(() => {
+    const count = lessons.length;
+    const total = Math.min(4, Math.max(count - 2, 0));
+    const indices = new Set();
+    if (!total) return indices;
+    const stride = (count - 1) / (total + 1);
+    for (let i = 1; i <= total; i += 1) {
+      let idx = Math.round(stride * i);
+      idx = clamp(idx, 1, count - 2);
+      while (indices.has(idx) && idx < count - 2) idx += 1;
+      while (indices.has(idx) && idx > 1) idx -= 1;
+      indices.add(idx);
+    }
+    return indices;
+  }, [lessons.length]);
 
   const activePoint = layout.points[selectedIndex] || layout.points[0];
   const playerOffset = hasSelected ? 0 : PLAYER_START_OFFSET;
@@ -253,9 +274,15 @@ export default function PortalPage() {
 
   return (
     <div className="portal-map" ref={containerRef}>
-      <div className="portal-map__title">
-        <span className="eyebrow">Course Map</span>
-        <h1>{portal?.title || "World Map"}</h1>
+      <div className="portal-map__hud">
+        <div className="portal-map__card">
+          <span className="eyebrow">Course Map</span>
+          <h1>{portal?.title || "World Map"}</h1>
+          <div className="portal-map__meta">
+            <span>{lessons.length} Lessons</span>
+            <span>{specialIndices.size} Special Nodes</span>
+          </div>
+        </div>
         <button className="portal-back" type="button" onClick={() => navigate("/dashboard/main")}>
           Back to Oracle
         </button>
@@ -263,22 +290,25 @@ export default function PortalPage() {
       {layout.bridges.map((bridge) => (
         <div key={bridge.key} className="portal-bridge" style={bridge} />
       ))}
-      {layout.points.map((point, index) => (
-        <button
-          key={`node-${index}`}
-          type="button"
-          className={`portal-node${index === selectedIndex ? " portal-node--active" : ""}`}
-          style={{ left: point.x - POINT_SIZE / 2, top: point.y - POINT_SIZE / 2 }}
-          onClick={() => {
-            setSelectedIndex(index);
-            setHasSelected(true);
-            setActiveIndex(index);
-          }}
-          aria-label={lessons[index]?.title || `Lesson ${index + 1}`}
-        >
-          <span className="portal-node__pulse" />
-        </button>
-      ))}
+      {layout.points.map((point, index) => {
+        const isSpecial = specialIndices.has(index);
+        return (
+          <button
+            key={`node-${index}`}
+            type="button"
+            className={`portal-node${index === selectedIndex ? " portal-node--active" : ""}${isSpecial ? " portal-node--special" : ""}`}
+            style={{ left: point.x - POINT_SIZE / 2, top: point.y - POINT_SIZE / 2 }}
+            onClick={() => {
+              setSelectedIndex(index);
+              setHasSelected(true);
+              setActiveIndex(index);
+            }}
+            aria-label={lessons[index]?.title || `Lesson ${index + 1}`}
+          >
+            <span className="portal-node__pulse" />
+          </button>
+        );
+      })}
       {playerStyle && <div className="portal-player" style={playerStyle} />}
       {popup && (
         <div

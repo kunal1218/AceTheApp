@@ -14,41 +14,65 @@
   color: #0f172a;
 }
 
-.portal-map__title {
+.portal-map__hud {
   position: absolute;
-  top: 24px;
-  left: 24px;
-  z-index: 5;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  border-radius: 20px;
+  background: rgba(15, 23, 42, 0.88);
+  color: #f8fafc;
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.3);
+  max-width: min(920px, 94vw);
+  width: max-content;
+  flex-wrap: wrap;
 }
 
-.portal-map__title h1 {
+.portal-map__card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.portal-map__card h1 {
   margin: 0;
-  font-size: clamp(1.6rem, 2.6vw, 2.4rem);
+  font-size: clamp(1.4rem, 2.4vw, 2.2rem);
   font-weight: 700;
+}
+
+.portal-map__meta {
+  display: flex;
+  gap: 14px;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: rgba(226, 232, 240, 0.78);
+  font-family: "Press Start 2P", "Courier New", monospace;
 }
 
 .eyebrow {
   text-transform: uppercase;
   letter-spacing: 0.18em;
   font-size: 0.7rem;
-  color: #4f46e5;
+  color: #fbbf24;
   font-family: "Press Start 2P", "Courier New", monospace;
 }
 
 .portal-back {
-  margin-top: 8px;
   align-self: flex-start;
-  background: rgba(15, 23, 42, 0.85);
-  color: #f8fafc;
+  background: #fbbf24;
+  color: #1f2937;
   border: none;
   border-radius: 999px;
-  padding: 8px 14px;
+  padding: 10px 16px;
   font-size: 0.75rem;
   cursor: pointer;
   font-family: "Press Start 2P", "Courier New", monospace;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.25);
 }
 
 .portal-bridge {
@@ -80,6 +104,12 @@
 .portal-node--active {
   border-color: #38bdf8;
   box-shadow: 0 0 18px rgba(56, 189, 248, 0.6);
+}
+
+.portal-node--special {
+  border-color: #34d399;
+  background: radial-gradient(circle at 30% 30%, #bbf7d0, #34d399 55%, #166534 100%);
+  box-shadow: 0 0 16px rgba(52, 211, 153, 0.55);
 }
 
 .portal-node__pulse {
@@ -121,9 +151,14 @@
 }
 
 @media (max-width: 768px) {
-  .portal-map__title {
-    top: 16px;
-    left: 16px;
+  .portal-map__hud {
+    top: 14px;
+    padding: 10px 12px;
+  }
+
+  .portal-map__meta {
+    font-size: 0.68rem;
+    flex-wrap: wrap;
   }
 
   .portal-node {

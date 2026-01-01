@@ -277,7 +277,6 @@ export default function PortalPage() {
     <div className="portal-map" ref={containerRef}>
       <div className="portal-map__hud">
         <div className="portal-map__card">
-          <span className="eyebrow">Course Map</span>
           <h1>{portal?.title || "World Map"}</h1>
           <div className="portal-map__meta">
             <span>{lessons.length} Lessons</span>

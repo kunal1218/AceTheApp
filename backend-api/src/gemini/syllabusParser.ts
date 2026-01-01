@@ -112,6 +112,131 @@ function recoverMinimalFromText(rawText: string): MinimalSyllabusCore | null {
   };
 }
 
+const MONTHS: Record<string, number> = {
+  jan: 1,
+  january: 1,
+  feb: 2,
+  february: 2,
+  mar: 3,
+  march: 3,
+  apr: 4,
+  april: 4,
+  may: 5,
+  jun: 6,
+  june: 6,
+  jul: 7,
+  july: 7,
+  aug: 8,
+  august: 8,
+  sep: 9,
+  sept: 9,
+  september: 9,
+  oct: 10,
+  october: 10,
+  nov: 11,
+  november: 11,
+  dec: 12,
+  december: 12,
+};
+
+const pad2 = (value: number) => value.toString().padStart(2, "0");
+
+const normalizeDate = (year: number | null, month: number, day: number): string | null => {
+  if (!year) return null;
+  const safeYear = year < 100 ? 2000 + year : year;
+  const date = new Date(Date.UTC(safeYear, month - 1, day));
+  if (Number.isNaN(date.getTime())) return null;
+  const normalized = `${safeYear}-${pad2(month)}-${pad2(day)}`;
+  return normalized;
+};
+
+const parseDateFromLine = (line: string): { raw: string; normalized: string | null } | null => {
+  const isoMatch = line.match(/\b(20\d{2})-(\d{1,2})-(\d{1,2})\b/);
+  if (isoMatch) {
+    const year = Number(isoMatch[1]);
+    const month = Number(isoMatch[2]);
+    const day = Number(isoMatch[3]);
+    return { raw: isoMatch[0], normalized: normalizeDate(year, month, day) };
+  }
+
+  const slashMatch = line.match(/\b(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?\b/);
+  if (slashMatch) {
+    const month = Number(slashMatch[1]);
+    const day = Number(slashMatch[2]);
+    const year = slashMatch[3] ? Number(slashMatch[3]) : null;
+    return { raw: slashMatch[0], normalized: normalizeDate(year, month, day) };
+  }
+
+  const monthMatch = line.match(/\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+(\d{1,2})(?:,\s*(\d{2,4}))?\b/i);
+  if (monthMatch) {
+    const monthName = monthMatch[1].toLowerCase();
+    const month = MONTHS[monthName] ?? null;
+    const day = Number(monthMatch[2]);
+    const year = monthMatch[3] ? Number(monthMatch[3]) : null;
+    if (month) {
+      return { raw: monthMatch[0], normalized: normalizeDate(year, month, day) };
+    }
+  }
+
+  return null;
+};
+
+const extractScheduleEntriesFromText = (
+  text: string
+): MinimalSyllabusCore["schedule_entries"] => {
+  const schedule: MinimalSyllabusCore["schedule_entries"] = [];
+  if (!text) return schedule;
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const seen = new Set<string>();
+  for (const line of lines) {
+    const match = parseDateFromLine(line);
+    if (!match) continue;
+    const title = line
+      .replace(match.raw, "")
+      .replace(/^[\s:–-]+|[\s:–-]+$/g, "")
+      .trim();
+    const safeTitle = title || "Class Session";
+    if (safeTitle.toLowerCase() === "date") continue;
+    const key = `${match.normalized || match.raw}|${safeTitle}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    schedule.push({ date: match.normalized, title: safeTitle });
+    if (schedule.length >= 200) break;
+  }
+  return schedule;
+};
+
+const looksLikePdf = (buffer: Buffer, mimeType: string) =>
+  mimeType.toLowerCase().includes("pdf") || buffer.slice(0, 4).toString() === "%PDF";
+
+const parseMinimalFromBuffer = async (
+  buffer: Buffer,
+  mimeType: string
+): Promise<MinimalSyllabusCore> => {
+  let text = "";
+  if (looksLikePdf(buffer, mimeType)) {
+    try {
+      const pdfParse = (await import("pdf-parse")).default as (data: Buffer) => Promise<{ text?: string }>;
+      const data = await pdfParse(buffer);
+      text = data.text ?? "";
+    } catch (err) {
+      console.warn("[parseSyllabusFromBuffer] Local PDF parse failed:", err);
+      text = "";
+    }
+  } else {
+    text = buffer.toString("utf8");
+  }
+
+  return {
+    course_code: null,
+    course_title: null,
+    schedule_entries: extractScheduleEntriesFromText(text),
+  };
+};
+
 async function callMinimalModel(buffer: Buffer, mimeType: string) {
   const model = getGenAI().getGenerativeModel({
     model: "gemini-2.0-flash",
@@ -189,7 +314,39 @@ export async function parseSyllabusFromBuffer(
   mimeType: string = "application/pdf"
 ): Promise<Syllabus> {
   console.log("[parseSyllabusFromBuffer] Calling Gemini minimal prompt…");
-  const raw = await callMinimalModel(buffer, mimeType);
+  let raw = "";
+  try {
+    raw = await callMinimalModel(buffer, mimeType);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn("[parseSyllabusFromBuffer] Gemini failed, falling back to local parse:", message);
+    const localMinimal = await parseMinimalFromBuffer(buffer, mimeType);
+    const fallbackSyllabus: Syllabus = {
+      course_code: localMinimal.course_code,
+      course_title: localMinimal.course_title,
+      term: null,
+      instructor_name: null,
+      instructor_email: null,
+      meeting_times: null,
+      location: null,
+      office_hours: null,
+      description: null,
+      grading_breakdown: [],
+      major_assignments: [],
+      policies: {
+        late_work: null,
+        attendance: null,
+        academic_integrity: null
+      },
+      schedule_entries: localMinimal.schedule_entries.map((entry) => ({
+        date: entry.date,
+        title: entry.title,
+        type: "lesson",
+        details: null
+      }))
+    };
+    return fallbackSyllabus;
+  }
   console.log("[parseSyllabusFromBuffer] Got raw minimal response from Gemini.");
   let cleaned = sanitizeGeminiJSON(raw);
 

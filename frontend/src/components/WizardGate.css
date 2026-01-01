@@ -33,17 +33,6 @@
 .wg-ace {
   pointer-events: none;
 }
-.wg-wizard {
-  position: absolute;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  font-size: 24px;
-  transition: transform 0.1s ease;
-}
-.wg-wizard:hover {
-  transform: scale(1.08);
-}
 .wg-dialogue {
   position: absolute;
   left: 50%;

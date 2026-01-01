@@ -1,18 +1,66 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "./LandingPage.css";
 import "./ProductivityDashboard.css";
-import { CARD_COLORS, addSemester, loadItems, saveItems, updateItem } from "../utils/semesters";
-import { uploadSyllabusFile, deleteCourse, logout } from "../api";
-import settingsIcon from "../assets/settings.png";
-import SettingsMenu from "./SettingsMenu";
+import { CARD_COLORS, addSemester, loadItems, saveItems } from "../utils/semesters";
+import { uploadSyllabusFile, deleteCourse } from "../api";
+import idleSprite from "../assets/characters/mainChar/IDLE.png";
+import walkSprite from "../assets/characters/mainChar/WALK.png";
+import runSprite from "../assets/characters/mainChar/RUN.png";
+import jumpSprite from "../assets/characters/mainChar/JUMP.png";
+import oracleSheet from "../assets/characters/Oracle/SPRITE_SHEET.png";
+import oraclePortrait from "../assets/characters/Oracle/SPRITE_PORTRAIT.png";
 
-const FIRST_PAGE_CAP = 14; // reserve one slot for the + tile on first page
-const TASKS_PER_PAGE = 19;
+const PLAYER_FRAME_WIDTH = 96;
+const PLAYER_FRAME_HEIGHT = 84;
+const PLAYER_SCALE = 3.2;
+const PLAYER_WIDTH = PLAYER_FRAME_WIDTH * PLAYER_SCALE;
+const PLAYER_HEIGHT = PLAYER_FRAME_HEIGHT * PLAYER_SCALE;
+const PLAYER_FOOT_PADDING = 22;
+const PLAYER_FOOT_OFFSET = PLAYER_FOOT_PADDING * PLAYER_SCALE;
+const PLAYER_WALK_SPEED = 220;
+const PLAYER_RUN_SPEED = 360;
+const RUN_TRIGGER_MS = 600;
+const RUN_RAMP_MS = 250;
+const JUMP_DURATION_MS = 650;
+const JUMP_HEIGHT = 90;
+
+const ORACLE_FRAME_WIDTH = 32;
+const ORACLE_FRAME_HEIGHT = 32;
+const ORACLE_SHEET_COLUMNS = 10;
+const ORACLE_SHEET_ROWS = 11;
+const ORACLE_SCALE = 6;
+const ORACLE_WIDTH = ORACLE_FRAME_WIDTH * ORACLE_SCALE;
+const ORACLE_HEIGHT = ORACLE_FRAME_HEIGHT * ORACLE_SCALE;
+const ORACLE_GROUND_OFFSET = 30;
+const ORACLE_INTERACT_DISTANCE = 120;
+const ORACLE_IDLE_FRAMES = 6;
+const ORACLE_IDLE_FPS = 6;
+
+const PORTAL_WIDTH = 72;
+const PORTAL_HEIGHT = 96;
+const PORTAL_SPACING = 140;
+const PORTAL_GROUND_OFFSET = 6;
+
+const PLAYER_SPRITES = {
+  idle: { src: idleSprite, frames: 7, fps: 6 },
+  walk: { src: walkSprite, frames: 8, fps: 10 },
+  run: { src: runSprite, frames: 8, fps: 12 },
+  jump: { src: jumpSprite, frames: 5, fps: 10 },
+};
+
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+const getItemTimestamp = (item) => {
+  if (item?.createdAt) {
+    const parsed = Date.parse(item.createdAt);
+    if (!Number.isNaN(parsed)) return parsed;
+  }
+  const asNumber = Number(item?.id);
+  return Number.isNaN(asNumber) ? 0 : asNumber;
+};
 
 export default function ProductivityDashboard() {
   const [composerOpen, setComposerOpen] = useState(false);
-  const [choiceOpen, setChoiceOpen] = useState(false);
   const [idea, setIdea] = useState("");
   const [selectedColor, setSelectedColor] = useState(CARD_COLORS[0]);
   const [semesterComposerOpen, setSemesterComposerOpen] = useState(false);
@@ -20,20 +68,197 @@ export default function ProductivityDashboard() {
   const [semesterColor, setSemesterColor] = useState(CARD_COLORS[0]);
   const [semesterUploads, setSemesterUploads] = useState([]);
   const [semesterError, setSemesterError] = useState("");
-  const [draggingId, setDraggingId] = useState(null);
-  const [page, setPage] = useState(0);
   const [items, setItems] = useState(loadItems());
-  const [justUnwrapped, setJustUnwrapped] = useState(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [uploadFlash, setUploadFlash] = useState(false);
   const [semesterIsUploading, setSemesterIsUploading] = useState(false);
+  const [oracleOpen, setOracleOpen] = useState(false);
+  const [portalDeleteMode, setPortalDeleteMode] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const [arena, setArena] = useState({ width: 0, height: 0, groundY: 0 });
+  const [player, setPlayer] = useState({ x: 0, y: 0 });
+  const [, setAnimationTick] = useState(0);
   const navigate = useNavigate();
-  const dragPreviewRef = useRef(null);
+  const containerRef = useRef(null);
+  const playerRef = useRef(player);
+  const heldKeys = useRef(new Set());
+  const lastTick = useRef(performance.now());
+  const animationRef = useRef({
+    name: "idle",
+    frame: 0,
+    lastFrameTime: performance.now(),
+  });
+  const jumpRef = useRef({
+    active: false,
+    startTime: 0,
+  });
+  const runHold = useRef({ start: null, direction: 0 });
+  const oracleAnimRef = useRef({
+    frame: 0,
+    lastFrameTime: performance.now(),
+  });
+  const facingRef = useRef("right");
+  const initialPlacementRef = useRef(false);
   const semesterFileInputRef = useRef(null);
 
   useEffect(() => {
     saveItems(items);
   }, [items]);
+
+  useLayoutEffect(() => {
+    const updateBounds = () => {
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (!rect || rect.width === 0 || rect.height === 0) return;
+      const minGroundY = Math.max(PLAYER_HEIGHT - PLAYER_FOOT_OFFSET, ORACLE_HEIGHT);
+      const groundY = clamp(rect.height * 0.65, minGroundY, rect.height - 24);
+      setArena({ width: rect.width, height: rect.height, groundY });
+    };
+    updateBounds();
+    window.addEventListener("resize", updateBounds);
+    return () => window.removeEventListener("resize", updateBounds);
+  }, []);
+
+  useEffect(() => {
+    if (!arena.width || !arena.height) return;
+    const playerY = arena.groundY - PLAYER_HEIGHT + PLAYER_FOOT_OFFSET;
+    const startX = clamp(arena.width * 0.25, 0, arena.width - PLAYER_WIDTH);
+    const nextX = initialPlacementRef.current
+      ? clamp(playerRef.current.x, 0, arena.width - PLAYER_WIDTH)
+      : startX;
+    const nextPlayer = { x: nextX, y: playerY };
+    initialPlacementRef.current = true;
+    playerRef.current = nextPlayer;
+    setPlayer(nextPlayer);
+  }, [arena]);
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.repeat) return;
+      if (event.target instanceof HTMLElement) {
+        const tag = event.target.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA") return;
+      }
+      const key = event.key.toLowerCase();
+      if (event.code === "Space" || event.key === " " || event.key === "Spacebar") {
+        event.preventDefault();
+        if (!jumpRef.current.active) {
+          const jumpStart = performance.now();
+          jumpRef.current = { active: true, startTime: jumpStart };
+          animationRef.current = { name: "jump", frame: 0, lastFrameTime: jumpStart };
+          setAnimationTick((prev) => prev + 1);
+        }
+        return;
+      }
+      if (key === "w" || key === "arrowup") {
+        if (!jumpRef.current.active) {
+          const jumpStart = performance.now();
+          jumpRef.current = { active: true, startTime: jumpStart };
+          animationRef.current = { name: "jump", frame: 0, lastFrameTime: jumpStart };
+          setAnimationTick((prev) => prev + 1);
+        }
+        return;
+      }
+      if (key === "a" || key === "arrowleft" || key === "d" || key === "arrowright") {
+        heldKeys.current.add(key);
+      }
+      if (key === "escape") {
+        setOracleOpen(false);
+        setPortalDeleteMode(false);
+        setPendingDelete(null);
+      }
+    };
+
+    const handleKeyUp = (event) => {
+      const key = event.key.toLowerCase();
+      heldKeys.current.delete(key);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, []);
+
+  useEffect(() => {
+    let frameId;
+    const tick = (now) => {
+      const dt = Math.min((now - lastTick.current) / 1000, 0.05);
+      lastTick.current = now;
+      if (arena.width > 0) {
+        const movingLeft = heldKeys.current.has("a") || heldKeys.current.has("arrowleft");
+        const movingRight = heldKeys.current.has("d") || heldKeys.current.has("arrowright");
+        const moveX = (movingRight ? 1 : 0) - (movingLeft ? 1 : 0);
+        let nextX = playerRef.current.x;
+        let runRamp = 0;
+        if (moveX !== 0) {
+          if (runHold.current.start === null || runHold.current.direction !== moveX) {
+            runHold.current = { start: now, direction: moveX };
+          }
+          const runHeldMs = runHold.current.start ? now - runHold.current.start : 0;
+          runRamp = runHeldMs > RUN_TRIGGER_MS
+            ? Math.min((runHeldMs - RUN_TRIGGER_MS) / RUN_RAMP_MS, 1)
+            : 0;
+          const speed = PLAYER_WALK_SPEED + runRamp * (PLAYER_RUN_SPEED - PLAYER_WALK_SPEED);
+          nextX += moveX * speed * dt;
+          facingRef.current = moveX < 0 ? "left" : "right";
+        } else {
+          runHold.current = { start: null, direction: 0 };
+        }
+        nextX = clamp(nextX, 0, arena.width - PLAYER_WIDTH);
+        const playerY = arena.groundY - PLAYER_HEIGHT + PLAYER_FOOT_OFFSET;
+        let nextPlayerY = playerY;
+        const jump = jumpRef.current;
+        if (jump.active) {
+          const jumpElapsed = now - jump.startTime;
+          if (jumpElapsed >= JUMP_DURATION_MS) {
+            jump.active = false;
+            jump.startTime = 0;
+          } else {
+            const t = jumpElapsed / JUMP_DURATION_MS;
+            const jumpOffset = 4 * t * (1 - t) * JUMP_HEIGHT;
+            nextPlayerY = playerY - jumpOffset;
+          }
+        }
+        const nextPlayer = { x: nextX, y: nextPlayerY };
+        if (
+          Math.abs(nextPlayer.x - playerRef.current.x) > 0.1
+          || Math.abs(nextPlayer.y - playerRef.current.y) > 0.1
+        ) {
+          playerRef.current = nextPlayer;
+          setPlayer(nextPlayer);
+        }
+        const nextAnimation = jumpRef.current.active
+          ? "jump"
+          : (moveX !== 0 ? (runRamp > 0 ? "run" : "walk") : "idle");
+        const anim = animationRef.current;
+        if (anim.name !== nextAnimation) {
+          anim.name = nextAnimation;
+          anim.frame = 0;
+          anim.lastFrameTime = now;
+        }
+        const sprite = PLAYER_SPRITES[anim.name];
+        const frameDuration = 1000 / sprite.fps;
+        if (now - anim.lastFrameTime >= frameDuration) {
+          const framesToAdvance = Math.floor((now - anim.lastFrameTime) / frameDuration);
+          anim.frame = (anim.frame + framesToAdvance) % sprite.frames;
+          anim.lastFrameTime += framesToAdvance * frameDuration;
+          setAnimationTick((prev) => prev + 1);
+        }
+        const oracleAnim = oracleAnimRef.current;
+        const oracleFrameDuration = 1000 / ORACLE_IDLE_FPS;
+        if (now - oracleAnim.lastFrameTime >= oracleFrameDuration) {
+          const framesToAdvance = Math.floor((now - oracleAnim.lastFrameTime) / oracleFrameDuration);
+          oracleAnim.frame = (oracleAnim.frame + framesToAdvance) % ORACLE_IDLE_FRAMES;
+          oracleAnim.lastFrameTime += framesToAdvance * oracleFrameDuration;
+          setAnimationTick((prev) => prev + 1);
+        }
+      }
+      frameId = requestAnimationFrame(tick);
+    };
+    frameId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frameId);
+  }, [arena]);
 
   const handleDone = () => {
     if (!idea.trim()) return;
@@ -43,15 +268,13 @@ export default function ProductivityDashboard() {
       title: description,
       type: "task",
       color: selectedColor,
-      revealed: false,
+      revealed: true,
       createdAt: new Date().toISOString(),
     };
-    setItems(prev => [mission, ...prev]);
+    setItems((prev) => [mission, ...prev]);
     setComposerOpen(false);
-    setChoiceOpen(false);
     setIdea("");
     setSelectedColor(CARD_COLORS[0]);
-    setPage(0);
   };
 
   const triggerUploadFlash = () => {
@@ -106,7 +329,6 @@ export default function ProductivityDashboard() {
     }
     try {
       setSemesterIsUploading(true);
-      console.log("[Dashboard] uploading", semesterUploads.length, "syllabus files");
       const parsedUploads = [];
       const calendarEvents = [];
       let courseId = null;
@@ -139,7 +361,7 @@ export default function ProductivityDashboard() {
           }))
         );
       }
-      const semester = addSemester({
+      addSemester({
         title: semesterName.trim(),
         color: semesterColor,
         syllabus: parsedUploads,
@@ -149,205 +371,185 @@ export default function ProductivityDashboard() {
       });
       setItems(loadItems());
       resetSemesterComposer();
-      setChoiceOpen(false);
-      setPage(0);
-      setJustUnwrapped(null);
-      console.log("[Dashboard] semester saved with syllabi", parsedUploads);
     } catch (err) {
-      console.error("[Dashboard] Failed to upload/parse syllabus", err);
       setSemesterError(err.message || "Failed to parse syllabus");
     } finally {
       setSemesterIsUploading(false);
     }
   };
 
-  const openMission = (mission) => {
-    if (!mission.revealed) {
-      updateItem(mission.id, { revealed: true });
-      setItems(loadItems());
-      setJustUnwrapped(mission.id);
-      setTimeout(() => setJustUnwrapped(null), 400);
-      return;
-    }
-
-    if (mission.type === "semester") {
-      navigate(`/semester/${mission.id}`);
-      return;
-    }
-
-    navigate("/ace-onboarding", { state: { idea: mission.title } });
-  };
-
-  const handleDelete = (id) => {
-    setItems(prev => prev.filter(item => item.id !== id));
-    setDraggingId(null);
-  };
-
-  const confirmDelete = async (id) => {
-    const item = items.find(s => s.id === id);
-    if (!item) return;
-    if (window.confirm(`Delete "${item.title}"?`)) {
-      if (item.type === "semester" && item.courseId) {
-        try {
-          await deleteCourse(item.courseId);
-        } catch (err) {
-          console.warn("[Dashboard] Failed to delete course from backend", err);
-        }
+  const removePortal = async (item) => {
+    if (item.type === "semester" && item.courseId) {
+      try {
+        await deleteCourse(item.courseId);
+      } catch (err) {
+        console.warn("[Dashboard] Failed to delete course from backend", err);
       }
-      handleDelete(id);
     }
+    setItems((prev) => prev.filter((entry) => entry.id !== item.id));
   };
 
-  const totalPages = useMemo(() => {
-    if (items.length <= FIRST_PAGE_CAP) return 1;
-    const remaining = items.length - FIRST_PAGE_CAP;
-    return 1 + Math.ceil(remaining / TASKS_PER_PAGE);
+  const portalItems = useMemo(() => {
+    return [...items].sort((a, b) => getItemTimestamp(a) - getItemTimestamp(b));
   }, [items]);
 
-  const pageItems = useMemo(() => {
-    if (page === 0) {
-      return items.slice(0, FIRST_PAGE_CAP);
+  const portalPositions = useMemo(() => {
+    if (!arena.width) return [];
+    const centerX = arena.width / 2;
+    const baseY = arena.groundY - PORTAL_HEIGHT + PORTAL_GROUND_OFFSET;
+    return portalItems.map((item, index) => {
+      const step = Math.floor(index / 2) + 1;
+      const direction = index % 2 === 0 ? -1 : 1;
+      const x = clamp(
+        centerX + direction * step * PORTAL_SPACING - PORTAL_WIDTH / 2,
+        0,
+        arena.width - PORTAL_WIDTH
+      );
+      return { item, x, y: baseY };
+    });
+  }, [portalItems, arena]);
+
+  const playerCenterX = player.x + PLAYER_WIDTH / 2;
+  const oracleX = arena.width / 2 - ORACLE_WIDTH / 2;
+  const oracleY = arena.groundY - ORACLE_HEIGHT + ORACLE_GROUND_OFFSET;
+  const oracleCenterX = oracleX + ORACLE_WIDTH / 2;
+  const playerNearOracle = Math.abs(playerCenterX - oracleCenterX) <= ORACLE_INTERACT_DISTANCE;
+  const oracleFacingLeft = playerCenterX < oracleCenterX;
+  const oracleFrameIndex = oracleAnimRef.current.frame;
+
+  const oracleStyle = {
+    left: oracleX,
+    top: oracleY,
+    width: ORACLE_WIDTH,
+    height: ORACLE_HEIGHT,
+    backgroundImage: `url(${oracleSheet})`,
+    backgroundSize: `${ORACLE_FRAME_WIDTH * ORACLE_SCALE * ORACLE_SHEET_COLUMNS}px ${ORACLE_FRAME_HEIGHT * ORACLE_SCALE * ORACLE_SHEET_ROWS}px`,
+    backgroundPosition: `-${oracleFrameIndex * ORACLE_FRAME_WIDTH * ORACLE_SCALE}px 0px`,
+  };
+
+  const playerSprite = PLAYER_SPRITES[animationRef.current.name];
+  const playerFrameIndex = animationRef.current.frame;
+  const playerSheetWidth = PLAYER_FRAME_WIDTH * playerSprite.frames * PLAYER_SCALE;
+  const playerStyle = {
+    left: player.x,
+    top: player.y,
+    width: PLAYER_WIDTH,
+    height: PLAYER_HEIGHT,
+    backgroundImage: `url(${playerSprite.src})`,
+    backgroundPosition: `-${playerFrameIndex * PLAYER_WIDTH}px 0px`,
+    backgroundSize: `${playerSheetWidth}px ${PLAYER_HEIGHT}px`,
+  };
+  const playerClassName = `pd-player${facingRef.current === "left" ? " pd-player--left" : ""}`;
+
+  const handleOracleClick = () => {
+    if (!playerNearOracle) return;
+    setPortalDeleteMode(false);
+    setOracleOpen(true);
+  };
+
+  const handlePortalClick = (item) => {
+    if (portalDeleteMode) {
+      setPendingDelete(item);
+      return;
     }
-    const start = FIRST_PAGE_CAP + (page - 1) * TASKS_PER_PAGE;
-    return items.slice(start, start + TASKS_PER_PAGE);
-  }, [items, page]);
-
-  useEffect(() => {
-    const handleKey = (event) => {
-      if (event.key === "ArrowLeft") {
-        setPage(0);
-      } else if (event.key === "ArrowRight") {
-        setPage(prev => Math.min(totalPages - 1, prev + 1));
-      }
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [totalPages]);
-
-  useEffect(() => {
-    setPage(prev => Math.min(prev, totalPages - 1));
-  }, [totalPages]);
+    navigate(`/portal/${item.id}`);
+  };
 
   return (
     <div className="pd-root">
-      <button
-        className="pd-settings-btn"
-        title="Settings"
-        onClick={() => setSettingsOpen(true)}
-        type="button"
-      >
-        <img src={settingsIcon} alt="Settings" width={24} height={24} />
-      </button>
-      <div className="pd-shell">
-        <header className="pd-header">
-          <div>
-            <p className="eyebrow">Workspace</p>
-            <h1>Dashboard</h1>
-            <p>Start Ace skill sprints, jump into counseling, and use the arrow keys to browse old projects when this fills up.</p>
-          </div>
+      <div className="pd-room" ref={containerRef}>
+        {portalPositions.map(({ item, x, y }) => (
           <button
-            className="ace-btn ghost"
-            onClick={() => {
-              const completed = typeof window !== "undefined" && localStorage.getItem("surveyCompleted") === "1";
-              navigate(completed ? "/" : "/survey");
-            }}
-          >
-            Go to Counseling
-          </button>
-        </header>
-
-        <div className="pd-surface">
-          <div className="pd-grid">
-            {page === 0 && (
-              <button className="pd-template pd-template--new" onClick={() => setChoiceOpen(true)}>
-                +
-              </button>
-            )}
-            {pageItems.map((item) => (
+            key={item.id}
+            type="button"
+            className={`pd-portal${portalDeleteMode ? " pd-portal--delete" : ""}`}
+            style={{ left: x, top: y, "--portal-glow": item.color }}
+            onClick={() => handlePortalClick(item)}
+            aria-label={`Portal: ${item.title}`}
+            title={item.title}
+          />
+        ))}
+        <button
+          type="button"
+          className={`pd-oracle${oracleFacingLeft ? " pd-oracle--left" : ""}${playerNearOracle ? " pd-oracle--ready" : ""}`}
+          style={oracleStyle}
+          onClick={handleOracleClick}
+          aria-label="Oracle"
+        />
+        <div className={playerClassName} style={playerStyle} />
+        {oracleOpen && (
+          <div className="pd-oracle-dialogue" role="dialog" aria-live="polite">
+            <div className="pd-oracle-dialogue__portrait">
+              <img className="pd-oracle-dialogue__portrait-img" src={oraclePortrait} alt="Oracle" />
+            </div>
+            <div className="pd-oracle-dialogue__options">
               <button
-                key={item.id}
-                className={`pd-template ${item.type === "semester" ? "pd-template--semester" : ""} ${justUnwrapped === item.id ? "pd-template--unwrapping" : ""}`}
-                onClick={() => openMission(item)}
-                draggable
-                onDragStart={(e) => {
-                  e.dataTransfer.setData("text/plain", item.id);
-                  e.dataTransfer.dropEffect = "move";
-                  if (dragPreviewRef.current) {
-                    const preview = dragPreviewRef.current;
-                    preview.innerHTML = `<strong>${item.title}</strong>`;
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    preview.style.width = `${rect.width}px`;
-                    preview.style.height = `${rect.height}px`;
-                    const previewRect = preview.getBoundingClientRect();
-                    e.dataTransfer.setDragImage(preview, previewRect.width / 2, previewRect.height / 2);
-                  }
-                  setDraggingId(item.id);
-                }}
-                onDragEnd={() => setDraggingId(null)}
-                style={{ opacity: draggingId === item.id ? 0 : 1, background: item.revealed ? item.color : "#fdfdfd" }}
-              >
-                {!item.revealed ? (
-                  <div className="pd-gift-wrap">
-                    <div className="pd-gift-icon">🎁</div>
-                  </div>
-                ) : (
-                  <strong>{item.title}</strong>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <button
-        className={`pd-trash ${draggingId ? "pd-trash-active" : ""}`}
-        onDragOver={(e) => {
-          if (draggingId) e.preventDefault();
-        }}
-        onDrop={(e) => {
-          e.preventDefault();
-          if (draggingId) {
-            confirmDelete(draggingId);
-          }
-        }}
-        onClick={() => {
-          if (draggingId) return;
-          const title = window.prompt("Enter the name of the skill to delete:");
-          if (!title) return;
-          const match = items.find(s => s.title === title);
-          if (match) {
-            confirmDelete(match.id);
-          }
-        }}
-        aria-label="Delete mission"
-      >
-        🗑️
-      </button>
-
-      {choiceOpen && (
-        <div className="pd-modal-backdrop">
-          <div className="pd-modal">
-            <p className="eyebrow">Add something new</p>
-            <h2>Choose what to create</h2>
-            <div className="pd-choice-grid">
-              <button className="pd-choice-card" onClick={() => { setChoiceOpen(false); setComposerOpen(true); }}>
-                <strong>Add a task</strong>
-                <span>Track a skill sprint or project</span>
-              </button>
-              <button
-                className="pd-choice-card"
+                type="button"
+                className="pd-oracle-option"
                 onClick={() => {
-                  setChoiceOpen(false);
+                  setOracleOpen(false);
+                  setPortalDeleteMode(false);
                   setSemesterComposerOpen(true);
                 }}
               >
-                <strong>Add a school semester</strong>
-                <span>Upload syllabuses and track deadlines</span>
+                Appraise a syllabus
+              </button>
+              <button
+                type="button"
+                className="pd-oracle-option"
+                onClick={() => {
+                  setOracleOpen(false);
+                  setPortalDeleteMode(false);
+                  setComposerOpen(true);
+                }}
+              >
+                Begin a personal project
+              </button>
+              <button
+                type="button"
+                className="pd-oracle-option"
+                onClick={() => {
+                  setOracleOpen(false);
+                  setPortalDeleteMode(true);
+                }}
+              >
+                Delete a portal
               </button>
             </div>
+          </div>
+        )}
+        {portalDeleteMode && !pendingDelete && (
+          <div className="pd-oracle-hint">Select a portal to delete.</div>
+        )}
+      </div>
+
+      {pendingDelete && (
+        <div className="pd-modal-backdrop">
+          <div className="pd-modal">
+            <p className="eyebrow">Delete portal</p>
+            <h2>Delete "{pendingDelete.title}"?</h2>
+            <p>This portal will be removed from the oracle chamber.</p>
             <div className="pd-modal-actions">
-              <button className="ace-btn ghost" type="button" onClick={() => setChoiceOpen(false)}>
+              <button
+                className="ace-btn ghost"
+                type="button"
+                onClick={() => {
+                  setPendingDelete(null);
+                  setPortalDeleteMode(false);
+                }}
+              >
                 Cancel
+              </button>
+              <button
+                className="ace-btn"
+                type="button"
+                onClick={async () => {
+                  await removePortal(pendingDelete);
+                  setPendingDelete(null);
+                  setPortalDeleteMode(false);
+                }}
+              >
+                Delete
               </button>
             </div>
           </div>
@@ -360,7 +562,8 @@ export default function ProductivityDashboard() {
             <p className="eyebrow">New task</p>
             <h2>What are we building?</h2>
             <p>
-              Give Ace a short description of the skill, challenge, or project you want to start. We&apos;ll handle the rest.
+              Give Ace a short description of the skill, challenge, or project you want to start. We&apos;ll handle the
+              rest.
             </p>
             <textarea
               placeholder="Example: Build a full-stack personal finance tracker with React and MongoDB..."
@@ -459,11 +662,7 @@ export default function ProductivityDashboard() {
             </div>
             {semesterError && <div className="pd-error">{semesterError}</div>}
             <div className="pd-modal-actions">
-              <button
-                className="ace-btn ghost"
-                type="button"
-                onClick={resetSemesterComposer}
-              >
+              <button className="ace-btn ghost" type="button" onClick={resetSemesterComposer}>
                 Cancel
               </button>
               <button
@@ -477,33 +676,6 @@ export default function ProductivityDashboard() {
             </div>
           </div>
         </div>
-      )}
-      <div ref={dragPreviewRef} className="pd-drag-preview" />
-      {settingsOpen && (
-        <SettingsMenu
-          onClose={() => setSettingsOpen(false)}
-          onOptions={() => {
-            setSettingsOpen(false);
-            navigate("/settings");
-          }}
-          onEditSurvey={() => {
-            setSettingsOpen(false);
-            navigate("/survey");
-          }}
-          onEditAssignments={() => {
-            setSettingsOpen(false);
-            navigate("/assignments");
-          }}
-          onLogout={async () => {
-            setSettingsOpen(false);
-            try {
-              await logout();
-            } catch (err) {
-              console.warn("[Dashboard] logout failed", err);
-            }
-            window.location.href = "/";
-          }}
-        />
       )}
     </div>
   );

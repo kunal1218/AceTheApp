@@ -102,7 +102,6 @@ const WAVE_THREE_INITIAL_COUNT = 2;
 const WAVE_THREE_REINFORCEMENT_COUNT = 6;
 const SKELETON_OFFSCREEN_MARGIN = SKELETON_WIDTH
   + MULTI_SPAWN_OFFSET * Math.max(WAVE_THREE_REINFORCEMENT_COUNT - 1, 0);
-const WIZARD_SIZE = 30;
 const WALK_SPEED = 240; // pixels per second
 const RUN_SPEED = 360;
 const RUN_TRIGGER_MS = 600;
@@ -114,7 +113,6 @@ const COLLISION_GAP = 2;
 const MELEE_RANGE = 12;
 const SKELETON_ATTACK_RANGE = MELEE_RANGE + 6;
 const SKELETON_ATTACK_COOLDOWN_MS = 2000;
-const TRIGGER_DISTANCE = 50;
 const JUMP_DURATION_MS = 650;
 const JUMP_HEIGHT = 90;
 const MAX_HEARTS = 3;
@@ -125,12 +123,25 @@ const ACE_ROLL_SPEED = 900;
 const ACE_WALK_SPEED = 220;
 const ACE_APPROACH_GAP = 8;
 const ACE_ATTACK_RANGE = 20;
+const ACE_CUTSCENE_SKELETON_SPEED = 360;
+const ACE_EXIT_SPEED = ACE_WALK_SPEED;
+const PLAYER_FOLLOW_SPEED = WALK_SPEED;
+const ACE_FOLLOW_GAP = 24;
 const WAVE_THREE_REINFORCEMENT_DISTANCE = SKELETON_WIDTH * 0.3;
 const WAVE_THREE_REINFORCEMENT_DELAY_MS = 900;
 const PLAYER_ATTACK_IMPACT_FRAMES = new Set([3, 4]);
 const SKELETON_ATTACK_IMPACT_FRAMES = new Set([5, 6]);
 const ACE_ATTACK_IMPACT_FRAMES = new Set([4]);
-const ACE_DIALOGUE_LINES = ["Wassup...", "I'm Ace..."];
+const ACE_DIALOGUE_LINES = [
+  "Wassup...",
+  "I'm Ace, your productivity companion",
+  "These skeletons are the damned who didn't follow their dreams...",
+  "If you honor my word, you won't end up like them.",
+  "Follow me!",
+];
+const ACE_DIALOGUE_INTERRUPT_INDEX = 1;
+const ACE_DIALOGUE_RESUME_INDEX = 2;
+const ACE_DIALOGUE_FOLLOW_INDEX = ACE_DIALOGUE_LINES.length - 1;
 const SPRITES = {
   idle: { src: idleSprite, frames: 7, fps: 6 },
   walk: { src: walkSprite, frames: 8, fps: 10 },
@@ -154,6 +165,7 @@ const ACE_SPRITES = {
   block: { frames: [aceBlock0, aceBlock1, aceBlock2, aceBlock3, aceBlock4], fps: 12 },
   attack: { frames: [aceAttack0, aceAttack1, aceAttack2, aceAttack3, aceAttack4, aceAttack5], fps: 18 },
   approach: { frames: [aceRun0, aceRun1, aceRun2, aceRun3, aceRun4, aceRun5, aceRun6, aceRun7, aceRun8, aceRun9], fps: 8 },
+  exit: { frames: [aceRun0, aceRun1, aceRun2, aceRun3, aceRun4, aceRun5, aceRun6, aceRun7, aceRun8, aceRun9], fps: 8 },
 };
 const getPlayerHitbox = (x) => ({
   left: x + PLAYER_COLLISION_OFFSET,
@@ -338,7 +350,6 @@ export default function WizardGate() {
   const navigate = useNavigate();
   const containerRef = useRef(null);
   const [player, setPlayer] = useState({ x: 0, y: 0 });
-  const [wizard, setWizard] = useState({ x: 0, y: 0 });
   const [skeletons, setSkeletons] = useState([]);
   const [ace, setAce] = useState(null);
   const [aceDialogueIndex, setAceDialogueIndex] = useState(null);
@@ -353,6 +364,14 @@ export default function WizardGate() {
   const skeletonIdRef = useRef(0);
   const waveThreeStartRef = useRef(null);
   const waveThreeReinforcedRef = useRef(false);
+  const aceInterruptionRef = useRef({
+    pendingSpawn: false,
+    active: false,
+    returnTargetX: null,
+    resumeDialogueIndex: null,
+  });
+  const aceExitRef = useRef(false);
+  const exitNavigationRef = useRef(false);
   const playerFearRef = useRef(false);
   const initialPlacementRef = useRef(false);
   const heldKeys = useRef(new Set());
@@ -393,6 +412,12 @@ export default function WizardGate() {
   const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
   const clampSkeletonX = (value, rectWidth) =>
     clamp(value, -SKELETON_OFFSCREEN_MARGIN, rectWidth + SKELETON_OFFSCREEN_MARGIN);
+  const clampPlayerX = (value, rectWidth, allowOffscreen) =>
+    clamp(
+      value,
+      allowOffscreen ? -PLAYER_WIDTH : 0,
+      allowOffscreen ? rectWidth + PLAYER_WIDTH : rectWidth - PLAYER_WIDTH
+    );
   const createSkeleton = ({
     x,
     y,
@@ -401,6 +426,8 @@ export default function WizardGate() {
     spawnX = x,
     wave3Initial = false,
     wave3Reinforcement = false,
+    speedOverride = null,
+    noAttack = false,
   }) => ({
     id: skeletonIdRef.current++,
     x,
@@ -408,6 +435,8 @@ export default function WizardGate() {
     spawnX,
     wave3Initial,
     wave3Reinforcement,
+    speedOverride,
+    noAttack,
     hearts: MAX_HEARTS,
     attack: {
       active: false,
@@ -489,6 +518,18 @@ export default function WizardGate() {
       ...rightXs.map((x) => createSkeleton({ x, y: skeletonY, facing: "left", now, wave3Reinforcement: true })),
     ];
   };
+  const spawnAceCutsceneSkeleton = (rect, groundY, now) => {
+    const skeletonY = groundY - SKELETON_HEIGHT + SKELETON_FOOT_OFFSET;
+    const spawnX = rect.width + SKELETON_WIDTH;
+    return createSkeleton({
+      x: spawnX,
+      y: skeletonY,
+      facing: "left",
+      now,
+      speedOverride: ACE_CUTSCENE_SKELETON_SPEED,
+      noAttack: true,
+    });
+  };
   const createAce = ({ x, groundY, now }) => {
     const groundYPosition = groundY - ACE_HEIGHT + ACE_FOOT_OFFSET + ACE_GROUND_OFFSET;
     const fallStartY = ACE_FALL_START_Y;
@@ -509,7 +550,7 @@ export default function WizardGate() {
     };
   };
 
-  // Position wizard near the right edge once container is measured
+  // Position actors once container is measured
   useLayoutEffect(() => {
     const placeActors = () => {
       const rect = containerRef.current?.getBoundingClientRect();
@@ -531,10 +572,6 @@ export default function WizardGate() {
       initialPlacementRef.current = true;
       playerRef.current = nextPlayer;
       setPlayer(nextPlayer);
-      setWizard({
-        x: rect.width - 120,
-        y: rect.height / 2 - WIZARD_SIZE / 2,
-      });
       let nextSkeletons = skeletonsRef.current;
       if (nextSkeletons.length === 0) {
         skeletonIdRef.current = 0;
@@ -590,7 +627,10 @@ export default function WizardGate() {
     playerHeartsRef.current = playerHearts;
   }, [playerHearts]);
   const triggerAttack = () => {
-    const cinematicLockActive = playerFearRef.current || (aceRef.current && !aceRef.current.dialogueComplete);
+    const cinematicLockActive = playerFearRef.current
+      || aceExitRef.current
+      || aceInterruptionRef.current.active
+      || (aceRef.current && !aceRef.current.dialogueComplete);
     if (cinematicLockActive) {
       return;
     }
@@ -620,7 +660,10 @@ export default function WizardGate() {
     };
   };
   const triggerDefend = () => {
-    const cinematicLockActive = playerFearRef.current || (aceRef.current && !aceRef.current.dialogueComplete);
+    const cinematicLockActive = playerFearRef.current
+      || aceExitRef.current
+      || aceInterruptionRef.current.active
+      || (aceRef.current && !aceRef.current.dialogueComplete);
     if (cinematicLockActive) {
       return;
     }
@@ -648,7 +691,10 @@ export default function WizardGate() {
     };
   };
   const triggerJump = () => {
-    const cinematicLockActive = playerFearRef.current || (aceRef.current && !aceRef.current.dialogueComplete);
+    const cinematicLockActive = playerFearRef.current
+      || aceExitRef.current
+      || aceInterruptionRef.current.active
+      || (aceRef.current && !aceRef.current.dialogueComplete);
     if (cinematicLockActive) {
       return;
     }
@@ -692,6 +738,14 @@ export default function WizardGate() {
     skeletonWaveRef.current = 0;
     waveThreeStartRef.current = null;
     waveThreeReinforcedRef.current = false;
+    aceInterruptionRef.current = {
+      pendingSpawn: false,
+      active: false,
+      returnTargetX: null,
+      resumeDialogueIndex: null,
+    };
+    aceExitRef.current = false;
+    exitNavigationRef.current = false;
     aceRef.current = null;
     playerFearRef.current = false;
     setAceDialogueIndex(null);
@@ -700,10 +754,6 @@ export default function WizardGate() {
     setPlayer(nextPlayer);
     setSkeletons(nextSkeletons);
     setAce(null);
-    setWizard({
-      x: rect.width - 120,
-      y: rect.height / 2 - WIZARD_SIZE / 2,
-    });
     heldKeys.current.clear();
     runHold.current = { start: null, direction: 0 };
     facingRef.current = "right";
@@ -748,17 +798,30 @@ export default function WizardGate() {
       if (e.code === "Space" || e.key === " " || e.key === "Spacebar") {
         e.preventDefault();
         if (!e.repeat && aceDialogueRef.current !== null) {
-          if (aceDialogueRef.current < ACE_DIALOGUE_LINES.length - 1) {
-            setAceDialogueIndex((prev) => (prev === null ? 0 : prev + 1));
-          } else {
+          if (aceDialogueRef.current === ACE_DIALOGUE_INTERRUPT_INDEX && !aceInterruptionRef.current.active) {
+            aceInterruptionRef.current = {
+              pendingSpawn: true,
+              active: true,
+              returnTargetX: null,
+              resumeDialogueIndex: ACE_DIALOGUE_RESUME_INDEX,
+            };
+            setAceDialogueIndex(null);
+            return;
+          }
+          if (aceDialogueRef.current === ACE_DIALOGUE_FOLLOW_INDEX) {
             setAceDialogueIndex(null);
             playerFearRef.current = false;
+            aceExitRef.current = true;
             setAce((prev) => {
               if (!prev) return prev;
               const nextAce = { ...prev, dialogueComplete: true };
               aceRef.current = nextAce;
               return nextAce;
             });
+            return;
+          }
+          if (aceDialogueRef.current < ACE_DIALOGUE_LINES.length - 1) {
+            setAceDialogueIndex((prev) => (prev === null ? 0 : prev + 1));
           }
           return;
         }
@@ -797,7 +860,10 @@ export default function WizardGate() {
       const movingLeft = k.has("a") || k.has("ArrowLeft");
       const movingRight = k.has("d") || k.has("ArrowRight");
       const moveXInput = (movingRight ? 1 : 0) - (movingLeft ? 1 : 0);
-      const aceCinematicActive = aceRef.current && !aceRef.current.dialogueComplete;
+      const exitActive = aceExitRef.current;
+      const aceInterruptionActive = aceInterruptionRef.current.active;
+      const aceCinematicActive = aceRef.current
+        && (!aceRef.current.dialogueComplete || aceInterruptionActive || exitActive);
       const fearActive = playerFearRef.current;
       const playerLocked = isPlayerAttacking || playerHurt.active || defend.active || aceCinematicActive;
       let moveX = moveXInput;
@@ -807,8 +873,11 @@ export default function WizardGate() {
       const aceFaceActive = aceRef.current
         && (aceDialogueRef.current !== null
           || aceRef.current.state === "approach"
+          || aceInterruptionActive
           || skeletonsRef.current.some((skeleton) => skeleton.hearts > 0));
-      if (aceFaceActive) {
+      if (exitActive) {
+        facingRef.current = "right";
+      } else if (aceFaceActive) {
         const aceCenterX = aceRef.current.x + ACE_WIDTH / 2;
         const playerCenterX = currentPlayer.x + PLAYER_WIDTH / 2;
         facingRef.current = aceCenterX > playerCenterX ? "right" : "left";
@@ -828,7 +897,11 @@ export default function WizardGate() {
         const basePlayerY = groundY - PLAYER_HEIGHT + PLAYER_FOOT_OFFSET;
         let nextPlayerX = currentPlayer.x;
         let nextPlayerY = basePlayerY;
-        if (fearActive) {
+        if (exitActive && activeAce) {
+          const followTargetX = activeAce.x - PLAYER_WIDTH - ACE_FOLLOW_GAP;
+          const deltaToTarget = followTargetX - currentPlayer.x;
+          moveX = deltaToTarget > 2 ? 1 : 0;
+        } else if (fearActive) {
           const centerTargetX = clamp(
             rect.width / 2 - PLAYER_WIDTH / 2,
             0,
@@ -843,11 +916,15 @@ export default function WizardGate() {
         } else if (playerLocked) {
           moveX = 0;
         }
-        isMoving = moveX !== 0 && (!playerLocked || fearActive);
-        if (!aceFaceActive && moveX !== 0 && (!playerLocked || fearActive)) {
+        isMoving = moveX !== 0 && (!playerLocked || fearActive || exitActive);
+        if (!aceFaceActive && moveX !== 0 && (!playerLocked || fearActive || exitActive)) {
           facingRef.current = moveX < 0 ? "left" : "right";
         }
-        if (fearActive || playerLocked || moveX === 0) {
+        if (exitActive) {
+          runHold.current = { start: null, direction: 0 };
+          runRamp = 0;
+          speed = PLAYER_FOLLOW_SPEED;
+        } else if (fearActive || playerLocked || moveX === 0) {
           runHold.current = { start: null, direction: 0 };
           runRamp = 0;
           speed = WALK_SPEED;
@@ -865,7 +942,7 @@ export default function WizardGate() {
           nextPlayerX = clamp(rect.width / 2 - PLAYER_WIDTH / 2, 0, rect.width - PLAYER_WIDTH);
           initialPlacementRef.current = true;
         }
-        if (playerLocked && !fearActive) {
+        if (playerLocked && !fearActive && !exitActive) {
           if (isPlayerAttacking && attackRef.current.lockedPosition) {
             nextPlayerX = attackRef.current.lockedPosition.x;
             nextPlayerY = attackRef.current.lockedPosition.y;
@@ -896,9 +973,24 @@ export default function WizardGate() {
           currentSkeletons = spawnWave(0, rect, groundY, now);
           skeletonWaveRef.current = 0;
         }
+        if (aceInterruptionRef.current.pendingSpawn) {
+          const cutsceneSkeleton = spawnAceCutsceneSkeleton(rect, groundY, now);
+          currentSkeletons = [...currentSkeletons, cutsceneSkeleton];
+          aceInterruptionRef.current.pendingSpawn = false;
+          const playerBox = getPlayerHitbox(nextPlayerX);
+          aceInterruptionRef.current.returnTargetX = clamp(
+            playerBox.right + ACE_APPROACH_GAP - ACE_COLLISION_OFFSET,
+            0,
+            rect.width - ACE_WIDTH
+          );
+        }
+        const aceApproachCrossing = activeAce
+          && activeAce.state === "approach"
+          && !activeAce.dialogueStarted;
         const aceCollisionEnabled = activeAce
           && activeAce.state !== "fall"
-          && !currentSkeletons.some((skeleton) => skeleton.hearts > 0);
+          && !currentSkeletons.some((skeleton) => skeleton.hearts > 0)
+          && !aceApproachCrossing;
         if (!playerLocked) {
           currentSkeletons.forEach((skeleton) => {
             const skeletonDead = skeleton.death.active || skeleton.hearts <= 0;
@@ -926,7 +1018,7 @@ export default function WizardGate() {
           }
         }
         const nextPlayer = {
-          x: clamp(nextPlayerX, 0, rect.width - PLAYER_WIDTH),
+          x: clampPlayerX(nextPlayerX, rect.width, exitActive),
           y: clamp(nextPlayerY, 0, rect.height - PLAYER_HEIGHT),
         };
         let nextSkeletons = currentSkeletons.map((skeleton) => {
@@ -957,14 +1049,17 @@ export default function WizardGate() {
               const direction = nextPlayer.x + PLAYER_WIDTH / 2 < nextSkeleton.x + SKELETON_WIDTH / 2 ? -1 : 1;
               const waveIndex = Math.max(skeletonWaveRef.current ?? 0, 0);
               const incrementalSpeed = SKELETON_SPEED + waveIndex * SKELETON_SPEED_INCREMENT;
-              const skeletonSpeed = waveIndex === 3
+              const baseSpeed = waveIndex === 3
                 ? Math.max(incrementalSpeed, SKELETON_SPEED_WAVE_THREE)
                 : incrementalSpeed;
+              const skeletonSpeed = typeof nextSkeleton.speedOverride === "number"
+                ? nextSkeleton.speedOverride
+                : baseSpeed;
               const step = Math.min(remainingDistance, skeletonSpeed * dt);
               nextSkeletonX = nextSkeleton.x + direction * step;
             }
           }
-          if (aceCollisionEnabled) {
+          if (aceCollisionEnabled && !skeletonDead) {
             const gapToAce = getAceSkeletonGap(activeAce.x, nextSkeletonX);
             if (gapToAce < COLLISION_GAP) {
               const aceBox = getAceHitbox(activeAce.x);
@@ -987,7 +1082,7 @@ export default function WizardGate() {
               };
             }
           }
-          if (!skeletonDead && !nextSkeleton.attack.active && !nextSkeleton.hurt.active) {
+          if (!skeletonDead && !nextSkeleton.attack.active && !nextSkeleton.hurt.active && !nextSkeleton.noAttack) {
             const gapAfter = getGap(nextPlayer.x, nextSkeleton.x);
             if (gapAfter <= SKELETON_ATTACK_RANGE) {
               const timeSinceAttack = now - nextSkeleton.attack.lastAttackTime;
@@ -1030,7 +1125,7 @@ export default function WizardGate() {
               } else {
                 nextPlayer.x = skeletonBox.right + COLLISION_GAP - PLAYER_BODY_OFFSET_X;
               }
-              nextPlayer.x = clamp(nextPlayer.x, 0, rect.width - PLAYER_WIDTH);
+              nextPlayer.x = clampPlayerX(nextPlayer.x, rect.width, exitActive);
             }
           });
         }
@@ -1043,7 +1138,7 @@ export default function WizardGate() {
             } else {
               nextPlayer.x = aceBox.right + COLLISION_GAP - PLAYER_BODY_OFFSET_X;
             }
-            nextPlayer.x = clamp(nextPlayer.x, 0, rect.width - PLAYER_WIDTH);
+            nextPlayer.x = clampPlayerX(nextPlayer.x, rect.width, exitActive);
           }
         }
         const playerImpact = PLAYER_ATTACK_IMPACT_FRAMES.has(attackRef.current.frame);
@@ -1152,19 +1247,42 @@ export default function WizardGate() {
         if (nextAce) {
           let workingAce = { ...nextAce };
           const aceGroundY = groundY - ACE_HEIGHT + ACE_FOOT_OFFSET + ACE_GROUND_OFFSET;
+          if (aceExitRef.current) {
+            if (workingAce.state !== "exit") {
+              workingAce = {
+                ...workingAce,
+                state: "exit",
+                frame: 0,
+                lastFrameTime: now,
+              };
+            }
+            workingAce.y = aceGroundY;
+            workingAce.x += ACE_EXIT_SPEED * dt;
+            workingAce.facing = "right";
+            const exitAdvance = advanceAceFrame(workingAce, now, true);
+            workingAce = exitAdvance.ace;
+          } else {
           const livingSkeletons = nextSkeletons.filter((skeleton) => skeleton.hearts > 0);
           const hasLivingSkeletons = livingSkeletons.length > 0;
           const aceCenter = workingAce.x + ACE_WIDTH / 2;
           const playerCenter = nextPlayer.x + PLAYER_WIDTH / 2;
+          if (hasLivingSkeletons && workingAce.state === "idle" && aceInterruptionRef.current.active) {
+            workingAce = {
+              ...workingAce,
+              state: "roll",
+              frame: 0,
+              lastFrameTime: now,
+              hasHit: false,
+              targetSide: "right",
+            };
+          }
           if (!hasLivingSkeletons && !workingAce.dialogueStarted && workingAce.state === "idle") {
             const playerBox = getPlayerHitbox(nextPlayer.x);
-            const targetX = aceCenter >= playerCenter
-              ? clamp(playerBox.right + ACE_APPROACH_GAP - ACE_COLLISION_OFFSET, 0, rect.width - ACE_WIDTH)
-              : clamp(
-                playerBox.left - ACE_APPROACH_GAP - ACE_COLLISION_OFFSET - ACE_COLLISION_WIDTH,
-                0,
-                rect.width - ACE_WIDTH
-              );
+            const targetX = clamp(
+              playerBox.right + ACE_APPROACH_GAP - ACE_COLLISION_OFFSET,
+              0,
+              rect.width - ACE_WIDTH
+            );
             workingAce = {
               ...workingAce,
               state: "approach",
@@ -1284,9 +1402,12 @@ export default function WizardGate() {
             }
             if (attackAdvance.done) {
               const hasTargets = nextSkeletons.some((skeleton) => skeleton.hearts > 0);
+              const shouldReturn = aceInterruptionRef.current.active
+                && !hasTargets
+                && aceInterruptionRef.current.returnTargetX !== null;
               workingAce = {
                 ...workingAce,
-                state: hasTargets ? "roll" : "idle",
+                state: hasTargets || shouldReturn ? "roll" : "idle",
                 frame: 0,
                 lastFrameTime: now,
                 hasHit: false,
@@ -1305,7 +1426,38 @@ export default function WizardGate() {
                 hasHit: false,
               };
             } else if (workingAce.state === "roll") {
-              if (!targetSkeleton) {
+              const returnTargetX = aceInterruptionRef.current.returnTargetX;
+              if (returnTargetX !== null && !targetSkeleton) {
+                const delta = ACE_ROLL_SPEED * dt;
+                if (Math.abs(workingAce.x - returnTargetX) <= 4) {
+                  workingAce.x = returnTargetX;
+                  workingAce = {
+                    ...workingAce,
+                    y: aceGroundY,
+                    state: "idle",
+                    frame: 0,
+                    lastFrameTime: now,
+                  };
+                  aceInterruptionRef.current.active = false;
+                  aceInterruptionRef.current.returnTargetX = null;
+                  if (
+                    aceDialogueRef.current === null
+                    && aceInterruptionRef.current.resumeDialogueIndex !== null
+                  ) {
+                    setAceDialogueIndex(aceInterruptionRef.current.resumeDialogueIndex);
+                  }
+                  aceInterruptionRef.current.resumeDialogueIndex = null;
+                } else if (workingAce.x < returnTargetX) {
+                  workingAce.x = Math.min(workingAce.x + delta, returnTargetX);
+                  workingAce.facing = "right";
+                } else if (workingAce.x > returnTargetX) {
+                  workingAce.x = Math.max(workingAce.x - delta, returnTargetX);
+                  workingAce.facing = "left";
+                }
+                workingAce.y = aceGroundY;
+                const rollAdvance = advanceAceFrame(workingAce, now, true);
+                workingAce = rollAdvance.ace;
+              } else if (!targetSkeleton) {
                 workingAce = {
                   ...workingAce,
                   y: aceGroundY,
@@ -1347,7 +1499,10 @@ export default function WizardGate() {
               workingAce = idleAdvance.ace;
             }
           }
-          const aceCollisionEnabledDuringAce = workingAce.state !== "fall" && !hasLivingSkeletons;
+          const aceApproachCrossing = workingAce.state === "approach" && !workingAce.dialogueStarted;
+          const aceCollisionEnabledDuringAce = workingAce.state !== "fall"
+            && !hasLivingSkeletons
+            && !aceApproachCrossing;
           if (aceCollisionEnabledDuringAce) {
             const bodyGap = getAcePlayerBodyGap(nextPlayer.x, nextPlayer.y, workingAce.x, workingAce.y);
             if (bodyGap.overlapY && bodyGap.gap < COLLISION_GAP) {
@@ -1373,6 +1528,7 @@ export default function WizardGate() {
                 }
               });
             }
+          }
           }
           nextAce = workingAce;
         }
@@ -1487,6 +1643,17 @@ export default function WizardGate() {
           }
           nextSkeletons = nextWaveSkeletons;
         }
+        if (
+          exitActive
+          && nextAce
+          && !exitNavigationRef.current
+          && nextAce.x > rect.width
+          && nextPlayer.x > rect.width
+        ) {
+          exitNavigationRef.current = true;
+          navigate("/dashboard/main", { replace: true });
+          return;
+        }
         playerRef.current = nextPlayer;
         setPlayer(nextPlayer);
         skeletonsRef.current = nextSkeletons;
@@ -1495,9 +1662,10 @@ export default function WizardGate() {
         setAce(nextAce);
       }
       if (!playerHurt.active) {
+        const animationMoving = isMoving || (exitActive && !!aceRef.current);
         const nextAnimation = jump.active
           ? "jump"
-          : (isMoving ? (runRamp > 0 ? "run" : "walk") : "idle");
+          : (animationMoving ? (runRamp > 0 ? "run" : "walk") : "idle");
         const anim = animationRef.current;
         if (anim.name !== nextAnimation) {
           anim.name = nextAnimation;
@@ -1589,25 +1757,14 @@ export default function WizardGate() {
 
   const playerCenterX = player.x + PLAYER_WIDTH / 2;
   const playerCenterY = player.y + PLAYER_HEIGHT / 2;
-  const wizardCenterX = wizard.x + WIZARD_SIZE / 2;
-  const wizardCenterY = wizard.y + WIZARD_SIZE / 2;
-  const distance = Math.hypot(playerCenterX - wizardCenterX, playerCenterY - wizardCenterY);
-
-  const handleWizardClick = () => {
-    if (distance <= TRIGGER_DISTANCE) {
-      navigate("/dashboard/main", { replace: true });
-    }
-  };
   const handleArenaMouseDown = (event) => {
     const target = event.target;
     if (event.button === 2) {
       event.preventDefault();
-      if (target instanceof Element && target.closest(".wg-wizard")) return;
       triggerDefend();
       return;
     }
     if (event.button !== 0) return;
-    if (target instanceof Element && target.closest(".wg-wizard")) return;
     triggerAttack();
   };
   const handleArenaContextMenu = (event) => {
@@ -1737,15 +1894,6 @@ export default function WizardGate() {
             <div className="wg-dialogue__text">{aceDialogueLine}</div>
           </div>
         )}
-        <button
-          className="wg-wizard"
-          style={{ left: wizard.x, top: wizard.y, width: WIZARD_SIZE, height: WIZARD_SIZE }}
-          onClick={handleWizardClick}
-          type="button"
-          aria-label="Old wizard"
-        >
-          🧙‍♂️
-        </button>
       </div>
     </div>
   );

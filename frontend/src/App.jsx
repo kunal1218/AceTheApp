@@ -9,6 +9,7 @@ import SurveyPage from "./components/SurveyPage";
 import HomeScreenButton from "./components/HomeScreenButton";
 import LandingPage from "./components/LandingPage";
 import ProductivityDashboard from "./components/ProductivityDashboard";
+import PortalPage from "./components/PortalPage";
 import WizardGate from "./components/WizardGate";
 import AceOnboarding from "./components/AceOnboarding";
 import CreateAccount from "./components/CreateAccount";
@@ -167,6 +168,7 @@ function App() {
           <Route path="/survey" element={<SurveyPage />} />
           <Route path="/dashboard" element={protect(<WizardGate />)} />
           <Route path="/dashboard/main" element={protect(<ProductivityDashboard />)} />
+          <Route path="/portal/:id" element={protect(<PortalPage />)} />
           <Route path="/ace-onboarding" element={protect(<AceOnboarding />)} />
           {/* Protected routes */}
           <Route path="/semester/new" element={loggedIn ? <SemesterWizard /> : <LandingPage />} />

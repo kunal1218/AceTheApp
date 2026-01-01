@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap");
+
 .wg-root {
   min-height: 100vh;
   background: var(--ace-bg, #f4f6fb);
@@ -28,6 +30,9 @@
 .wg-skeleton {
   pointer-events: none;
 }
+.wg-ace {
+  pointer-events: none;
+}
 .wg-wizard {
   position: absolute;
   border: none;
@@ -38,6 +43,52 @@
 }
 .wg-wizard:hover {
   transform: scale(1.08);
+}
+.wg-dialogue {
+  position: absolute;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 2px solid rgba(248, 250, 252, 0.15);
+  border-radius: 14px;
+  color: #f8fafc;
+  width: min(720px, 90%);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.25);
+  pointer-events: none;
+  z-index: 6;
+}
+.wg-dialogue__portrait {
+  --wg-portrait-padding: 6px;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: 10px;
+  padding: var(--wg-portrait-padding) var(--wg-portrait-padding) 0;
+  border: 1px solid rgba(248, 250, 252, 0.2);
+}
+.wg-dialogue__portrait-img {
+  width: 100%;
+  height: 100%;
+  flex-shrink: 0;
+  object-fit: contain;
+  object-position: bottom center;
+  image-rendering: pixelated;
+  display: block;
+}
+.wg-dialogue__text {
+  font-family: "Press Start 2P", "Courier New", monospace;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
 }
 .wg-hearts {
   position: absolute;

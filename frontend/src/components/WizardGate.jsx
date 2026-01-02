@@ -866,6 +866,11 @@ export default function WizardGate() {
         && (!aceRef.current.dialogueComplete || aceInterruptionActive || exitActive);
       const fearActive = playerFearRef.current;
       const cinematicProtectionActive = aceCinematicActive || fearActive;
+      if (cinematicProtectionActive && playerHurt.active) {
+        playerHurt.active = false;
+        playerHurt.frame = 0;
+        playerHurt.lockedPosition = null;
+      }
       const playerLocked = isPlayerAttacking || playerHurt.active || defend.active || aceCinematicActive;
       let moveX = moveXInput;
       let isMoving = false;
@@ -991,7 +996,8 @@ export default function WizardGate() {
         const aceCollisionEnabled = activeAce
           && activeAce.state !== "fall"
           && !currentSkeletons.some((skeleton) => skeleton.hearts > 0)
-          && !aceApproachCrossing;
+          && !aceApproachCrossing
+          && !cinematicProtectionActive;
         if (!playerLocked && !cinematicProtectionActive) {
           currentSkeletons.forEach((skeleton) => {
             const skeletonDead = skeleton.death.active || skeleton.hearts <= 0;
@@ -1509,7 +1515,8 @@ export default function WizardGate() {
           const aceApproachCrossing = workingAce.state === "approach" && !workingAce.dialogueStarted;
           const aceCollisionEnabledDuringAce = workingAce.state !== "fall"
             && !hasLivingSkeletons
-            && !aceApproachCrossing;
+            && !aceApproachCrossing
+            && !cinematicProtectionActive;
           if (aceCollisionEnabledDuringAce) {
             const bodyGap = getAcePlayerBodyGap(nextPlayer.x, nextPlayer.y, workingAce.x, workingAce.y);
             if (bodyGap.overlapY && bodyGap.gap < COLLISION_GAP) {

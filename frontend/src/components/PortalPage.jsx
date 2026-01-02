@@ -17,7 +17,7 @@ const BRIDGE_THICKNESS = 8;
 const PLAYER_START_OFFSET = 18;
 const MIN_EDGE_PADDING = 24;
 const SPECIAL_NODE_COUNT = 4;
-const HUD_SAFE_HEIGHT = 140;
+const HUD_SAFE_WIDTH = 320;
 const HUD_SAFE_PADDING = 24;
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
@@ -243,11 +243,11 @@ export default function PortalPage() {
   const layout = useMemo(() => {
     const edgeGapX = Math.max(PLAYER_WIDTH * 0.8, POINT_SIZE * 3, MIN_EDGE_PADDING);
     const edgeGapY = Math.max(PLAYER_HEIGHT * 0.25, POINT_SIZE * 2, MIN_EDGE_PADDING);
-    const safeHeight = Math.max(hudSize.height, HUD_SAFE_HEIGHT);
+    const safeWidth = Math.max(hudSize.width, HUD_SAFE_WIDTH);
     const minX = Math.min(edgeGapX, mapSize.width / 2);
-    const maxX = Math.max(mapSize.width - edgeGapX, minX);
-    const minYBase = Math.min(edgeGapY, mapSize.height / 2);
-    const minY = Math.max(minYBase, safeHeight + HUD_SAFE_PADDING);
+    const safeRight = Math.max(mapSize.width - safeWidth - HUD_SAFE_PADDING, minX);
+    const maxX = Math.max(Math.min(mapSize.width - edgeGapX, safeRight), minX);
+    const minY = Math.min(edgeGapY, mapSize.height / 2);
     const maxY = Math.max(mapSize.height - edgeGapY, minY);
     const usableWidth = Math.max(maxX - minX, 0);
     const usableHeight = Math.max(maxY - minY, 0);

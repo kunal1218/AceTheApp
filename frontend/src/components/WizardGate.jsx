@@ -878,6 +878,7 @@ export default function WizardGate() {
       let isMoving = false;
       let runRamp = 0;
       let speed = WALK_SPEED;
+      let followDelta = null;
       const aceFaceActive = aceRef.current
         && (aceDialogueRef.current !== null
           || aceRef.current.state === "approach"
@@ -908,7 +909,12 @@ export default function WizardGate() {
         if (exitActive && activeAce) {
           const followTargetX = activeAce.x - PLAYER_WIDTH - ACE_FOLLOW_GAP;
           const deltaToTarget = followTargetX - currentPlayer.x;
-          moveX = deltaToTarget > 2 ? 1 : 0;
+          followDelta = deltaToTarget;
+          if (Math.abs(deltaToTarget) <= 2) {
+            moveX = 0;
+          } else {
+            moveX = deltaToTarget > 0 ? 1 : -1;
+          }
         } else if (fearActive) {
           const centerTargetX = clamp(
             rect.width / 2 - PLAYER_WIDTH / 2,
@@ -962,7 +968,12 @@ export default function WizardGate() {
           }
         } else {
           const delta = speed * dt;
-          if (moveX !== 0) nextPlayerX += moveX * delta;
+          if (exitActive && followDelta !== null) {
+            const step = Math.min(Math.abs(followDelta), delta);
+            nextPlayerX += Math.sign(followDelta) * step;
+          } else if (moveX !== 0) {
+            nextPlayerX += moveX * delta;
+          }
         }
         if (jump.active) {
           const jumpElapsed = now - jump.startTime;

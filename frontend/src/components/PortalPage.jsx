@@ -1,8 +1,9 @@
-import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import "./PortalPage.css";
 import { loadItems } from "../utils/semesters";
 import idleSprite from "../assets/characters/mainChar/IDLE.png";
+import walkSprite from "../assets/characters/mainChar/WALK.png";
 
 const PLAYER_FRAME_WIDTH = 96;
 const PLAYER_FRAME_HEIGHT = 84;
@@ -19,6 +20,9 @@ const MIN_EDGE_PADDING = 24;
 const SPECIAL_NODE_COUNT = 4;
 const HUD_SAFE_WIDTH = 320;
 const HUD_SAFE_PADDING = 24;
+const MAP_IDLE_FRAMES = 7;
+const MAP_WALK_FRAMES = 8;
+const MAP_WALK_FPS = 10;
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
@@ -170,6 +174,9 @@ export default function PortalPage() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [hasSelected, setHasSelected] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isWalking, setIsWalking] = useState(false);
+  const [walkFrame, setWalkFrame] = useState(0);
+  const walkStateRef = useRef({ active: false, startTime: 0, targetIndex: null });
 
   const portal = useMemo(() => {
     const items = loadItems();
@@ -292,6 +299,7 @@ export default function PortalPage() {
   useLayoutEffect(() => {
     const handleKeyDown = (event) => {
       if (event.repeat) return;
+      if (walkStateRef.current.active || isWalking) return;
       const key = event.key.toLowerCase();
       const dir =
         key === "a" || key === "arrowleft" ? "left"
@@ -319,16 +327,55 @@ export default function PortalPage() {
         return false;
       });
       if (nextIndex == null) return;
-      setSelectedIndex(nextIndex);
-      setActiveIndex(nextIndex);
-      setHasSelected(true);
+      walkStateRef.current = {
+        active: true,
+        startTime: performance.now(),
+        targetIndex: nextIndex,
+      };
+      setIsWalking(true);
+      setWalkFrame(0);
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [path, selectedIndex]);
+  }, [path, selectedIndex, isWalking]);
+
+  useEffect(() => {
+    if (!isWalking) return undefined;
+    let rafId;
+    const frameDuration = 1000 / MAP_WALK_FPS;
+    const walkCycleMs = MAP_WALK_FRAMES * frameDuration;
+    const step = (now) => {
+      const walkState = walkStateRef.current;
+      if (!walkState.active) return;
+      const elapsed = now - walkState.startTime;
+      const nextFrame = Math.min(
+        MAP_WALK_FRAMES - 1,
+        Math.floor(elapsed / frameDuration) % MAP_WALK_FRAMES
+      );
+      setWalkFrame(nextFrame);
+      if (elapsed >= walkCycleMs) {
+        const targetIndex = walkState.targetIndex;
+        walkStateRef.current = { active: false, startTime: 0, targetIndex: null };
+        setIsWalking(false);
+        setWalkFrame(0);
+        if (targetIndex !== null && targetIndex !== undefined) {
+          setSelectedIndex(targetIndex);
+          setActiveIndex(targetIndex);
+          setHasSelected(true);
+        }
+        return;
+      }
+      rafId = requestAnimationFrame(step);
+    };
+    rafId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafId);
+  }, [isWalking]);
 
   const activePoint = layout.points[selectedIndex] || layout.points[0];
   const playerOffset = hasSelected ? 0 : PLAYER_START_OFFSET;
+  const playerSprite = isWalking ? walkSprite : idleSprite;
+  const playerFrames = isWalking ? MAP_WALK_FRAMES : MAP_IDLE_FRAMES;
+  const playerFrame = isWalking ? walkFrame : 0;
   const playerStyle = activePoint
     ? {
       left: clamp(activePoint.x - PLAYER_WIDTH / 2, 0, mapSize.width - PLAYER_WIDTH),
@@ -339,9 +386,9 @@ export default function PortalPage() {
       ),
       width: PLAYER_WIDTH,
       height: PLAYER_HEIGHT,
-      backgroundImage: `url(${idleSprite})`,
-      backgroundPosition: "0px 0px",
-      backgroundSize: `${PLAYER_FRAME_WIDTH * 7 * PLAYER_SCALE}px ${PLAYER_HEIGHT}px`,
+      backgroundImage: `url(${playerSprite})`,
+      backgroundPosition: `-${playerFrame * PLAYER_FRAME_WIDTH * PLAYER_SCALE}px 0px`,
+      backgroundSize: `${PLAYER_FRAME_WIDTH * playerFrames * PLAYER_SCALE}px ${PLAYER_HEIGHT}px`,
     }
     : null;
 

@@ -857,6 +857,7 @@ export default function WizardGate() {
       const rect = containerRef.current?.getBoundingClientRect();
       const currentPlayer = playerRef.current;
       const activeAce = aceRef.current;
+      let playerMovedThisTick = false;
       const k = heldKeys.current;
       const movingLeft = k.has("a") || k.has("ArrowLeft");
       const movingRight = k.has("d") || k.has("ArrowRight");
@@ -1669,6 +1670,8 @@ export default function WizardGate() {
           navigate("/dashboard/main", { replace: true });
           return;
         }
+        playerMovedThisTick = Math.abs(nextPlayer.x - currentPlayer.x) > 0.2
+          || Math.abs(nextPlayer.y - currentPlayer.y) > 0.2;
         playerRef.current = nextPlayer;
         setPlayer(nextPlayer);
         skeletonsRef.current = nextSkeletons;
@@ -1677,7 +1680,7 @@ export default function WizardGate() {
         setAce(nextAce);
       }
       if (!playerHurt.active) {
-        const animationMoving = isMoving || (exitActive && !!aceRef.current);
+        const animationMoving = playerMovedThisTick;
         const nextAnimation = jump.active
           ? "jump"
           : (animationMoving ? (runRamp > 0 ? "run" : "walk") : "idle");

@@ -511,7 +511,7 @@ export default function WizardGate() {
       -SKELETON_WIDTH - MULTI_SPAWN_OFFSET * index
     );
     const rightXs = wave3Offsets.map((index) =>
-      rect.width + SKELETON_WIDTH + MULTI_SPAWN_OFFSET * index
+      rect.width + MULTI_SPAWN_OFFSET * index
     );
     return [
       ...leftXs.map((x) => createSkeleton({ x, y: skeletonY, facing: "right", now, wave3Reinforcement: true })),
@@ -865,6 +865,7 @@ export default function WizardGate() {
       const aceCinematicActive = aceRef.current
         && (!aceRef.current.dialogueComplete || aceInterruptionActive || exitActive);
       const fearActive = playerFearRef.current;
+      const cinematicProtectionActive = aceCinematicActive || fearActive;
       const playerLocked = isPlayerAttacking || playerHurt.active || defend.active || aceCinematicActive;
       let moveX = moveXInput;
       let isMoving = false;
@@ -991,7 +992,7 @@ export default function WizardGate() {
           && activeAce.state !== "fall"
           && !currentSkeletons.some((skeleton) => skeleton.hearts > 0)
           && !aceApproachCrossing;
-        if (!playerLocked) {
+        if (!playerLocked && !cinematicProtectionActive) {
           currentSkeletons.forEach((skeleton) => {
             const skeletonDead = skeleton.death.active || skeleton.hearts <= 0;
             if (skeletonDead) return;
@@ -1082,7 +1083,13 @@ export default function WizardGate() {
               };
             }
           }
-          if (!skeletonDead && !nextSkeleton.attack.active && !nextSkeleton.hurt.active && !nextSkeleton.noAttack) {
+          if (
+            !skeletonDead
+            && !nextSkeleton.attack.active
+            && !nextSkeleton.hurt.active
+            && !nextSkeleton.noAttack
+            && !cinematicProtectionActive
+          ) {
             const gapAfter = getGap(nextPlayer.x, nextSkeleton.x);
             if (gapAfter <= SKELETON_ATTACK_RANGE) {
               const timeSinceAttack = now - nextSkeleton.attack.lastAttackTime;
@@ -1108,7 +1115,7 @@ export default function WizardGate() {
           }
           return nextSkeleton;
         });
-        if (!playerLocked) {
+        if (!playerLocked && !cinematicProtectionActive) {
           nextSkeletons.forEach((skeleton) => {
             const skeletonDead = skeleton.death.active || skeleton.hearts <= 0;
             if (skeletonDead) return;
@@ -1202,7 +1209,7 @@ export default function WizardGate() {
             animation: { ...skeleton.animation },
           };
           const skeletonDead = nextSkeleton.death.active || nextSkeleton.hearts <= 0;
-          if (!skeletonDead && nextSkeleton.attack.active) {
+          if (!skeletonDead && nextSkeleton.attack.active && !cinematicProtectionActive) {
             const gapAfter = getGap(nextPlayer.x, nextSkeleton.x);
             const inMelee = gapAfter <= MELEE_RANGE;
             const skeletonImpact = SKELETON_ATTACK_IMPACT_FRAMES.has(nextSkeleton.animation.frame);

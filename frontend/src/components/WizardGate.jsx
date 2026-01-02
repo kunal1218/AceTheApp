@@ -123,6 +123,7 @@ const ACE_ROLL_SPEED = 900;
 const ACE_WALK_SPEED = 220;
 const ACE_APPROACH_GAP = 8;
 const ACE_ATTACK_RANGE = 20;
+const ACE_BLOCK_RANGE = ACE_ATTACK_RANGE * 2;
 const ACE_CUTSCENE_SKELETON_SPEED = 360;
 const ACE_EXIT_SPEED = ACE_WALK_SPEED;
 const PLAYER_FOLLOW_SPEED = RUN_SPEED;
@@ -1338,7 +1339,7 @@ export default function WizardGate() {
               blockTarget = skeleton;
             }
           });
-          const shouldBlock = blockTarget !== null;
+          const shouldBlock = blockTarget !== null && blockGap <= ACE_BLOCK_RANGE;
           if (workingAce.state === "fall") {
             const fallProgress = Math.min(
               (now - workingAce.fallStartTime) / ACE_FALL_DURATION_MS,

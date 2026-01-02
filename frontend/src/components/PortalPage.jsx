@@ -23,6 +23,7 @@ const HUD_SAFE_PADDING = 24;
 const MAP_IDLE_FRAMES = 7;
 const MAP_WALK_FRAMES = 8;
 const MAP_WALK_FPS = 10;
+const MAP_IDLE_FPS = 6;
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
@@ -176,7 +177,17 @@ export default function PortalPage() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isWalking, setIsWalking] = useState(false);
   const [walkFrame, setWalkFrame] = useState(0);
-  const walkStateRef = useRef({ active: false, startTime: 0, targetIndex: null });
+  const [walkProgress, setWalkProgress] = useState(0);
+  const [idleFrame, setIdleFrame] = useState(0);
+  const [facing, setFacing] = useState("right");
+  const walkStateRef = useRef({
+    active: false,
+    startTime: 0,
+    duration: 0,
+    fromIndex: null,
+    toIndex: null,
+  });
+  const idleStartRef = useRef(performance.now());
 
   const portal = useMemo(() => {
     const items = loadItems();
@@ -327,11 +338,20 @@ export default function PortalPage() {
         return false;
       });
       if (nextIndex == null) return;
+      const frameDuration = 1000 / MAP_WALK_FPS;
+      const walkDuration = MAP_WALK_FRAMES * frameDuration;
+      const dx = (path[nextIndex]?.x ?? 0) - (currentCell?.x ?? 0);
+      if (dx !== 0) {
+        setFacing(dx > 0 ? "right" : "left");
+      }
       walkStateRef.current = {
         active: true,
         startTime: performance.now(),
-        targetIndex: nextIndex,
+        duration: walkDuration,
+        fromIndex: currentIndex,
+        toIndex: nextIndex,
       };
+      setWalkProgress(0);
       setIsWalking(true);
       setWalkFrame(0);
     };
@@ -343,7 +363,6 @@ export default function PortalPage() {
     if (!isWalking) return undefined;
     let rafId;
     const frameDuration = 1000 / MAP_WALK_FPS;
-    const walkCycleMs = MAP_WALK_FRAMES * frameDuration;
     const step = (now) => {
       const walkState = walkStateRef.current;
       if (!walkState.active) return;
@@ -353,11 +372,20 @@ export default function PortalPage() {
         Math.floor(elapsed / frameDuration) % MAP_WALK_FRAMES
       );
       setWalkFrame(nextFrame);
-      if (elapsed >= walkCycleMs) {
-        const targetIndex = walkState.targetIndex;
-        walkStateRef.current = { active: false, startTime: 0, targetIndex: null };
+      const progress = walkState.duration > 0 ? Math.min(elapsed / walkState.duration, 1) : 1;
+      setWalkProgress(progress);
+      if (progress >= 1) {
+        const targetIndex = walkState.toIndex;
+        walkStateRef.current = {
+          active: false,
+          startTime: 0,
+          duration: 0,
+          fromIndex: null,
+          toIndex: null,
+        };
         setIsWalking(false);
         setWalkFrame(0);
+        setWalkProgress(0);
         if (targetIndex !== null && targetIndex !== undefined) {
           setSelectedIndex(targetIndex);
           setActiveIndex(targetIndex);
@@ -371,16 +399,44 @@ export default function PortalPage() {
     return () => cancelAnimationFrame(rafId);
   }, [isWalking]);
 
+  useEffect(() => {
+    if (isWalking) {
+      idleStartRef.current = performance.now();
+      setIdleFrame(0);
+      return undefined;
+    }
+    let rafId;
+    const frameDuration = 1000 / MAP_IDLE_FPS;
+    const step = (now) => {
+      const elapsed = now - idleStartRef.current;
+      const nextFrame = Math.floor(elapsed / frameDuration) % MAP_IDLE_FRAMES;
+      setIdleFrame(nextFrame);
+      rafId = requestAnimationFrame(step);
+    };
+    rafId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafId);
+  }, [isWalking]);
+
   const activePoint = layout.points[selectedIndex] || layout.points[0];
+  const walkFromIndex = walkStateRef.current.fromIndex;
+  const walkToIndex = walkStateRef.current.toIndex;
+  const walkFromPoint = walkFromIndex !== null ? layout.points[walkFromIndex] : null;
+  const walkToPoint = walkToIndex !== null ? layout.points[walkToIndex] : null;
+  const displayPoint = isWalking && walkFromPoint && walkToPoint
+    ? {
+      x: walkFromPoint.x + (walkToPoint.x - walkFromPoint.x) * walkProgress,
+      y: walkFromPoint.y + (walkToPoint.y - walkFromPoint.y) * walkProgress,
+    }
+    : activePoint;
   const playerOffset = hasSelected ? 0 : PLAYER_START_OFFSET;
   const playerSprite = isWalking ? walkSprite : idleSprite;
   const playerFrames = isWalking ? MAP_WALK_FRAMES : MAP_IDLE_FRAMES;
-  const playerFrame = isWalking ? walkFrame : 0;
-  const playerStyle = activePoint
+  const playerFrame = isWalking ? walkFrame : idleFrame;
+  const playerStyle = displayPoint
     ? {
-      left: clamp(activePoint.x - PLAYER_WIDTH / 2, 0, mapSize.width - PLAYER_WIDTH),
+      left: clamp(displayPoint.x - PLAYER_WIDTH / 2, 0, mapSize.width - PLAYER_WIDTH),
       top: clamp(
-        activePoint.y - PLAYER_HEIGHT + PLAYER_FOOT_OFFSET + playerOffset,
+        displayPoint.y - PLAYER_HEIGHT + PLAYER_FOOT_OFFSET + playerOffset,
         0,
         mapSize.height - PLAYER_HEIGHT
       ),
@@ -389,6 +445,7 @@ export default function PortalPage() {
       backgroundImage: `url(${playerSprite})`,
       backgroundPosition: `-${playerFrame * PLAYER_FRAME_WIDTH * PLAYER_SCALE}px 0px`,
       backgroundSize: `${PLAYER_FRAME_WIDTH * playerFrames * PLAYER_SCALE}px ${PLAYER_HEIGHT}px`,
+      transform: facing === "left" ? "scaleX(-1)" : "scaleX(1)",
     }
     : null;
 

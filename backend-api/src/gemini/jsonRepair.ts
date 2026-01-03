@@ -11,6 +11,15 @@ type GeminiJsonRepairOptions<T> = {
   maxOutputTokens?: number;
 };
 
+const shouldLogRaw = () =>
+  process.env.NODE_ENV !== "production" &&
+  (process.env.LLM_LOG_RAW === "1" || process.env.LLM_LOG_RAW === "true");
+
+const rawLog = (...args: unknown[]) => {
+  if (!shouldLogRaw()) return;
+  console.log("[gemini-json]", ...args);
+};
+
 export const sanitizeGeminiJSON = (str: string): string => {
   let cleaned = str
     .replace(/```json/gi, "")
@@ -52,7 +61,9 @@ export const runGeminiJsonWithRepair = async <T>(
   });
 
   const raw = first.response.text().trim();
+  rawLog("first response raw:", raw);
   let cleaned = sanitizeGeminiJSON(raw);
+  rawLog("first response cleaned:", cleaned);
   let parsed: unknown;
   try {
     parsed = JSON.parse(cleaned);
@@ -79,7 +90,9 @@ export const runGeminiJsonWithRepair = async <T>(
   });
 
   const repairRaw = repairResponse.response.text().trim();
+  rawLog("repair response raw:", repairRaw);
   cleaned = sanitizeGeminiJSON(repairRaw);
+  rawLog("repair response cleaned:", cleaned);
   try {
     parsed = JSON.parse(cleaned);
   } catch {

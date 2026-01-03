@@ -41,6 +41,11 @@ const devLog = (...args: unknown[]) => {
   console.log("[lecture]", ...args);
 };
 
+const stripDiagnostics = (lecture: GeneralLectureContent): GeneralLectureContent => {
+  const { diagnostics, ...rest } = lecture;
+  return rest;
+};
+
 if (process.env.NODE_ENV !== "production") {
   console.log("[lecture] startup", {
     styleVersion: STYLE_VERSION,
@@ -121,6 +126,7 @@ router.post("/generate", async (req, res) => {
         level,
         styleVersion: STYLE_VERSION
       });
+      const cachePayload = stripDiagnostics(generalLecture);
       generalCache = await prisma.lectureGeneralCache.upsert({
         where: { cacheKey: generalCacheKey },
         create: {
@@ -129,14 +135,14 @@ router.post("/generate", async (req, res) => {
           normalizedTopic,
           level,
           styleVersion: STYLE_VERSION,
-          payload: generalLecture
+          payload: cachePayload
         },
         update: {
           topicName,
           normalizedTopic,
           level,
           styleVersion: STYLE_VERSION,
-          payload: generalLecture
+          payload: cachePayload
         }
       });
     }
@@ -262,6 +268,10 @@ router.post("/generate", async (req, res) => {
     };
     if (process.env.NODE_ENV !== "production") {
       meta.validation = validationSummary.checks;
+      const call1AnswerText = generalLecture.diagnostics?.call1AnswerText;
+      if (call1AnswerText) {
+        meta.debug = { call1AnswerText };
+      }
     }
 
     return res.json({ data: lecturePackage, meta });
@@ -346,6 +356,7 @@ router.post("/question", async (req, res) => {
         level,
         styleVersion: STYLE_VERSION
       });
+      const cachePayload = stripDiagnostics(generalLecture);
       generalCache = await prisma.lectureGeneralCache.upsert({
         where: { cacheKey: generalCacheKey },
         create: {
@@ -354,14 +365,14 @@ router.post("/question", async (req, res) => {
           normalizedTopic,
           level,
           styleVersion: STYLE_VERSION,
-          payload: generalLecture
+          payload: cachePayload
         },
         update: {
           topicName,
           normalizedTopic,
           level,
           styleVersion: STYLE_VERSION,
-          payload: generalLecture
+          payload: cachePayload
         }
       });
     }

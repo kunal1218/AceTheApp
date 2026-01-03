@@ -52,6 +52,39 @@
   gap: 16px;
 }
 
+.lecture-page__compare {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.lecture-page__compare-pane {
+  border-radius: 12px;
+  border: 1px solid rgba(226, 232, 240, 0.18);
+  background: rgba(15, 23, 42, 0.7);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lecture-page__compare-title {
+  font-family: "Press Start 2P", "Courier New", monospace;
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(226, 232, 240, 0.8);
+}
+
+.lecture-page__compare-text {
+  margin: 0;
+  font-family: "Press Start 2P", "Courier New", monospace;
+  font-size: 0.55rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  color: rgba(226, 232, 240, 0.9);
+}
+
 .lecture-page__section-title {
   font-family: "Press Start 2P", "Courier New", monospace;
   font-size: 0.7rem;
@@ -134,5 +167,9 @@
 
   .lecture-page__button {
     align-self: flex-start;
+  }
+
+  .lecture-page__compare {
+    grid-template-columns: 1fr;
   }
 }

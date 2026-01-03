@@ -45,7 +45,7 @@ Produce a high-quality, reusable lecture that could be read aloud verbatim. This
 
 HARD REQUIREMENTS (must all be satisfied):
 1) Length & depth
-- Generate 8-10 chunks.
+- Generate 5-10 chunks.
 - Each chunk must contain a substantial narration transcript (at least ~120 words per chunk).
 - The narration should sound like continuous teaching, with explanations, transitions, and emphasis.
 - Do NOT use placeholder phrases like "Today we will cover..." without following with real explanation.

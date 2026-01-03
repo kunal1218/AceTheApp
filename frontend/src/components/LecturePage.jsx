@@ -3,7 +3,10 @@ import { useLocation, useParams } from "react-router-dom";
 import "./LecturePage.css";
 import { generateLecture, getCourseSyllabus } from "../api";
 
-const extractLecture = (response) => response?.data ?? response;
+const extractResponse = (response) => ({
+  data: response?.data ?? response,
+  meta: response?.meta ?? null,
+});
 
 const findLessonTitle = (rows, topicId) => {
   if (!Array.isArray(rows)) return "";
@@ -18,6 +21,7 @@ export default function LecturePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [lessonTitle, setLessonTitle] = useState(location.state?.lessonTitle || "");
+  const [meta, setMeta] = useState(null);
   useEffect(() => {
     let cancelled = false;
     const loadLecture = async () => {
@@ -30,13 +34,16 @@ export default function LecturePage() {
       try {
         const res = await generateLecture({ courseId, topicId, level: "intro" });
         if (!cancelled) {
-          setLecture(extractLecture(res));
+          const extracted = extractResponse(res);
+          setLecture(extracted.data);
+          setMeta(extracted.meta);
           setError("");
         }
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "Failed to load lecture.");
           setLecture(null);
+          setMeta(null);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -78,6 +85,13 @@ export default function LecturePage() {
     }));
   }, [lecture]);
 
+  const call2Transcript = useMemo(() => {
+    if (!transcript.length) return "";
+    return transcript.map((chunk) => chunk.narration).filter(Boolean).join("\n\n");
+  }, [transcript]);
+
+  const call1Answer = meta?.debug?.call1AnswerText;
+
   return (
     <div className="lecture-page">
       <div className="lecture-page__header">
@@ -90,6 +104,18 @@ export default function LecturePage() {
         {!loading && error && <div className="lecture-page__status lecture-page__status--error">{error}</div>}
         {!loading && !error && lecture && (
           <div className="lecture-page__scroll">
+            {call1Answer && (
+              <div className="lecture-page__compare">
+                <div className="lecture-page__compare-pane">
+                  <div className="lecture-page__compare-title">Call 1 Draft</div>
+                  <pre className="lecture-page__compare-text">{call1Answer}</pre>
+                </div>
+                <div className="lecture-page__compare-pane">
+                  <div className="lecture-page__compare-title">Call 2 Lecture</div>
+                  <pre className="lecture-page__compare-text">{call2Transcript}</pre>
+                </div>
+              </div>
+            )}
             <div className="lecture-page__section-title">Transcript</div>
             {transcript.map((chunk, index) => (
               <div key={chunk.id} className="lecture-chunk">

@@ -33,6 +33,7 @@ export type GeneralLectureContent = {
   diagnostics?: {
     draftWordCount?: number;
     convertPass?: "ok" | "repaired" | "stub_fallback";
+    call1AnswerText?: string;
   };
   source?: "gemini" | "stub" | "stub_fallback";
 };

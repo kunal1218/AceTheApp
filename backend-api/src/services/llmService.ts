@@ -359,16 +359,16 @@ export const validateGeneralLectureContent = (
     errors.push("chunks must be an array");
     checks.structureOk = false;
   }
-  if ("diagnostics" in record && record.diagnostics !== undefined) {
-    const diagnostics = record.diagnostics;
-    if (typeof diagnostics !== "object" || diagnostics === null) {
-      errors.push("diagnostics must be an object");
-      checks.structureOk = false;
-    } else {
-      const diagRecord = diagnostics as Record<string, unknown>;
-      if (typeof diagRecord.draftWordCount === "number") {
-        checks.draftWordCount = diagRecord.draftWordCount;
-      }
+    if ("diagnostics" in record && record.diagnostics !== undefined) {
+      const diagnostics = record.diagnostics;
+      if (typeof diagnostics !== "object" || diagnostics === null) {
+        errors.push("diagnostics must be an object");
+        checks.structureOk = false;
+      } else {
+        const diagRecord = diagnostics as Record<string, unknown>;
+        if (typeof diagRecord.draftWordCount === "number") {
+          checks.draftWordCount = diagRecord.draftWordCount;
+        }
       if (
         diagRecord.convertPass === "ok" ||
         diagRecord.convertPass === "repaired" ||
@@ -718,7 +718,7 @@ export const llmService = {
     if (result) {
       const convertPass = repaired ? "repaired" : "ok";
       if (process.env.NODE_ENV !== "production") {
-        result.diagnostics = { draftWordCount, convertPass };
+        result.diagnostics = { draftWordCount, convertPass, call1AnswerText: call1Text };
       }
       devLog(repaired ? "Gemini gen repair success" : "Gemini gen success");
       return { ...result, source: "gemini" };
@@ -738,7 +738,11 @@ export const llmService = {
       source: "stub_fallback"
     };
     if (process.env.NODE_ENV !== "production") {
-      fallback.diagnostics = { draftWordCount, convertPass: "stub_fallback" };
+      fallback.diagnostics = {
+        draftWordCount,
+        convertPass: "stub_fallback",
+        call1AnswerText: call1Text
+      };
     }
     return fallback;
   },

@@ -224,6 +224,7 @@ export default function PortalPage() {
   const [dbLessons, setDbLessons] = useState([]);
   const [enterMessage, setEnterMessage] = useState("");
   const [isResolvingLecture, setIsResolvingLecture] = useState(false);
+  const hydratedIdRef = useRef(null);
   const walkStateRef = useRef({
     active: false,
     startTime: 0,
@@ -242,6 +243,9 @@ export default function PortalPage() {
     let cancelled = false;
     const hydrateLessons = async () => {
       if (!portal) return;
+      if (hydratedIdRef.current === portal.id) return;
+      hydratedIdRef.current = portal.id;
+      if (dbLessons.length) return;
       try {
         let rows = [];
         if (portal.courseId) {
@@ -264,7 +268,7 @@ export default function PortalPage() {
     return () => {
       cancelled = true;
     };
-  }, [portal, dbLessons]);
+  }, [portal]);
 
   const lessons = useMemo(() => {
     if (dbLessons.length) return dbLessons;
@@ -275,7 +279,7 @@ export default function PortalPage() {
       title: `Lesson ${index + 1}`,
       date: "",
     }));
-  }, [portal]);
+  }, [portal, dbLessons]);
   const nodeMeta = useMemo(() => {
     const lessonCount = lessons.length;
     const specialCount = Math.min(SPECIAL_NODE_COUNT, Math.max(lessonCount - 1, 0));

@@ -110,16 +110,35 @@ const isQuestionPayload = (value: unknown): value is LectureQuestionAnswer => {
   return true;
 };
 
+const normalizeStubContext = (topicName: string, topicContext: string) => {
+  const parts = topicContext
+    .split("|")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const filtered = parts.filter((part) => !/^\d+$/.test(part) && part.toLowerCase() !== "lesson");
+  const topicKey = topicName.toLowerCase().trim();
+  const withoutTopic = filtered.filter((part) => part.toLowerCase() !== topicKey);
+  const unique = withoutTopic.filter((part, index) => withoutTopic.indexOf(part) === index);
+  return unique.length ? unique.join(", ") : "";
+};
+
 const buildStubLecture = (input: GenerateLectureInput): GeneralLectureContent => {
-  const { topicName, topicContext, level, styleVersion } = input;
+  const { topicName, topicContext, level } = input;
+  const cleanContext = normalizeStubContext(topicName, topicContext);
+  const levelLine =
+    level === "intro"
+      ? "We will keep it lightweight and focus on the big picture."
+      : level === "exam"
+        ? "We will highlight the patterns that show up on exams."
+        : "We will go deeper into the mechanics behind the idea.";
   return {
     chunks: [
       {
-        generalText: `Intro to ${topicName}: ${topicContext}. Start with the core intuition before formulas.`,
+        generalText: `Today we are covering ${topicName}. ${cleanContext ? `We will frame it around ${cleanContext}. ` : ""}We start with a plain-language definition and a simple example.`,
         boardOps: safeOps
       },
       {
-        generalText: `For ${level} depth (${styleVersion}), focus on why the concept matters.`,
+        generalText: `${levelLine} We end by connecting the concept to why it matters in practice.`,
         boardOps: [{ op: "text", x: 22, y: 90, text: "key intuition" }]
       }
     ],
@@ -128,7 +147,7 @@ const buildStubLecture = (input: GenerateLectureInput): GeneralLectureContent =>
       `Where does ${topicName} show up most often?`
     ],
     confusionMode: {
-      summary: `${topicName} is about a single core idea—focus on that first.`,
+      summary: `${topicName} centers on one core idea. Focus on that before the details.`,
       boardOps: [{ op: "text", x: 18, y: 20, text: "one core idea" }]
     },
     source: "stub"
@@ -171,8 +190,9 @@ export const llmService = {
   async generateTieIns(input: GenerateTieInInput): Promise<string[]> {
     if (LLM_MODE !== "gemini") {
       const { courseName, topicName, topicContext, topicOrdering, chunkCount } = input;
+      const cleanContext = normalizeStubContext(topicName, topicContext);
       return Array.from({ length: chunkCount }, () =>
-        `${topicName} (${topicContext}) connects to ${courseName} (${topicOrdering}).`
+        `In ${courseName}, ${topicName} connects to ${topicOrdering}.${cleanContext ? ` We will frame it around ${cleanContext}.` : ""}`
       );
     }
     const prompt = buildTieInPrompt(input.courseName, input.topicContext, input.topicOrdering);
@@ -196,8 +216,9 @@ export const llmService = {
     }
     devLog("fallback to stub tie-ins");
     const { courseName, topicName, topicContext, topicOrdering, chunkCount } = input;
+    const cleanContext = normalizeStubContext(topicName, topicContext);
     return Array.from({ length: chunkCount }, () =>
-      `${topicName} (${topicContext}) connects to ${courseName} (${topicOrdering}).`
+      `In ${courseName}, ${topicName} connects to ${topicOrdering}.${cleanContext ? ` We will frame it around ${cleanContext}.` : ""}`
     );
   },
 

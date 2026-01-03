@@ -256,7 +256,7 @@ export default function PortalPage() {
     return () => {
       cancelled = true;
     };
-  }, [portal, dbLessons]);
+  }, [portal]);
 
   const lessons = useMemo(() => {
     if (dbLessons.length) return dbLessons;

@@ -710,7 +710,10 @@ export const llmService = {
       console.log("[llmService] Gemini gen failed raw:", truncateRaw(raw));
     }
     devLog("fallback to stub");
-    const fallback = { ...buildStubLecture(input), source: "stub_fallback" };
+    const fallback: GeneralLectureContent = {
+      ...buildStubLecture(input),
+      source: "stub_fallback"
+    };
     if (process.env.NODE_ENV !== "production") {
       fallback.diagnostics = { draftWordCount, convertPass: "stub_fallback" };
     }

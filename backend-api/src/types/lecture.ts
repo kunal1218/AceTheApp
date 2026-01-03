@@ -8,7 +8,6 @@ export type WhiteboardOp =
 export type LectureChunk = {
   chunkTitle: string;
   narration: string;
-  tieInText?: string;
   boardOps?: WhiteboardOp[];
 };
 
@@ -17,6 +16,7 @@ export type LecturePackage = {
   topicId: string;
   level: "intro" | "exam" | "deep";
   chunks: LectureChunk[];
+  tieIns?: string[];
   topQuestions?: string[];
   confusionMode: {
     summary: string;

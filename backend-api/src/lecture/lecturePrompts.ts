@@ -56,25 +56,40 @@ Each chunk MUST include:
 - narration: the full spoken explanation (this is the most important field)
 - boardOps: OPTIONAL, only when illustrating a concrete example or spatial relationship
 
-3) Whiteboard rules
-- Only include boardOps when you are explicitly walking through an example or visual situation.
+3) Novelty & anchors (ANTI-REPETITION)
+- Each chunk must introduce NEW concrete content (no paraphrasing or recycling sentences).
+- Every chunk narration MUST include at least ONE anchor item:
+  * a concrete example with specific values (numbers, variable names, addresses)
+  * a step-by-step walkthrough (e.g., "Step 1... Step 2...") in paragraph form
+  * a short pseudocode snippet embedded as plain text
+  * a common misconception + correction
+  * a worked example that uses whiteboardOps to illustrate it
+
+4) Whiteboard rules
+- Only include boardOps in chunks that are explicitly "Worked Example" (or "Example") and narrate the example.
 - Do NOT include decorative or redundant drawings.
 - Use ONLY simple, structured commands (boxes, arrows, text labels).
 - If no visual aid is genuinely helpful, omit boardOps entirely for that chunk.
 
-4) Content rules
+5) Content rules
 - Do NOT mention any specific courses, professors, exams, assignments, deadlines, or institutions.
-- Do NOT include course-specific tie-ins.
+- Do NOT include course-specific tie-ins or any tieInText/tieIns fields.
 - Focus on intuition first, then mechanics, then implications.
 - Use analogies sparingly but clearly.
 - Avoid bullet lists inside narration; write in paragraph form.
 
-5) Confusion mode
+6) Banned filler / meta-teaching phrasing
+- Do NOT use or paraphrase phrases like:
+  "we will keep it lightweight", "notice how each step builds",
+  "conversational pace", "anchor the explanation", "we highlight the motivation",
+  "walk through in plain language", "focus on the big picture".
+
+7) Confusion mode
 - confusionMode.summary must restate ONE core idea of the entire lecture in plain language.
 - It must introduce NO new concepts.
 - It should feel like something said to a confused student to re-anchor them.
 
-6) Output rules
+8) Output rules
 - Return STRICT JSON only.
 - No markdown, no commentary, no explanations outside JSON.
 - Use EXACT field names as defined in the schema.
@@ -97,11 +112,15 @@ export const GENERAL_PROMPT_FINGERPRINT = createHash("sha256")
 
 export const buildGeneralLectureRepairPrompt = (
   rawText: string,
-  schemaHint: string = GENERAL_LECTURE_SCHEMA_HINT
+  schemaHint: string = GENERAL_LECTURE_SCHEMA_HINT,
+  failureReasons: string[] = []
 ) => `
 You receive malformed or partially incorrect JSON-like text for a lecture payload.
 Repair it into valid JSON that matches this schema example.
+Rewrite narrations to remove repetition, add concrete anchors per chunk, and avoid banned filler phrases.
 Return JSON only. No markdown, no explanations.
+
+${failureReasons.length ? `Validation failures:\n- ${failureReasons.join("\n- ")}\n` : ""}
 
 Schema example:
 ${schemaHint}

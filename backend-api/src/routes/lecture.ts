@@ -204,17 +204,25 @@ router.post("/generate", async (req, res) => {
       }
     });
 
-    const chunks = generalLecture.chunks.map((chunk, index) => ({
+    const chunks = generalLecture.chunks.map((chunk) => ({
       chunkTitle: chunk.chunkTitle,
       narration: chunk.narration,
-      tieInText: tieIns[index],
       boardOps: chunk.boardOps
     }));
 
+    const validationSummary = validateGeneralLectureContent(generalLecture);
+    if (!validationSummary.ok) {
+      devLog("general lecture failed validation after generation", {
+        errors: validationSummary.errors
+      });
+    }
+
+    const mergedTieIns = tieIns.length ? tieIns.slice(0, chunks.length) : [];
     const lecturePackage: LecturePackage = {
       topicId,
       level,
       chunks,
+      tieIns: mergedTieIns.length ? mergedTieIns : undefined,
       topQuestions: generalLecture.topQuestions,
       confusionMode: generalLecture.confusionMode
     };
@@ -245,16 +253,18 @@ router.post("/generate", async (req, res) => {
       }
     });
 
-    return res.json({
-      data: lecturePackage,
-      meta: {
-        generalCache: generalCacheStatus,
-        tieInCache: tieInCacheStatus,
-        styleVersionUsed: STYLE_VERSION,
-        tieInVersionUsed: TIE_IN_VERSION,
-        promptFingerprint: GENERAL_PROMPT_FINGERPRINT
-      }
-    });
+    const meta: Record<string, unknown> = {
+      generalCache: generalCacheStatus,
+      tieInCache: tieInCacheStatus,
+      styleVersionUsed: STYLE_VERSION,
+      tieInVersionUsed: TIE_IN_VERSION,
+      promptFingerprint: GENERAL_PROMPT_FINGERPRINT
+    };
+    if (process.env.NODE_ENV !== "production") {
+      meta.validation = validationSummary.checks;
+    }
+
+    return res.json({ data: lecturePackage, meta });
   } catch (err) {
     console.error("[/lecture/generate] failed:", err);
     return res.status(500).json({ error: "Failed to generate lecture" });

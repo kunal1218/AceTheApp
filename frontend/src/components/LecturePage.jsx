@@ -69,11 +69,12 @@ export default function LecturePage() {
 
   const transcript = useMemo(() => {
     if (!lecture?.chunks) return [];
+    const tieIns = Array.isArray(lecture?.tieIns) ? lecture.tieIns : [];
     return lecture.chunks.map((chunk, index) => ({
       id: `chunk-${index}`,
       chunkTitle: chunk.chunkTitle || "",
       narration: chunk.narration || chunk.generalText || "",
-      tieInText: chunk.tieInText,
+      tieInText: chunk.tieInText || tieIns[index],
     }));
   }, [lecture]);
 

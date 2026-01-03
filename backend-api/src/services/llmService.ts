@@ -44,12 +44,25 @@ const LLM_MODE = (process.env.LLM_MODE || "stub").toLowerCase();
 export const GENERAL_LECTURE_GUARDS = {
   minChunks: 8,
   minWordsPerChunk: 120,
-  minTotalWords: 1200
+  minTotalWords: 1200,
+  maxRepeatedSentenceRatio: 0.2,
+  maxSentenceRepeatChunks: 3,
+  minSentenceWords: 6
 };
 
 const safeOps: WhiteboardOp[] = [
   { op: "rect", x: 24, y: 20, w: 120, h: 50, label: "idea" },
   { op: "arrow", from: [144, 45], to: [200, 45], label: "link" }
+];
+
+const BANNED_FILLER_PHRASES = [
+  "we will keep it lightweight",
+  "notice how each step builds",
+  "conversational pace",
+  "anchor the explanation",
+  "we highlight the motivation",
+  "walk through in plain language",
+  "focus on the big picture"
 ];
 
 const devLog = (...args: unknown[]) => {
@@ -99,37 +112,166 @@ const isWhiteboardOp = (value: unknown): value is WhiteboardOp => {
 const isWhiteboardOps = (value: unknown): value is WhiteboardOp[] =>
   Array.isArray(value) && value.every(isWhiteboardOp);
 
+type LectureValidationChecks = {
+  chunkCountOk: boolean;
+  wordCountOk: boolean;
+  totalWordsOk: boolean;
+  anchorsOk: boolean;
+  repetitionOk: boolean;
+  boardOpsOk: boolean;
+  bannedPhrasesOk: boolean;
+  structureOk: boolean;
+};
+
+const normalizeSentence = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const splitSentences = (value: string) =>
+  value
+    .split(/[.!?]+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+
+const hasAnchorInNarration = (narration: string, boardOps?: WhiteboardOp[]) => {
+  const text = narration.toLowerCase();
+  const hasConcreteExample =
+    /\b(example|suppose|for instance|imagine)\b/.test(text) && /\d/.test(text);
+  const hasStepByStep =
+    /(step\s*1|step one|first,|firstly)[\s\S]*?(step\s*2|step two|second,|secondly)/i.test(
+      narration
+    );
+  const hasPseudocode =
+    /\bif\b[\s\S]*?\b(then|else|return)\b/i.test(narration) ||
+    /\bfor\b[\s\S]*?\b(in|to|do)\b/i.test(narration) ||
+    /\bwhile\b[\s\S]*?\b(do|return)\b/i.test(narration);
+  const hasMisconception =
+    /\b(common misconception|common mistake|people often think|many assume|incorrectly assume|misunderstanding|but actually|however, the correct)\b/i.test(
+      narration
+    );
+  const hasWorkedExample =
+    !!boardOps && /\b(worked example|example|walkthrough|case study|demo)\b/i.test(narration);
+  return {
+    ok: hasConcreteExample || hasStepByStep || hasPseudocode || hasMisconception || hasWorkedExample,
+    hasWorkedExample
+  };
+};
+
+const analyzeRepetition = (
+  chunks: Array<{ narration: string }>
+): {
+  repeatedRatio: number;
+  maxChunkAppearances: number;
+  repeatedSentence?: string;
+  totalSentences: number;
+} => {
+  const sentenceMap = new Map<
+    string,
+    { count: number; chunkIndexes: Set<number> }
+  >();
+  let totalSentences = 0;
+
+  chunks.forEach((chunk, index) => {
+    const sentences = splitSentences(chunk.narration);
+    const seenInChunk = new Set<string>();
+    sentences.forEach((sentence) => {
+      const normalized = normalizeSentence(sentence);
+      if (!normalized) return;
+      const wordCount = normalized.split(" ").length;
+      if (wordCount < GENERAL_LECTURE_GUARDS.minSentenceWords) return;
+      if (seenInChunk.has(normalized)) return;
+      seenInChunk.add(normalized);
+      totalSentences += 1;
+      const entry = sentenceMap.get(normalized) ?? {
+        count: 0,
+        chunkIndexes: new Set<number>()
+      };
+      entry.count += 1;
+      entry.chunkIndexes.add(index);
+      sentenceMap.set(normalized, entry);
+    });
+  });
+
+  let repeatedCount = 0;
+  let maxChunkAppearances = 0;
+  let repeatedSentence: string | undefined;
+
+  sentenceMap.forEach((entry, sentence) => {
+    const chunkAppearances = entry.chunkIndexes.size;
+    if (chunkAppearances > 1) {
+      repeatedCount += entry.count;
+    }
+    if (chunkAppearances > maxChunkAppearances) {
+      maxChunkAppearances = chunkAppearances;
+      repeatedSentence = sentence;
+    }
+  });
+
+  const repeatedRatio = totalSentences ? repeatedCount / totalSentences : 0;
+  return { repeatedRatio, maxChunkAppearances, repeatedSentence, totalSentences };
+};
+
 export const validateGeneralLectureContent = (
   value: unknown
-): { ok: boolean; errors: string[]; payload?: GeneralLectureContent } => {
+): {
+  ok: boolean;
+  errors: string[];
+  checks: LectureValidationChecks;
+  payload?: GeneralLectureContent;
+} => {
   const errors: string[] = [];
+  const checks: LectureValidationChecks = {
+    chunkCountOk: true,
+    wordCountOk: true,
+    totalWordsOk: true,
+    anchorsOk: true,
+    repetitionOk: true,
+    boardOpsOk: true,
+    bannedPhrasesOk: true,
+    structureOk: true
+  };
+
   if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return { ok: false, errors: ["payload is not an object"] };
+    return {
+      ok: false,
+      errors: ["payload is not an object"],
+      checks: { ...checks, structureOk: false }
+    };
   }
   const record = value as Record<string, unknown>;
   if ("data" in record) {
     errors.push("payload wrapped in data");
+    checks.structureOk = false;
   }
   if ("topQuestions" in record) {
     errors.push("topQuestions not allowed in general lecture");
+    checks.structureOk = false;
   }
-  const allowedRootKeys = new Set(["chunks", "confusionMode", "topQuestions"]);
+  const allowedRootKeys = new Set(["chunks", "confusionMode", "topQuestions", "source"]);
   Object.keys(record).forEach((key) => {
     if (!allowedRootKeys.has(key)) {
       errors.push(`unexpected root key: ${key}`);
+      checks.structureOk = false;
     }
   });
   if (!Array.isArray(record.chunks)) {
     errors.push("chunks must be an array");
+    checks.structureOk = false;
   }
   const chunks = Array.isArray(record.chunks) ? record.chunks : [];
   if (chunks.length < GENERAL_LECTURE_GUARDS.minChunks) {
     errors.push(`chunk count too small: ${chunks.length}`);
+    checks.chunkCountOk = false;
   }
   let totalWords = 0;
+  const narrations: Array<{ narration: string }> = [];
   chunks.forEach((chunk, index) => {
     if (!chunk || typeof chunk !== "object") {
       errors.push(`chunk ${index + 1} is not an object`);
+      checks.structureOk = false;
       return;
     }
     const chunkRecord = chunk as Record<string, unknown>;
@@ -137,40 +279,83 @@ export const validateGeneralLectureContent = (
     Object.keys(chunkRecord).forEach((key) => {
       if (!allowedChunkKeys.has(key)) {
         errors.push(`chunk ${index + 1} has unexpected key: ${key}`);
+        checks.structureOk = false;
       }
     });
     const chunkTitle = chunkRecord.chunkTitle;
     const narration = chunkRecord.narration;
     if (typeof chunkTitle !== "string" || chunkTitle.trim().length === 0) {
       errors.push(`chunk ${index + 1} missing chunkTitle`);
+      checks.structureOk = false;
     }
     if (typeof narration !== "string" || narration.trim().length === 0) {
       errors.push(`chunk ${index + 1} missing narration`);
+      checks.structureOk = false;
     } else {
+      narrations.push({ narration });
       const words = countWords(narration);
       totalWords += words;
       if (words < GENERAL_LECTURE_GUARDS.minWordsPerChunk) {
         errors.push(`chunk ${index + 1} narration too short (${words} words)`);
+        checks.wordCountOk = false;
       }
-    }
-    if (chunkRecord.boardOps && !isWhiteboardOps(chunkRecord.boardOps)) {
-      errors.push(`chunk ${index + 1} has invalid boardOps`);
+      const lower = narration.toLowerCase();
+      const bannedPhrase = BANNED_FILLER_PHRASES.find((phrase) => lower.includes(phrase));
+      if (bannedPhrase) {
+        errors.push(`chunk ${index + 1} uses banned filler phrase: "${bannedPhrase}"`);
+        checks.bannedPhrasesOk = false;
+      }
+      const anchorCheck = hasAnchorInNarration(narration, chunkRecord.boardOps as WhiteboardOp[]);
+      if (!anchorCheck.ok) {
+        errors.push(`chunk ${index + 1} missing concrete anchor`);
+        checks.anchorsOk = false;
+      }
+      const isExampleTitle =
+        typeof chunkTitle === "string" && /\bexample\b/i.test(chunkTitle);
+      if (chunkRecord.boardOps && !isWhiteboardOps(chunkRecord.boardOps)) {
+        errors.push(`chunk ${index + 1} has invalid boardOps`);
+        checks.boardOpsOk = false;
+      } else if (chunkRecord.boardOps && !anchorCheck.hasWorkedExample) {
+        errors.push(`chunk ${index + 1} uses boardOps without a worked example narration`);
+        checks.boardOpsOk = false;
+      } else if (chunkRecord.boardOps && !isExampleTitle) {
+        errors.push(`chunk ${index + 1} uses boardOps without Example in title`);
+        checks.boardOpsOk = false;
+      }
     }
   });
   if (totalWords < GENERAL_LECTURE_GUARDS.minTotalWords) {
     errors.push(`total narration too short (${totalWords} words)`);
+    checks.totalWordsOk = false;
+  }
+  if (narrations.length) {
+    const repetition = analyzeRepetition(narrations);
+    if (repetition.repeatedRatio > GENERAL_LECTURE_GUARDS.maxRepeatedSentenceRatio) {
+      errors.push(
+        `repetition too high (${Math.round(repetition.repeatedRatio * 100)}% repeated sentences)`
+      );
+      checks.repetitionOk = false;
+    }
+    if (repetition.maxChunkAppearances >= GENERAL_LECTURE_GUARDS.maxSentenceRepeatChunks) {
+      errors.push(
+        `sentence repeated across ${repetition.maxChunkAppearances} chunks: "${repetition.repeatedSentence}"`
+      );
+      checks.repetitionOk = false;
+    }
   }
   const confusionMode = record.confusionMode as Record<string, unknown> | undefined;
   if (!confusionMode || typeof confusionMode.summary !== "string") {
     errors.push("confusionMode.summary is required");
+    checks.structureOk = false;
   }
   if (confusionMode?.boardOps && !isWhiteboardOps(confusionMode.boardOps)) {
     errors.push("confusionMode.boardOps invalid");
+    checks.boardOpsOk = false;
   }
   if (errors.length) {
-    return { ok: false, errors };
+    return { ok: false, errors, checks };
   }
-  return { ok: true, errors: [], payload: record as GeneralLectureContent };
+  return { ok: true, errors: [], checks, payload: record as GeneralLectureContent };
 };
 
 const isTieInPayload = (value: unknown): value is { tieIns: string[] } => {
@@ -204,43 +389,77 @@ const buildStubLecture = (input: GenerateLectureInput): GeneralLectureContent =>
   const cleanContext = normalizeStubContext(topicName, topicContext);
   const levelLine =
     level === "intro"
-      ? "We will keep it lightweight and focus on the big picture."
+      ? "We start with intuition and only add mechanics once the picture is clear."
       : level === "exam"
-        ? "We will highlight the patterns that show up on exams."
-        : "We will go deeper into the mechanics behind the idea.";
-  const titles = [
-    "Core Intuition",
-    "Key Definitions",
-    "Mechanics",
-    "Worked Example",
-    "Common Pitfalls",
-    "Why It Matters",
-    "Connections",
-    "Wrap Up"
+        ? "We focus on the exact patterns that show up under time pressure."
+        : "We go deeper into why the mechanism behaves the way it does.";
+
+  const chunkSpecs = [
+    { title: "Worked Example: Concrete Memory", anchor: "example", boardOps: safeOps },
+    { title: "Step-by-Step Walkthrough", anchor: "steps" },
+    { title: "Pseudocode Sketch", anchor: "pseudocode" },
+    { title: "Common Misconception", anchor: "misconception" },
+    { title: "Concrete Values in Action", anchor: "example" },
+    { title: "Pointer Arithmetic Example", anchor: "example" },
+    { title: "Boundary Case Correction", anchor: "misconception" },
+    { title: "Second Worked Example", anchor: "example" }
   ];
-  const buildNarration = (index: number) => {
-    const baseSentences = [
-      `${topicName} is the focus of this part, and we will keep a steady, conversational pace as we unpack it.`,
-      cleanContext
-        ? `To stay grounded, we frame the idea around ${cleanContext} and connect it back to real intuition.`
-        : `We anchor the explanation in intuition before introducing any mechanics or jargon.`,
-      "Notice how each step builds on the previous one, so the logic feels continuous instead of fragmented.",
-      "We highlight the motivation, then walk through the mechanism in plain language, and end with a practical implication.",
-      "If something feels abstract, pause and restate the core idea in simpler terms before moving forward.",
-      levelLine
-    ];
-    let narration = "";
-    let cursor = 0;
+
+  const padNarration = (sentences: string[], index: number) => {
+    let narration = sentences.join(" ");
+    let counter = 0;
     while (countWords(narration) < GENERAL_LECTURE_GUARDS.minWordsPerChunk) {
-      narration += `${baseSentences[cursor % baseSentences.length]} `;
-      cursor += 1;
+      const offset = (index + 3) * 7 + counter;
+      narration += ` Another detail uses value ${offset} with offset ${offset + 2}, so the next address is ${1000 + offset * 4}.`;
+      counter += 1;
     }
     return narration.trim();
   };
-  const chunks = Array.from({ length: GENERAL_LECTURE_GUARDS.minChunks }, (_, index) => ({
-    chunkTitle: titles[index] || `Part ${index + 1}`,
-    narration: buildNarration(index),
-    boardOps: index === 0 ? safeOps : undefined
+
+  const buildNarration = (index: number, spec: (typeof chunkSpecs)[number]) => {
+    const intro = `Part ${index + 1} focuses on ${topicName} with a concrete angle tied to "${spec.title}".`;
+    const contextLine = cleanContext
+      ? `For part ${index + 1}, we ground the explanation using ${cleanContext} so the idea has a real anchor.`
+      : `For part ${index + 1}, we ground the explanation in concrete inputs so the idea has a real anchor.`;
+    const anchorLines: string[] = [];
+    if (spec.anchor === "example") {
+      const base = 1000 + index * 64;
+      const valueA = 3 + index;
+      const valueB = 7 + index * 2;
+      anchorLines.push(
+        `Worked example: suppose an array starts at address ${base} and holds values ${valueA}, ${valueB}, and ${valueB + 5}.`,
+        `If the element size is 4 bytes, the next cell is at ${base + 4}, then ${base + 8}, and so on.`,
+        `That concrete address arithmetic makes ${topicName} feel tangible instead of abstract.`
+      );
+    }
+    if (spec.anchor === "steps") {
+      anchorLines.push(
+        "Step 1: identify the base reference and the units the pointer moves in.",
+        "Step 2: apply the increment explicitly, tracking the resulting address or index.",
+        "Step 3: map that new address back to the value you intend to access.",
+        "The steps make the mechanics explicit and prevent hidden jumps in logic."
+      );
+    }
+    if (spec.anchor === "pseudocode") {
+      anchorLines.push(
+        "Pseudocode: if i < n then addr = base + i * size; value = mem[addr]; return value.",
+        "The short snippet shows the exact order of operations without extra syntax."
+      );
+    }
+    if (spec.anchor === "misconception") {
+      anchorLines.push(
+        `Common misconception: people often think ${topicName} means the variable itself moves in memory.`,
+        "But actually the address changes while the underlying array stays fixed, which is why the offset calculation matters."
+      );
+    }
+    const close = `${levelLine} In part ${index + 1}, we end by stating the specific implication this has for real code and debugging.`;
+    return padNarration([intro, contextLine, ...anchorLines, close], index);
+  };
+
+  const chunks = chunkSpecs.map((spec, index) => ({
+    chunkTitle: spec.title,
+    narration: buildNarration(index, spec),
+    boardOps: spec.boardOps
   }));
   return {
     chunks,
@@ -267,9 +486,11 @@ export const llmService = {
       "Repair it into valid JSON that matches the schema in the prompt. " +
       "Return JSON only with no markdown or extra text.";
     let validationErrors: string[] = [];
+    let validationChecks: LectureValidationChecks | undefined;
     const validate = (value: unknown): value is GeneralLectureContent => {
       const outcome = validateGeneralLectureContent(value);
       validationErrors = outcome.errors;
+      validationChecks = outcome.checks;
       return outcome.ok;
     };
     const { result, repaired, raw } = await runGeminiJsonWithRepair<GeneralLectureContent>({
@@ -278,7 +499,7 @@ export const llmService = {
         "You generate structured lecture content as strict JSON for a teaching assistant.",
       repairSystemInstruction,
       prompt,
-      repairPrompt: (rawText) => buildGeneralLectureRepairPrompt(rawText),
+      repairPrompt: (rawText) => buildGeneralLectureRepairPrompt(rawText, undefined, validationErrors),
       validate,
       temperature: 0.2,
       maxOutputTokens: 4096
@@ -288,7 +509,10 @@ export const llmService = {
       return { ...result, source: "gemini" };
     }
     if (validationErrors.length) {
-      devLog("Gemini gen validation failed", { errors: validationErrors });
+      devLog("Gemini gen validation failed", {
+        errors: validationErrors,
+        checks: validationChecks
+      });
     }
     if (shouldLogFailures()) {
       console.log("[llmService] Gemini gen failed raw:", truncateRaw(raw));

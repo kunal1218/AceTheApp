@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import { EXAMPLE_LECTURE_PACKAGE } from "./exampleLecturePackage";
 
 const GENERAL_SCHEMA_EXAMPLE = {
@@ -82,6 +83,17 @@ Each chunk MUST include:
 Return JSON matching this schema exactly:
 ${GENERAL_LECTURE_SCHEMA_HINT}
 `;
+
+const GENERAL_PROMPT_SAMPLE = buildGeneralLecturePrompt(
+  "SAMPLE_TOPIC_CONTEXT",
+  "intro",
+  "vX"
+);
+
+export const GENERAL_PROMPT_FINGERPRINT = createHash("sha256")
+  .update(GENERAL_PROMPT_SAMPLE)
+  .digest("hex")
+  .slice(0, 8);
 
 export const buildGeneralLectureRepairPrompt = (
   rawText: string,

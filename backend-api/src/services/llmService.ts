@@ -41,6 +41,11 @@ type QuestionInput = {
 
 const GEMINI_MODEL = "gemini-2.0-flash";
 const LLM_MODE = (process.env.LLM_MODE || "stub").toLowerCase();
+export const GENERAL_LECTURE_GUARDS = {
+  minChunks: 8,
+  minWordsPerChunk: 120,
+  minTotalWords: 1200
+};
 
 const safeOps: WhiteboardOp[] = [
   { op: "rect", x: 24, y: 20, w: 120, h: 50, label: "idea" },
@@ -51,6 +56,19 @@ const devLog = (...args: unknown[]) => {
   if (process.env.NODE_ENV === "production") return;
   console.log("[llmService]", ...args);
 };
+
+const shouldLogFailures = () =>
+  process.env.NODE_ENV !== "production" &&
+  (process.env.LLM_LOG_RAW === "1" || process.env.LLM_LOG_FAILURES === "1");
+
+const truncateRaw = (value: string, maxLength: number = 1200) =>
+  value.length > maxLength ? `${value.slice(0, maxLength)}...` : value;
+
+const countWords = (value: string) =>
+  value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
 
 const isWhiteboardOp = (value: unknown): value is WhiteboardOp => {
   if (!value || typeof value !== "object") return false;
@@ -81,20 +99,78 @@ const isWhiteboardOp = (value: unknown): value is WhiteboardOp => {
 const isWhiteboardOps = (value: unknown): value is WhiteboardOp[] =>
   Array.isArray(value) && value.every(isWhiteboardOp);
 
-const isGeneralLectureContent = (value: unknown): value is GeneralLectureContent => {
-  if (!value || typeof value !== "object") return false;
-  const record = value as GeneralLectureContent;
-  if (!Array.isArray(record.chunks)) return false;
-  if (!record.confusionMode || typeof record.confusionMode.summary !== "string") return false;
-  for (const chunk of record.chunks) {
-    if (!chunk || typeof chunk.chunkTitle !== "string" || typeof chunk.narration !== "string") {
-      return false;
-    }
-    if (chunk.boardOps && !isWhiteboardOps(chunk.boardOps)) return false;
+export const validateGeneralLectureContent = (
+  value: unknown
+): { ok: boolean; errors: string[]; payload?: GeneralLectureContent } => {
+  const errors: string[] = [];
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return { ok: false, errors: ["payload is not an object"] };
   }
-  if (record.confusionMode.boardOps && !isWhiteboardOps(record.confusionMode.boardOps)) return false;
-  if (record.topQuestions && !record.topQuestions.every((q) => typeof q === "string")) return false;
-  return true;
+  const record = value as Record<string, unknown>;
+  if ("data" in record) {
+    errors.push("payload wrapped in data");
+  }
+  if ("topQuestions" in record) {
+    errors.push("topQuestions not allowed in general lecture");
+  }
+  const allowedRootKeys = new Set(["chunks", "confusionMode", "topQuestions"]);
+  Object.keys(record).forEach((key) => {
+    if (!allowedRootKeys.has(key)) {
+      errors.push(`unexpected root key: ${key}`);
+    }
+  });
+  if (!Array.isArray(record.chunks)) {
+    errors.push("chunks must be an array");
+  }
+  const chunks = Array.isArray(record.chunks) ? record.chunks : [];
+  if (chunks.length < GENERAL_LECTURE_GUARDS.minChunks) {
+    errors.push(`chunk count too small: ${chunks.length}`);
+  }
+  let totalWords = 0;
+  chunks.forEach((chunk, index) => {
+    if (!chunk || typeof chunk !== "object") {
+      errors.push(`chunk ${index + 1} is not an object`);
+      return;
+    }
+    const chunkRecord = chunk as Record<string, unknown>;
+    const allowedChunkKeys = new Set(["chunkTitle", "narration", "boardOps"]);
+    Object.keys(chunkRecord).forEach((key) => {
+      if (!allowedChunkKeys.has(key)) {
+        errors.push(`chunk ${index + 1} has unexpected key: ${key}`);
+      }
+    });
+    const chunkTitle = chunkRecord.chunkTitle;
+    const narration = chunkRecord.narration;
+    if (typeof chunkTitle !== "string" || chunkTitle.trim().length === 0) {
+      errors.push(`chunk ${index + 1} missing chunkTitle`);
+    }
+    if (typeof narration !== "string" || narration.trim().length === 0) {
+      errors.push(`chunk ${index + 1} missing narration`);
+    } else {
+      const words = countWords(narration);
+      totalWords += words;
+      if (words < GENERAL_LECTURE_GUARDS.minWordsPerChunk) {
+        errors.push(`chunk ${index + 1} narration too short (${words} words)`);
+      }
+    }
+    if (chunkRecord.boardOps && !isWhiteboardOps(chunkRecord.boardOps)) {
+      errors.push(`chunk ${index + 1} has invalid boardOps`);
+    }
+  });
+  if (totalWords < GENERAL_LECTURE_GUARDS.minTotalWords) {
+    errors.push(`total narration too short (${totalWords} words)`);
+  }
+  const confusionMode = record.confusionMode as Record<string, unknown> | undefined;
+  if (!confusionMode || typeof confusionMode.summary !== "string") {
+    errors.push("confusionMode.summary is required");
+  }
+  if (confusionMode?.boardOps && !isWhiteboardOps(confusionMode.boardOps)) {
+    errors.push("confusionMode.boardOps invalid");
+  }
+  if (errors.length) {
+    return { ok: false, errors };
+  }
+  return { ok: true, errors: [], payload: record as GeneralLectureContent };
 };
 
 const isTieInPayload = (value: unknown): value is { tieIns: string[] } => {
@@ -132,19 +208,42 @@ const buildStubLecture = (input: GenerateLectureInput): GeneralLectureContent =>
       : level === "exam"
         ? "We will highlight the patterns that show up on exams."
         : "We will go deeper into the mechanics behind the idea.";
+  const titles = [
+    "Core Intuition",
+    "Key Definitions",
+    "Mechanics",
+    "Worked Example",
+    "Common Pitfalls",
+    "Why It Matters",
+    "Connections",
+    "Wrap Up"
+  ];
+  const buildNarration = (index: number) => {
+    const baseSentences = [
+      `${topicName} is the focus of this part, and we will keep a steady, conversational pace as we unpack it.`,
+      cleanContext
+        ? `To stay grounded, we frame the idea around ${cleanContext} and connect it back to real intuition.`
+        : `We anchor the explanation in intuition before introducing any mechanics or jargon.`,
+      "Notice how each step builds on the previous one, so the logic feels continuous instead of fragmented.",
+      "We highlight the motivation, then walk through the mechanism in plain language, and end with a practical implication.",
+      "If something feels abstract, pause and restate the core idea in simpler terms before moving forward.",
+      levelLine
+    ];
+    let narration = "";
+    let cursor = 0;
+    while (countWords(narration) < GENERAL_LECTURE_GUARDS.minWordsPerChunk) {
+      narration += `${baseSentences[cursor % baseSentences.length]} `;
+      cursor += 1;
+    }
+    return narration.trim();
+  };
+  const chunks = Array.from({ length: GENERAL_LECTURE_GUARDS.minChunks }, (_, index) => ({
+    chunkTitle: titles[index] || `Part ${index + 1}`,
+    narration: buildNarration(index),
+    boardOps: index === 0 ? safeOps : undefined
+  }));
   return {
-    chunks: [
-      {
-        chunkTitle: "Core Intuition",
-        narration: `Today we are covering ${topicName}. ${cleanContext ? `We will frame it around ${cleanContext}. ` : ""}We start with a plain-language definition and a simple example.`,
-        boardOps: safeOps
-      },
-      {
-        chunkTitle: "Why It Matters",
-        narration: `${levelLine} We end by connecting the concept to why it matters in practice.`,
-        boardOps: [{ op: "text", x: 22, y: 90, text: "key intuition" }]
-      }
-    ],
+    chunks,
     confusionMode: {
       summary: `${topicName} centers on one core idea. Focus on that before the details.`,
       boardOps: [{ op: "text", x: 18, y: 20, text: "one core idea" }]
@@ -167,20 +266,32 @@ export const llmService = {
       "You receive malformed or partially incorrect JSON-like text for a lecture payload. " +
       "Repair it into valid JSON that matches the schema in the prompt. " +
       "Return JSON only with no markdown or extra text.";
-    const { result, repaired } = await runGeminiJsonWithRepair<GeneralLectureContent>({
+    let validationErrors: string[] = [];
+    const validate = (value: unknown): value is GeneralLectureContent => {
+      const outcome = validateGeneralLectureContent(value);
+      validationErrors = outcome.errors;
+      return outcome.ok;
+    };
+    const { result, repaired, raw } = await runGeminiJsonWithRepair<GeneralLectureContent>({
       model: GEMINI_MODEL,
       systemInstruction:
         "You generate structured lecture content as strict JSON for a teaching assistant.",
       repairSystemInstruction,
       prompt,
       repairPrompt: (rawText) => buildGeneralLectureRepairPrompt(rawText),
-      validate: isGeneralLectureContent,
+      validate,
       temperature: 0.2,
       maxOutputTokens: 4096
     });
     if (result) {
       devLog(repaired ? "Gemini gen repair success" : "Gemini gen success");
       return { ...result, source: "gemini" };
+    }
+    if (validationErrors.length) {
+      devLog("Gemini gen validation failed", { errors: validationErrors });
+    }
+    if (shouldLogFailures()) {
+      console.log("[llmService] Gemini gen failed raw:", truncateRaw(raw));
     }
     devLog("fallback to stub");
     return { ...buildStubLecture(input), source: "stub_fallback" };

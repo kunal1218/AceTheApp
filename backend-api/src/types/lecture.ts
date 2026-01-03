@@ -30,6 +30,10 @@ export type GeneralLectureContent = {
   chunks: Array<Pick<LectureChunk, "chunkTitle" | "narration" | "boardOps">>;
   topQuestions?: string[];
   confusionMode: LecturePackage["confusionMode"];
+  diagnostics?: {
+    draftWordCount?: number;
+    convertPass?: "ok" | "repaired" | "stub_fallback";
+  };
   source?: "gemini" | "stub" | "stub_fallback";
 };
 

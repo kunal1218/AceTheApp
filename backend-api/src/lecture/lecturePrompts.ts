@@ -127,6 +127,122 @@ Return JSON matching this schema exactly:
 ${GENERAL_LECTURE_SCHEMA_HINT}
 `;
 
+export function buildGeneralLectureNaturalAnswerPrompt(
+  topicContext: string,
+  level: string,
+  styleVersion: string
+) {
+  return [
+    `Topic: ${topicContext}`,
+    `Level: ${level}`,
+    `Style version: ${styleVersion}`,
+    ``,
+    `Answer the following in order, in plain text:`,
+    ``,
+    `1) What is it?`,
+    `- Give a plain-language definition.`,
+    `- State clear boundaries: what it is and what it is not.`,
+    ``,
+    `2) Why is it important?`,
+    `- What capability it enables or problem it solves.`,
+    `- One practical situation where it matters.`,
+    ``,
+    `3) Common misconceptions`,
+    `- Give at least two misconceptions.`,
+    `- Correct each one clearly.`,
+    ``,
+    `4) Edge cases`,
+    `- Give at least one boundary or failure case,`,
+    `  or explicitly state why edge cases don’t apply.`,
+    ``,
+    `Include EXACTLY ONE worked example demonstrating the core mechanism, explained step-by-step.`,
+    `Do not include a second example.`,
+    ``,
+    `Constraints:`,
+    `- Plain text only (no JSON, no markdown).`,
+    `- Be clear and specific; avoid filler.`,
+    `- Roughly 900–1400 words.`,
+    ``,
+    `Return only your answer.`
+  ].join("\n");
+}
+
+export function buildGeneralLectureAnswerToLectureJsonPrompt(
+  call1AnswerText: string,
+  schemaHint: string
+) {
+  return [
+    `You will be given an answer text. Your job is to reformat it into a spoken lecture transcript, then output STRICT JSON.`,
+    ``,
+    `Hard rules:`,
+    `- Do NOT add new technical claims, new facts, or new examples.`,
+    `- Do NOT remove important substance; preserve meaning.`,
+    `- You MAY reorganize sentences slightly and adjust phrasing to sound like speech.`,
+    `- Do NOT include course references, tie-ins, assignments, professors, or dates.`,
+    `- Do NOT include topQuestions.`,
+    ``,
+    `Step A (internal): Rewrite the answer into a natural spoken lecture transcript with a smooth narrative flow.`,
+    `- No headings, no bullets, no numbered lists, no markdown.`,
+    `- Avoid meta scaffolding phrases like:`,
+    `  "With that foundation in place", "We start by", "In this section", "Part X focuses on".`,
+    `- Keep the same content: definition → importance → misconceptions → edge cases, and keep the single worked example.`,
+    ``,
+    `Step B (output): Convert that transcript into STRICT JSON that matches the schema below.`,
+    `- Return ONLY valid JSON. No markdown. No commentary.`,
+    `- Create 8 to 10 chunks.`,
+    `- Each chunk must include: chunkTitle, narration.`,
+    `- narration should read like spoken lecture text.`,
+    `- Ensure a coherent arc across chunks: definition → intuition → mechanism → worked example → misconceptions/pitfalls → implications → recap.`,
+    ``,
+    `Whiteboard rules:`,
+    `- Identify the worked example from the original answer.`,
+    `- Add whiteboardOps ONLY in the chunk for that worked example.`,
+    `- No other chunk may contain whiteboardOps.`,
+    `- whiteboardOps must reflect the steps of the worked example and match the narration.`,
+    ``,
+    `Schema (must match exactly):`,
+    `${schemaHint}`,
+    ``,
+    `Answer text to transform:`,
+    `<<<BEGIN_ANSWER`,
+    call1AnswerText,
+    `END_ANSWER>>>`,
+    ``,
+    `Return ONLY the JSON object matching the schema.`
+  ].join("\n");
+}
+
+export function buildLecturePackageJsonRepairPrompt(
+  badJson: string,
+  failureReasons: string,
+  schemaHint: string
+) {
+  return [
+    `You are repairing a JSON object to satisfy a schema and validation rules.`,
+    ``,
+    `Rules:`,
+    `- Return ONLY valid JSON. No markdown. No commentary.`,
+    `- Do NOT add new technical claims or new examples.`,
+    `- Do NOT add tie-ins, course references, assignments, professors, or dates.`,
+    `- Do NOT include topQuestions.`,
+    `- Ensure there are 8 to 10 chunks.`,
+    `- Ensure whiteboardOps appear in ONLY ONE chunk, and only for the worked example.`,
+    ``,
+    `Schema (must match exactly):`,
+    `${schemaHint}`,
+    ``,
+    `Validation failures to fix:`,
+    `${failureReasons}`,
+    ``,
+    `Bad JSON to repair:`,
+    `<<<BEGIN_BAD_JSON`,
+    badJson,
+    `END_BAD_JSON>>>`,
+    ``,
+    `Return ONLY the repaired JSON object.`
+  ].join("\n");
+}
+
 const GENERAL_PROMPT_SAMPLE = buildGeneralLecturePrompt(
   "SAMPLE_TOPIC_CONTEXT",
   "intro",

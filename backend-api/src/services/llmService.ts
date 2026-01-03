@@ -5,13 +5,16 @@ import type {
   WhiteboardOp
 } from "../types/lecture";
 import {
-  buildGeneralLecturePrompt,
-  buildGeneralLectureRepairPrompt,
+  GENERAL_LECTURE_SCHEMA_HINT,
+  buildGeneralLectureAnswerToLectureJsonPrompt,
+  buildGeneralLectureNaturalAnswerPrompt,
+  buildLecturePackageJsonRepairPrompt,
   buildQuestionPrompt,
   buildQuestionRepairPrompt,
   buildTieInPrompt,
   buildTieInRepairPrompt
 } from "../lecture/lecturePrompts";
+import { getGenAI } from "../gemini/client";
 import { runGeminiJsonWithRepair } from "../gemini/jsonRepair";
 
 type GenerateLectureInput = {
@@ -143,6 +146,8 @@ type LectureValidationChecks = {
   boardOpsOk: boolean;
   bannedPhrasesOk: boolean;
   structureOk: boolean;
+  draftWordCount?: number;
+  convertPass?: "ok" | "repaired" | "stub_fallback";
 };
 
 const normalizeSentence = (value: string) =>
@@ -334,7 +339,13 @@ export const validateGeneralLectureContent = (
     errors.push("topQuestions not allowed in general lecture");
     checks.structureOk = false;
   }
-  const allowedRootKeys = new Set(["chunks", "confusionMode", "topQuestions", "source"]);
+  const allowedRootKeys = new Set([
+    "chunks",
+    "confusionMode",
+    "topQuestions",
+    "source",
+    "diagnostics"
+  ]);
   Object.keys(record).forEach((key) => {
     if (!allowedRootKeys.has(key)) {
       errors.push(`unexpected root key: ${key}`);
@@ -344,6 +355,25 @@ export const validateGeneralLectureContent = (
   if (!Array.isArray(record.chunks)) {
     errors.push("chunks must be an array");
     checks.structureOk = false;
+  }
+  if ("diagnostics" in record && record.diagnostics !== undefined) {
+    const diagnostics = record.diagnostics;
+    if (typeof diagnostics !== "object" || diagnostics === null) {
+      errors.push("diagnostics must be an object");
+      checks.structureOk = false;
+    } else {
+      const diagRecord = diagnostics as Record<string, unknown>;
+      if (typeof diagRecord.draftWordCount === "number") {
+        checks.draftWordCount = diagRecord.draftWordCount;
+      }
+      if (
+        diagRecord.convertPass === "ok" ||
+        diagRecord.convertPass === "repaired" ||
+        diagRecord.convertPass === "stub_fallback"
+      ) {
+        checks.convertPass = diagRecord.convertPass;
+      }
+    }
   }
   const chunks = Array.isArray(record.chunks) ? record.chunks : [];
   if (chunks.length < GENERAL_LECTURE_GUARDS.minChunks) {
@@ -401,10 +431,10 @@ export const validateGeneralLectureContent = (
       }
       const numberCount = countNumbers(narration);
       const hasMechanismMarker =
-        /\b(rule|step|algorithm|compute|calculate|because|therefore|which means|so that|if\b|then\b|example|suppose|for instance|imagine)\b/i.test(
+        /\b(rule|step|algorithm|compute|calculate|because|therefore|which means|so that|means|if\b|then\b|example|suppose|for instance|imagine)\b/i.test(
           narration
         );
-      if (numberCount >= 2 && !hasMechanismMarker) {
+      if (numberCount > 0 && !hasMechanismMarker) {
         errors.push(`chunk ${index + 1} uses numbers without explaining a mechanism`);
         checks.numericNoiseOk = false;
       }
@@ -612,10 +642,27 @@ export const llmService = {
     if (LLM_MODE !== "gemini") {
       return buildStubLecture(input);
     }
-    const prompt = buildGeneralLecturePrompt(
+    const call1Prompt = buildGeneralLectureNaturalAnswerPrompt(
       input.topicContext,
       input.level,
       input.styleVersion
+    );
+    const call1Model = getGenAI().getGenerativeModel({
+      model: GEMINI_MODEL,
+      systemInstruction: "You answer questions clearly and precisely in plain text."
+    });
+    const call1Response = await call1Model.generateContent({
+      contents: [{ role: "user", parts: [{ text: call1Prompt }] }],
+      generationConfig: {
+        temperature: 0.2,
+        maxOutputTokens: 3072
+      }
+    });
+    const call1Text = call1Response.response.text().trim();
+    const draftWordCount = countWords(call1Text);
+    const call2Prompt = buildGeneralLectureAnswerToLectureJsonPrompt(
+      call1Text,
+      GENERAL_LECTURE_SCHEMA_HINT
     );
     const repairSystemInstruction =
       "You receive malformed or partially incorrect JSON-like text for a lecture payload. " +
@@ -632,15 +679,24 @@ export const llmService = {
     const { result, repaired, raw } = await runGeminiJsonWithRepair<GeneralLectureContent>({
       model: GEMINI_MODEL,
       systemInstruction:
-        "You generate structured lecture content as strict JSON for a teaching assistant.",
+        "You convert structured lecture content into strict JSON for a teaching assistant.",
       repairSystemInstruction,
-      prompt,
-      repairPrompt: (rawText) => buildGeneralLectureRepairPrompt(rawText, undefined, validationErrors),
+      prompt: call2Prompt,
+      repairPrompt: (rawText) =>
+        buildLecturePackageJsonRepairPrompt(
+          rawText,
+          validationErrors.length ? validationErrors.join("\n") : "Validation failed",
+          GENERAL_LECTURE_SCHEMA_HINT
+        ),
       validate,
       temperature: 0.2,
       maxOutputTokens: 4096
     });
     if (result) {
+      const convertPass = repaired ? "repaired" : "ok";
+      if (process.env.NODE_ENV !== "production") {
+        result.diagnostics = { draftWordCount, convertPass };
+      }
       devLog(repaired ? "Gemini gen repair success" : "Gemini gen success");
       return { ...result, source: "gemini" };
     }
@@ -654,7 +710,11 @@ export const llmService = {
       console.log("[llmService] Gemini gen failed raw:", truncateRaw(raw));
     }
     devLog("fallback to stub");
-    return { ...buildStubLecture(input), source: "stub_fallback" };
+    const fallback = { ...buildStubLecture(input), source: "stub_fallback" };
+    if (process.env.NODE_ENV !== "production") {
+      fallback.diagnostics = { draftWordCount, convertPass: "stub_fallback" };
+    }
+    return fallback;
   },
 
   async generateTieIns(input: GenerateTieInInput): Promise<string[]> {

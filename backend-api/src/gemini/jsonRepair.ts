@@ -12,8 +12,7 @@ type GeminiJsonRepairOptions<T> = {
 };
 
 const shouldLogRaw = () =>
-  process.env.NODE_ENV !== "production" &&
-  (process.env.LLM_LOG_RAW === "1" || process.env.LLM_LOG_RAW === "true");
+  process.env.LLM_LOG_RAW === "1" || process.env.LLM_LOG_RAW === "true";
 
 const rawLog = (...args: unknown[]) => {
   if (!shouldLogRaw()) return;

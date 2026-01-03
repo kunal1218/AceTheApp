@@ -47,7 +47,8 @@ export const GENERAL_LECTURE_GUARDS = {
   minTotalWords: 1200,
   maxRepeatedSentenceRatio: 0.2,
   maxSentenceRepeatChunks: 3,
-  minSentenceWords: 6
+  minSentenceWords: 6,
+  maxChunks: 10
 };
 
 const safeOps: WhiteboardOp[] = [
@@ -56,6 +57,12 @@ const safeOps: WhiteboardOp[] = [
 ];
 
 const BANNED_FILLER_PHRASES = [
+  "part 1 focuses on",
+  "part one focuses on",
+  "for part",
+  "we ground the explanation",
+  "we start with intuition",
+  "we end by stating",
   "we will keep it lightweight",
   "notice how each step builds",
   "conversational pace",
@@ -266,6 +273,10 @@ export const validateGeneralLectureContent = (
     errors.push(`chunk count too small: ${chunks.length}`);
     checks.chunkCountOk = false;
   }
+  if (chunks.length > GENERAL_LECTURE_GUARDS.maxChunks) {
+    errors.push(`chunk count too large: ${chunks.length}`);
+    checks.chunkCountOk = false;
+  }
   let totalWords = 0;
   const narrations: Array<{ narration: string }> = [];
   chunks.forEach((chunk, index) => {
@@ -395,14 +406,14 @@ const buildStubLecture = (input: GenerateLectureInput): GeneralLectureContent =>
         : "We go deeper into why the mechanism behaves the way it does.";
 
   const chunkSpecs = [
-    { title: "Worked Example: Concrete Memory", anchor: "example", boardOps: safeOps },
-    { title: "Step-by-Step Walkthrough", anchor: "steps" },
-    { title: "Pseudocode Sketch", anchor: "pseudocode" },
-    { title: "Common Misconception", anchor: "misconception" },
-    { title: "Concrete Values in Action", anchor: "example" },
-    { title: "Pointer Arithmetic Example", anchor: "example" },
-    { title: "Boundary Case Correction", anchor: "misconception" },
-    { title: "Second Worked Example", anchor: "example" }
+    { title: "Definition and Motivation", anchor: "misconception" },
+    { title: "Core Mental Model", anchor: "example" },
+    { title: "Key Terms and Components", anchor: "pseudocode" },
+    { title: "How It Works", anchor: "steps" },
+    { title: "Simple Example", anchor: "example" },
+    { title: "Worked Example", anchor: "example", boardOps: safeOps },
+    { title: "Common Pitfalls", anchor: "misconception" },
+    { title: "Practical Implications", anchor: "example" }
   ];
 
   const padNarration = (sentences: string[], index: number) => {
@@ -416,11 +427,21 @@ const buildStubLecture = (input: GenerateLectureInput): GeneralLectureContent =>
     return narration.trim();
   };
 
+  const buildTransition = (index: number) => {
+    if (index === 0) {
+      return `Let’s begin with a plain-language definition of ${topicName} and why it exists.`;
+    }
+    if (index === 1) {
+      return `Now that we have a clear definition, we can build the core mental picture that makes the idea intuitive.`;
+    }
+    return `With that foundation in place, we can move one step further and add the next piece.`;
+  };
+
   const buildNarration = (index: number, spec: (typeof chunkSpecs)[number]) => {
-    const intro = `Part ${index + 1} focuses on ${topicName} with a concrete angle tied to "${spec.title}".`;
+    const intro = buildTransition(index);
     const contextLine = cleanContext
-      ? `For part ${index + 1}, we ground the explanation using ${cleanContext} so the idea has a real anchor.`
-      : `For part ${index + 1}, we ground the explanation in concrete inputs so the idea has a real anchor.`;
+      ? `We keep the explanation grounded using ${cleanContext} so the idea stays concrete.`
+      : `We keep the explanation grounded in concrete inputs so the idea stays tangible.`;
     const anchorLines: string[] = [];
     if (spec.anchor === "example") {
       const base = 1000 + index * 64;
@@ -452,7 +473,7 @@ const buildStubLecture = (input: GenerateLectureInput): GeneralLectureContent =>
         "But actually the address changes while the underlying array stays fixed, which is why the offset calculation matters."
       );
     }
-    const close = `${levelLine} In part ${index + 1}, we end by stating the specific implication this has for real code and debugging.`;
+    const close = `${levelLine} This connects directly to how you would reason about ${topicName} when reading or writing real code.`;
     return padNarration([intro, contextLine, ...anchorLines, close], index);
   };
 

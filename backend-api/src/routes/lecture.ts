@@ -121,9 +121,17 @@ router.post("/generate", async (req, res) => {
         level,
         styleVersion: STYLE_VERSION
       });
-      generalCache = await prisma.lectureGeneralCache.create({
-        data: {
+      generalCache = await prisma.lectureGeneralCache.upsert({
+        where: { cacheKey: generalCacheKey },
+        create: {
           cacheKey: generalCacheKey,
+          topicName,
+          normalizedTopic,
+          level,
+          styleVersion: STYLE_VERSION,
+          payload: generalLecture
+        },
+        update: {
           topicName,
           normalizedTopic,
           level,
@@ -159,9 +167,17 @@ router.post("/generate", async (req, res) => {
         chunkCount: generalLecture.chunks.length,
         tieInVersion: TIE_IN_VERSION
       });
-      tieInCache = await prisma.lectureTieInCache.create({
-        data: {
+      tieInCache = await prisma.lectureTieInCache.upsert({
+        where: { cacheKey: tieInCacheKey },
+        create: {
           cacheKey: tieInCacheKey,
+          courseId,
+          topicId,
+          notesVersion: topicContextHash,
+          tieInVersion: TIE_IN_VERSION,
+          tieInChunks: tieIns
+        },
+        update: {
           courseId,
           topicId,
           notesVersion: topicContextHash,
@@ -320,9 +336,17 @@ router.post("/question", async (req, res) => {
         level,
         styleVersion: STYLE_VERSION
       });
-      generalCache = await prisma.lectureGeneralCache.create({
-        data: {
+      generalCache = await prisma.lectureGeneralCache.upsert({
+        where: { cacheKey: generalCacheKey },
+        create: {
           cacheKey: generalCacheKey,
+          topicName,
+          normalizedTopic,
+          level,
+          styleVersion: STYLE_VERSION,
+          payload: generalLecture
+        },
+        update: {
           topicName,
           normalizedTopic,
           level,
@@ -357,9 +381,17 @@ router.post("/question", async (req, res) => {
         chunkCount: generalLecture.chunks.length,
         tieInVersion: TIE_IN_VERSION
       });
-      tieInCache = await prisma.lectureTieInCache.create({
-        data: {
+      tieInCache = await prisma.lectureTieInCache.upsert({
+        where: { cacheKey: tieInCacheKey },
+        create: {
           cacheKey: tieInCacheKey,
+          courseId,
+          topicId,
+          notesVersion: topicContextHash,
+          tieInVersion: TIE_IN_VERSION,
+          tieInChunks: tieIns
+        },
+        update: {
           courseId,
           topicId,
           notesVersion: topicContextHash,

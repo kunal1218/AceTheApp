@@ -31,6 +31,7 @@ import SemesterWizard from "./components/SemesterWizard";
 import SemesterWorkspace from "./components/SemesterWorkspace";
 import SettingsMenu from "./components/SettingsMenu";
 import BackToDashboardButton from "./components/BackToDashboardButton";
+import LecturePage from "./components/LecturePage";
 
 
 function App() {
@@ -169,6 +170,7 @@ function App() {
           <Route path="/dashboard" element={protect(<WizardGate />)} />
           <Route path="/dashboard/main" element={protect(<ProductivityDashboard />)} />
           <Route path="/portal/:id" element={protect(<PortalPage />)} />
+          <Route path="/lecture/:courseId/:topicId" element={protect(<LecturePage />)} />
           <Route path="/ace-onboarding" element={protect(<AceOnboarding />)} />
           {/* Protected routes */}
           <Route path="/semester/new" element={loggedIn ? <SemesterWizard /> : <LandingPage />} />

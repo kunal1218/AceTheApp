@@ -1,7 +1,8 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import "./PortalPage.css";
 import { loadItems } from "../utils/semesters";
+import { getCourseSyllabus, getWorkspaceSyllabus } from "../api";
 import idleSprite from "../assets/characters/mainChar/IDLE.png";
 import walkSprite from "../assets/characters/mainChar/WALK.png";
 
@@ -166,8 +167,41 @@ const normalizeLessons = (portal) => {
   return deduped;
 };
 
+const normalizeSyllabusRows = (rows) => {
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .filter((row) => row && row.type !== "syllabus-json")
+    .map((row) => {
+      let dateValue = row.date;
+      if (!dateValue && row.rawText) {
+        try {
+          const parsed = JSON.parse(row.rawText);
+          if (parsed?.date) dateValue = parsed.date;
+        } catch {
+          // ignore parse errors
+        }
+      }
+      const date =
+        typeof dateValue === "string"
+          ? dateValue
+          : dateValue instanceof Date
+            ? dateValue.toISOString().slice(0, 10)
+            : dateValue
+              ? new Date(dateValue).toISOString().slice(0, 10)
+              : "";
+      return {
+        id: row.id,
+        title: row.title || "Lesson",
+        date,
+        type: row.type || "lesson",
+        description: row.description || "",
+      };
+    });
+};
+
 export default function PortalPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const containerRef = useRef(null);
   const hudRef = useRef(null);
   const [mapSize, setMapSize] = useState({ width: 0, height: 0 });
@@ -180,6 +214,8 @@ export default function PortalPage() {
   const [walkProgress, setWalkProgress] = useState(0);
   const [idleFrame, setIdleFrame] = useState(0);
   const [facing, setFacing] = useState("right");
+  const [dbLessons, setDbLessons] = useState([]);
+  const [enterMessage, setEnterMessage] = useState("");
   const walkStateRef = useRef({
     active: false,
     startTime: 0,
@@ -194,7 +230,36 @@ export default function PortalPage() {
     return items.find((item) => item.id === id) || null;
   }, [id]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const hydrateLessons = async () => {
+      if (!portal) return;
+      try {
+        let rows = [];
+        if (portal.courseId) {
+          const res = await getCourseSyllabus(portal.courseId);
+          rows = res?.data?.syllabus || res?.syllabus || res?.items || res || [];
+        }
+        if ((!rows || rows.length === 0) && portal.title) {
+          const resByWorkspace = await getWorkspaceSyllabus(portal.title);
+          const items = resByWorkspace?.items || resByWorkspace?.data || resByWorkspace || [];
+          rows = Array.isArray(items) ? items : [];
+        }
+        if (!cancelled) {
+          setDbLessons(normalizeSyllabusRows(rows));
+        }
+      } catch (err) {
+        console.warn("[PortalPage] Failed to hydrate syllabus items", err);
+      }
+    };
+    hydrateLessons();
+    return () => {
+      cancelled = true;
+    };
+  }, [portal, dbLessons]);
+
   const lessons = useMemo(() => {
+    if (dbLessons.length) return dbLessons;
     const extracted = normalizeLessons(portal);
     if (extracted.length) return extracted;
     const placeholderCount = portal?.type === "semester" ? 10 : 6;
@@ -227,7 +292,12 @@ export default function PortalPage() {
     }
     const nodes = [];
     lessons.forEach((lesson, index) => {
-      nodes.push({ type: "lesson", lessonIndex: index, title: lesson.title });
+      nodes.push({
+        type: "lesson",
+        lessonIndex: index,
+        title: lesson.title,
+        topicId: lesson.id,
+      });
       if (insertAfter.has(index + 1)) {
         nodes.push({ type: "special", lessonIndex: null, title: "Special Level" });
       }
@@ -307,10 +377,29 @@ export default function PortalPage() {
   const activeLessonTitle = activeNode?.type === "lesson"
     ? activeNode.title || `Lesson ${activeIndex + 1}`
     : "Special Level";
+  const handleEnter = () => {
+    if (!activeNode || activeNode.type !== "lesson") return;
+    if (!portal?.courseId || !activeNode.topicId) {
+      setEnterMessage("Lecture not available for this node yet.");
+      return;
+    }
+    setEnterMessage("");
+    navigate(`/lecture/${portal.courseId}/${activeNode.topicId}`, {
+      state: {
+        lessonTitle: activeNode.title,
+        portalId: portal.id,
+      },
+    });
+  };
   useLayoutEffect(() => {
     const handleKeyDown = (event) => {
       if (event.repeat) return;
       if (walkStateRef.current.active || isWalking) return;
+      if (event.key === "Enter") {
+        event.preventDefault();
+        handleEnter();
+        return;
+      }
       const key = event.key.toLowerCase();
       const dir =
         key === "a" || key === "arrowleft" ? "left"
@@ -357,7 +446,7 @@ export default function PortalPage() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [path, selectedIndex, isWalking]);
+  }, [path, selectedIndex, isWalking, activeNode, portal, navigate]);
 
   useEffect(() => {
     if (!isWalking) return undefined;
@@ -417,6 +506,10 @@ export default function PortalPage() {
     return () => cancelAnimationFrame(rafId);
   }, [isWalking]);
 
+  useEffect(() => {
+    if (enterMessage) setEnterMessage("");
+  }, [activeIndex]);
+
   const activePoint = layout.points[selectedIndex] || layout.points[0];
   const walkFromIndex = walkStateRef.current.fromIndex;
   const walkToIndex = walkStateRef.current.toIndex;
@@ -458,6 +551,7 @@ export default function PortalPage() {
             <span>{activeLessonTitle}</span>
           </div>
           <div className="portal-map__hint">hit enter to enter level</div>
+          {enterMessage && <div className="portal-map__hint">{enterMessage}</div>}
         </div>
       </div>
       {layout.bridges.map((bridge) => (

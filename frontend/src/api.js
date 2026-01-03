@@ -431,6 +431,23 @@ export async function getCourseSyllabus(courseId) {
   return handleResponse(res, "Failed to fetch syllabus items");
 }
 
+export async function generateLecture({ courseId, topicId, level = "intro" }) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+  const base = API_BASE.replace(/\/$/, "");
+  const wantsApiPrefix = !base.endsWith("/api");
+  const url = `${base}${wantsApiPrefix ? "/api" : ""}/lecture/generate`;
+  const res = await apiFetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ courseId, topicId, level }),
+  });
+  return handleResponse(res, "Failed to generate lecture");
+}
+
 export async function getWorkspaceSyllabus(workspaceName) {
   const token = getToken();
   if (!token) return null;

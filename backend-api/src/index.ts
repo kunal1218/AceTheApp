@@ -8,6 +8,7 @@ import coursesRouter from './routes/courses';
 import syllabusRouter from './routes/syllabus';
 import calendarImportRouter from './routes/calendarImport';
 import profileRouter from './routes/profile';
+import lectureRouter from './routes/lecture';
 import { requireAuth, requireSubscription } from './middleware/auth';
 
 const app = express();
@@ -40,6 +41,8 @@ app.use('/syllabi', syllabusRouter);
 app.use('/api/calendar', calendarImportRouter);
 app.use('/profile', profileRouter);
 app.use('/api/profile', profileRouter);
+app.use('/lecture', lectureRouter);
+app.use('/api/lecture', lectureRouter);
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('Unhandled error', err);

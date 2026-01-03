@@ -6,7 +6,8 @@ export type WhiteboardOp =
   | { op: "erase"; target?: "all" | string };
 
 export type LectureChunk = {
-  generalText: string;
+  chunkTitle: string;
+  narration: string;
   tieInText?: string;
   boardOps?: WhiteboardOp[];
 };
@@ -16,7 +17,7 @@ export type LecturePackage = {
   topicId: string;
   level: "intro" | "exam" | "deep";
   chunks: LectureChunk[];
-  topQuestions: string[];
+  topQuestions?: string[];
   confusionMode: {
     summary: string;
     boardOps?: WhiteboardOp[];
@@ -26,8 +27,8 @@ export type LecturePackage = {
 export type LectureLevel = LecturePackage["level"];
 
 export type GeneralLectureContent = {
-  chunks: Array<Pick<LectureChunk, "generalText" | "boardOps">>;
-  topQuestions: string[];
+  chunks: Array<Pick<LectureChunk, "chunkTitle" | "narration" | "boardOps">>;
+  topQuestions?: string[];
   confusionMode: LecturePackage["confusionMode"];
   source?: "gemini" | "stub" | "stub_fallback";
 };

@@ -83,6 +83,13 @@
   color: rgba(226, 232, 240, 0.7);
 }
 
+.lecture-chunk__title {
+  font-family: "Press Start 2P", "Courier New", monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  color: #f8fafc;
+}
+
 .lecture-chunk__text {
   margin: 0;
   font-size: 0.8rem;

@@ -2,10 +2,10 @@ import { EXAMPLE_LECTURE_PACKAGE } from "./exampleLecturePackage";
 
 const GENERAL_SCHEMA_EXAMPLE = {
   chunks: EXAMPLE_LECTURE_PACKAGE.chunks.map((chunk) => ({
-    generalText: chunk.generalText,
+    chunkTitle: chunk.chunkTitle,
+    narration: chunk.narration,
     boardOps: chunk.boardOps
   })),
-  topQuestions: EXAMPLE_LECTURE_PACKAGE.topQuestions,
   confusionMode: EXAMPLE_LECTURE_PACKAGE.confusionMode
 };
 
@@ -31,20 +31,55 @@ export const buildGeneralLecturePrompt = (
   level: string,
   styleVersion: string
 ) => `
-You are Ace, a calm, structured teaching assistant.
-Generate a reusable, course-agnostic lecture for the topic context: "${topicContext}".
-Level: "${level}". Style version: "${styleVersion}".
+You are Ace, a calm, structured teaching assistant generating a FULL spoken lecture transcript.
 
-Constraints:
-- Do NOT mention specific courses, professors, dates, assignments, or textbooks.
-- Use a calm, clear, non-judgmental tone.
-- Prefer intuition and analogies.
-- Output chunked explanations.
-- Provide minimal whiteboard drawing commands as JSON (stick figures, boxes, arrows, labels only).
-- Confusion mode must restate ONE core idea, no new concepts.
-- Return JSON only. No markdown, no extra text.
+Topic context (general, course-agnostic):
+"${topicContext}"
 
-Return STRICT JSON matching this schema example:
+Level: "${level}"
+Style version: "${styleVersion}"
+
+GOAL:
+Produce a high-quality, reusable lecture that could be read aloud verbatim. This is NOT an outline, NOT notes, and NOT a summary. It must feel like a real instructor explaining the topic from start to finish.
+
+HARD REQUIREMENTS (must all be satisfied):
+1) Length & depth
+- Generate 8-12 chunks.
+- Each chunk must contain a substantial narration transcript (at least ~120 words per chunk).
+- The narration should sound like continuous teaching, with explanations, transitions, and emphasis.
+- Do NOT use placeholder phrases like "Today we will cover..." without following with real explanation.
+
+2) Chunk structure
+Each chunk MUST include:
+- chunkTitle: a short descriptive title
+- narration: the full spoken explanation (this is the most important field)
+- boardOps: OPTIONAL, only when illustrating a concrete example or spatial relationship
+
+3) Whiteboard rules
+- Only include boardOps when you are explicitly walking through an example or visual situation.
+- Do NOT include decorative or redundant drawings.
+- Use ONLY simple, structured commands (boxes, arrows, text labels).
+- If no visual aid is genuinely helpful, omit boardOps entirely for that chunk.
+
+4) Content rules
+- Do NOT mention any specific courses, professors, exams, assignments, deadlines, or institutions.
+- Do NOT include course-specific tie-ins.
+- Focus on intuition first, then mechanics, then implications.
+- Use analogies sparingly but clearly.
+- Avoid bullet lists inside narration; write in paragraph form.
+
+5) Confusion mode
+- confusionMode.summary must restate ONE core idea of the entire lecture in plain language.
+- It must introduce NO new concepts.
+- It should feel like something said to a confused student to re-anchor them.
+
+6) Output rules
+- Return STRICT JSON only.
+- No markdown, no commentary, no explanations outside JSON.
+- Use EXACT field names as defined in the schema.
+- Do NOT include topQuestions or any question lists.
+
+Return JSON matching this schema exactly:
 ${GENERAL_LECTURE_SCHEMA_HINT}
 `;
 
@@ -74,7 +109,7 @@ Topic context: "${topicContext}"
 Ordering context: "${topicOrdering}"
 
 Rules:
-- 1–2 sentences max per chunk.
+- 1-2 sentences max per chunk.
 - Do NOT introduce new concepts.
 - Reference course context lightly.
 - Return JSON only.

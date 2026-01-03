@@ -24,6 +24,38 @@ const parseLevel = (value: unknown): LectureLevel => {
   return "intro";
 };
 
+type LegacyGeneralLectureContent = {
+  chunks?: Array<{ generalText?: string; boardOps?: unknown }>;
+  topQuestions?: unknown;
+  confusionMode?: { summary?: string; boardOps?: unknown };
+};
+
+const normalizeGeneralLectureContent = (
+  content: GeneralLectureContent | LegacyGeneralLectureContent
+): GeneralLectureContent => {
+  const rawChunks = Array.isArray(content?.chunks) ? content.chunks : [];
+  const chunks = rawChunks.map((chunk, index) => {
+    if (chunk && "narration" in chunk) {
+      const typed = chunk as { chunkTitle?: string; narration?: string; boardOps?: unknown };
+      return {
+        chunkTitle: typed.chunkTitle || `Part ${index + 1}`,
+        narration: typed.narration || "",
+        boardOps: typed.boardOps as GeneralLectureContent["chunks"][number]["boardOps"]
+      };
+    }
+    const narration = (chunk as { generalText?: string })?.generalText || "";
+    return {
+      chunkTitle: `Part ${index + 1}`,
+      narration,
+      boardOps: (chunk as { boardOps?: unknown }).boardOps as GeneralLectureContent["chunks"][number]["boardOps"]
+    };
+  });
+  return {
+    chunks,
+    confusionMode: content?.confusionMode as GeneralLectureContent["confusionMode"]
+  };
+};
+
 const getTopicOrdering = (topics: { id: string; title: string }[], topicId: string) => {
   const index = topics.findIndex((topic) => topic.id === topicId);
   if (index === -1) return "ordering unknown";
@@ -81,7 +113,7 @@ router.post("/generate", async (req, res) => {
     let generalLecture: GeneralLectureContent;
     if (generalCache) {
       devLog("general cache HIT", { generalCacheKey });
-      generalLecture = generalCache.payload as GeneralLectureContent;
+      generalLecture = normalizeGeneralLectureContent(generalCache.payload as GeneralLectureContent);
     } else {
       devLog("general cache MISS", { generalCacheKey });
       generalLecture = await llmService.generateLecture({
@@ -134,7 +166,8 @@ router.post("/generate", async (req, res) => {
     }
 
     const chunks = generalLecture.chunks.map((chunk, index) => ({
-      generalText: chunk.generalText,
+      chunkTitle: chunk.chunkTitle,
+      narration: chunk.narration,
       tieInText: tieIns[index],
       boardOps: chunk.boardOps
     }));
@@ -228,7 +261,7 @@ router.post("/question", async (req, res) => {
     let generalLecture: GeneralLectureContent;
     if (generalCache) {
       devLog("general cache HIT", { generalCacheKey });
-      generalLecture = generalCache.payload as GeneralLectureContent;
+      generalLecture = normalizeGeneralLectureContent(generalCache.payload as GeneralLectureContent);
     } else {
       devLog("general cache MISS", { generalCacheKey });
       generalLecture = await llmService.generateLecture({

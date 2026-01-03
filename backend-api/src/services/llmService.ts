@@ -85,14 +85,15 @@ const isGeneralLectureContent = (value: unknown): value is GeneralLectureContent
   if (!value || typeof value !== "object") return false;
   const record = value as GeneralLectureContent;
   if (!Array.isArray(record.chunks)) return false;
-  if (!Array.isArray(record.topQuestions)) return false;
   if (!record.confusionMode || typeof record.confusionMode.summary !== "string") return false;
   for (const chunk of record.chunks) {
-    if (!chunk || typeof chunk.generalText !== "string") return false;
+    if (!chunk || typeof chunk.chunkTitle !== "string" || typeof chunk.narration !== "string") {
+      return false;
+    }
     if (chunk.boardOps && !isWhiteboardOps(chunk.boardOps)) return false;
   }
   if (record.confusionMode.boardOps && !isWhiteboardOps(record.confusionMode.boardOps)) return false;
-  if (!record.topQuestions.every((q) => typeof q === "string")) return false;
+  if (record.topQuestions && !record.topQuestions.every((q) => typeof q === "string")) return false;
   return true;
 };
 
@@ -134,17 +135,15 @@ const buildStubLecture = (input: GenerateLectureInput): GeneralLectureContent =>
   return {
     chunks: [
       {
-        generalText: `Today we are covering ${topicName}. ${cleanContext ? `We will frame it around ${cleanContext}. ` : ""}We start with a plain-language definition and a simple example.`,
+        chunkTitle: "Core Intuition",
+        narration: `Today we are covering ${topicName}. ${cleanContext ? `We will frame it around ${cleanContext}. ` : ""}We start with a plain-language definition and a simple example.`,
         boardOps: safeOps
       },
       {
-        generalText: `${levelLine} We end by connecting the concept to why it matters in practice.`,
+        chunkTitle: "Why It Matters",
+        narration: `${levelLine} We end by connecting the concept to why it matters in practice.`,
         boardOps: [{ op: "text", x: 22, y: 90, text: "key intuition" }]
       }
-    ],
-    topQuestions: [
-      `What is the simplest way to think about ${topicName}?`,
-      `Where does ${topicName} show up most often?`
     ],
     confusionMode: {
       summary: `${topicName} centers on one core idea. Focus on that before the details.`,
@@ -177,7 +176,7 @@ export const llmService = {
       repairPrompt: (rawText) => buildGeneralLectureRepairPrompt(rawText),
       validate: isGeneralLectureContent,
       temperature: 0.2,
-      maxOutputTokens: 1200
+      maxOutputTokens: 4096
     });
     if (result) {
       devLog(repaired ? "Gemini gen repair success" : "Gemini gen success");

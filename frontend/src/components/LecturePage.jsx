@@ -71,7 +71,8 @@ export default function LecturePage() {
     if (!lecture?.chunks) return [];
     return lecture.chunks.map((chunk, index) => ({
       id: `chunk-${index}`,
-      generalText: chunk.generalText,
+      chunkTitle: chunk.chunkTitle || "",
+      narration: chunk.narration || chunk.generalText || "",
       tieInText: chunk.tieInText,
     }));
   }, [lecture]);
@@ -92,7 +93,10 @@ export default function LecturePage() {
             {transcript.map((chunk, index) => (
               <div key={chunk.id} className="lecture-chunk">
                 <div className="lecture-chunk__index">Part {index + 1}</div>
-                <p className="lecture-chunk__text">{chunk.generalText}</p>
+                {chunk.chunkTitle && (
+                  <div className="lecture-chunk__title">{chunk.chunkTitle}</div>
+                )}
+                <p className="lecture-chunk__text">{chunk.narration}</p>
                 {chunk.tieInText && (
                   <p className="lecture-chunk__text lecture-chunk__text--tie">
                     Course tie-in: {chunk.tieInText}

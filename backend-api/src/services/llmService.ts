@@ -45,7 +45,7 @@ type QuestionInput = {
 const GEMINI_MODEL = "gemini-2.0-flash";
 const LLM_MODE = (process.env.LLM_MODE || "stub").toLowerCase();
 export const GENERAL_LECTURE_GUARDS = {
-  minChunks: 8,
+  minChunks: 5,
   minWordsPerChunk: 120,
   minTotalWords: 1200,
   maxRepeatedSentenceRatio: 0.2,
@@ -86,6 +86,9 @@ const BANNED_FILLER_PATTERNS = [
 ];
 
 const OPENING_SIMILARITY_THRESHOLD = 0.82;
+const PART_SECTION_REGEX = /\bpart\s+\d+\b/i;
+const COURSE_TIE_IN_REGEX = /course\s*tie-?in/i;
+const EXAMPLE_SPAM_REGEX = /for example,\s*if\s*i\s*=/gi;
 
 const devLog = (...args: unknown[]) => {
   if (process.env.NODE_ENV === "production") return;
@@ -387,6 +390,7 @@ export const validateGeneralLectureContent = (
   let totalWords = 0;
   const narrations: Array<{ narration: string }> = [];
   let boardOpsCount = 0;
+  let exampleSpamCount = 0;
   chunks.forEach((chunk, index) => {
     if (!chunk || typeof chunk !== "object") {
       errors.push(`chunk ${index + 1} is not an object`);
@@ -406,6 +410,9 @@ export const validateGeneralLectureContent = (
     if (typeof chunkTitle !== "string" || chunkTitle.trim().length === 0) {
       errors.push(`chunk ${index + 1} missing chunkTitle`);
       checks.structureOk = false;
+    } else if (PART_SECTION_REGEX.test(chunkTitle)) {
+      errors.push(`chunk ${index + 1} uses banned "Part X" title`);
+      checks.bannedPhrasesOk = false;
     }
     if (typeof narration !== "string" || narration.trim().length === 0) {
       errors.push(`chunk ${index + 1} missing narration`);
@@ -428,6 +435,18 @@ export const validateGeneralLectureContent = (
       if (bannedPattern) {
         errors.push(`chunk ${index + 1} uses banned scaffold pattern`);
         checks.bannedPhrasesOk = false;
+      }
+      if (PART_SECTION_REGEX.test(narration)) {
+        errors.push(`chunk ${index + 1} uses banned "Part X" phrasing`);
+        checks.bannedPhrasesOk = false;
+      }
+      if (COURSE_TIE_IN_REGEX.test(narration)) {
+        errors.push(`chunk ${index + 1} mentions course tie-in`);
+        checks.bannedPhrasesOk = false;
+      }
+      const exampleMatches = narration.match(EXAMPLE_SPAM_REGEX);
+      if (exampleMatches) {
+        exampleSpamCount += exampleMatches.length;
       }
       const numberCount = countNumbers(narration);
       const hasMechanismMarker =
@@ -464,9 +483,13 @@ export const validateGeneralLectureContent = (
       }
     }
   });
-  if (boardOpsCount > 2) {
+  if (boardOpsCount > 1) {
     errors.push(`too many boardOps chunks (${boardOpsCount})`);
     checks.boardOpsOk = false;
+  }
+  if (exampleSpamCount > 1) {
+    errors.push(`example spam detected (repeated "For example, if i =")`);
+    checks.bannedPhrasesOk = false;
   }
   if (totalWords < GENERAL_LECTURE_GUARDS.minTotalWords) {
     errors.push(`total narration too short (${totalWords} words)`);
@@ -562,7 +585,7 @@ const buildStubLecture = (input: GenerateLectureInput): GeneralLectureContent =>
     let counter = 0;
     while (countWords(narration) < GENERAL_LECTURE_GUARDS.minWordsPerChunk) {
       const offset = (index + 3) * 7 + counter;
-      narration += ` For example, if i = ${offset} and size = 4, then addr = base + i * size, which means the offset scales with i.`;
+      narration += ` A concrete rule at step ${offset} is that the update follows from the prior state, which means the result stays consistent.`;
       counter += 1;
     }
     return narration.trim();

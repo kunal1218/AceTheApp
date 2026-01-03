@@ -1,17 +1,6 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { getGenAI } from "./client";
+import { sanitizeGeminiJSON } from "./jsonRepair";
 import type { Syllabus } from "../types/syllabus";
-
-let cachedGenAI: GoogleGenerativeAI | null = null;
-
-const getGenAI = (): GoogleGenerativeAI => {
-  if (cachedGenAI) return cachedGenAI;
-  const apiKey = process.env.GOOGLE_API_KEY;
-  if (!apiKey) {
-    throw new Error("Missing GOOGLE_API_KEY environment variable.");
-  }
-  cachedGenAI = new GoogleGenerativeAI(apiKey);
-  return cachedGenAI;
-};
 
 /**
  * We only care about:
@@ -56,17 +45,6 @@ type MinimalSyllabusCore = {
 };
 
 // Small cleanup for things like ```json fences / trailing commas.
-function sanitizeGeminiJSON(str: string): string {
-  let cleaned = str
-    .replace(/```json/gi, "")
-    .replace(/```/g, "")
-    .trim();
-
-  // remove trailing commas before } or ]
-  cleaned = cleaned.replace(/,\s*([}\]])/g, "$1");
-
-  return cleaned;
-}
 
 function basicValidateMinimal(parsed: any): parsed is MinimalSyllabusCore {
   if (typeof parsed !== "object" || parsed === null) return false;

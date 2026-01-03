@@ -29,6 +29,7 @@ export type GeneralLectureContent = {
   chunks: Array<Pick<LectureChunk, "generalText" | "boardOps">>;
   topQuestions: string[];
   confusionMode: LecturePackage["confusionMode"];
+  source?: "gemini" | "stub" | "stub_fallback";
 };
 
 export type LectureQuestionAnswer = {

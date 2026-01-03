@@ -102,11 +102,15 @@ export default function LecturePage() {
         {!loading && error && <div className="lecture-page__status lecture-page__status--error">{error}</div>}
         {!loading && !error && lecture && (
           <div className="lecture-page__scroll">
-            {transcript.map((chunk) => (
+            <div className="lecture-page__section-title">Transcript</div>
+            {transcript.map((chunk, index) => (
               <div key={chunk.id} className="lecture-chunk">
+                <div className="lecture-chunk__index">Part {index + 1}</div>
                 <p className="lecture-chunk__text">{chunk.generalText}</p>
                 {chunk.tieInText && (
-                  <p className="lecture-chunk__text lecture-chunk__text--tie">{chunk.tieInText}</p>
+                  <p className="lecture-chunk__text lecture-chunk__text--tie">
+                    Course tie-in: {chunk.tieInText}
+                  </p>
                 )}
               </div>
             ))}

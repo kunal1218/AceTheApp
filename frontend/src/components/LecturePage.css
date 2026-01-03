@@ -65,6 +65,14 @@
   gap: 16px;
 }
 
+.lecture-page__section-title {
+  font-family: "Press Start 2P", "Courier New", monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(226, 232, 240, 0.8);
+}
+
 .lecture-page__status {
   font-family: "Press Start 2P", "Courier New", monospace;
   font-size: 0.7rem;
@@ -81,10 +89,17 @@
   gap: 6px;
 }
 
+.lecture-chunk__index {
+  font-family: "Press Start 2P", "Courier New", monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.07em;
+  color: rgba(226, 232, 240, 0.7);
+}
+
 .lecture-chunk__text {
   margin: 0;
-  font-size: 0.72rem;
-  line-height: 1.7;
+  font-size: 0.8rem;
+  line-height: 1.75;
   letter-spacing: 0.03em;
   font-family: "Press Start 2P", "Courier New", monospace;
   word-break: break-word;

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import "./LecturePage.css";
 import { generateLecture, getCourseSyllabus } from "../api";
 
@@ -13,14 +13,11 @@ const findLessonTitle = (rows, topicId) => {
 
 export default function LecturePage() {
   const { courseId, topicId } = useParams();
-  const navigate = useNavigate();
   const location = useLocation();
   const [lecture, setLecture] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [lessonTitle, setLessonTitle] = useState(location.state?.lessonTitle || "");
-  const portalId = location.state?.portalId || "";
-
   useEffect(() => {
     let cancelled = false;
     const loadLecture = async () => {
@@ -79,20 +76,9 @@ export default function LecturePage() {
     }));
   }, [lecture]);
 
-  const handleBack = () => {
-    if (portalId) {
-      navigate(`/portal/${portalId}`);
-    } else {
-      navigate(-1);
-    }
-  };
-
   return (
     <div className="lecture-page">
       <div className="lecture-page__header">
-        <button type="button" className="lecture-page__button" onClick={handleBack}>
-          Back to map
-        </button>
         <div className="lecture-page__title">
           {lessonTitle || "Lecture Transcript"}
         </div>

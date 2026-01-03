@@ -18,8 +18,8 @@
 
 .lecture-page__header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  align-items: flex-start;
+  justify-content: flex-end;
   gap: 16px;
 }
 
@@ -30,19 +30,6 @@
   text-align: right;
   max-width: 70%;
   word-break: break-word;
-}
-
-.lecture-page__button {
-  border: none;
-  border-radius: 999px;
-  padding: 10px 16px;
-  background: #0f172a;
-  color: #f8fafc;
-  font-family: "Press Start 2P", "Courier New", monospace;
-  font-size: 0.55rem;
-  letter-spacing: 0.05em;
-  cursor: pointer;
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.2);
 }
 
 .lecture-page__panel {

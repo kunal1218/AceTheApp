@@ -717,9 +717,14 @@ export const llmService = {
     });
     if (result) {
       const convertPass = repaired ? "repaired" : "ok";
+      const diagnostics: GeneralLectureContent["diagnostics"] = {
+        call1AnswerText: call1Text
+      };
       if (process.env.NODE_ENV !== "production") {
-        result.diagnostics = { draftWordCount, convertPass, call1AnswerText: call1Text };
+        diagnostics.draftWordCount = draftWordCount;
+        diagnostics.convertPass = convertPass;
       }
+      result.diagnostics = diagnostics;
       devLog(repaired ? "Gemini gen repair success" : "Gemini gen success");
       return { ...result, source: "gemini" };
     }
@@ -737,13 +742,14 @@ export const llmService = {
       ...buildStubLecture(input),
       source: "stub_fallback"
     };
+    const fallbackDiagnostics: GeneralLectureContent["diagnostics"] = {
+      call1AnswerText: call1Text
+    };
     if (process.env.NODE_ENV !== "production") {
-      fallback.diagnostics = {
-        draftWordCount,
-        convertPass: "stub_fallback",
-        call1AnswerText: call1Text
-      };
+      fallbackDiagnostics.draftWordCount = draftWordCount;
+      fallbackDiagnostics.convertPass = "stub_fallback";
     }
+    fallback.diagnostics = fallbackDiagnostics;
     return fallback;
   },
 

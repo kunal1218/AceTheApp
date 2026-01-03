@@ -268,10 +268,10 @@ router.post("/generate", async (req, res) => {
     };
     if (process.env.NODE_ENV !== "production") {
       meta.validation = validationSummary.checks;
-      const call1AnswerText = generalLecture.diagnostics?.call1AnswerText;
-      if (call1AnswerText) {
-        meta.debug = { call1AnswerText };
-      }
+    }
+    const call1AnswerText = generalLecture.diagnostics?.call1AnswerText;
+    if (call1AnswerText) {
+      meta.debug = { call1AnswerText };
     }
 
     return res.json({ data: lecturePackage, meta });

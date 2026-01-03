@@ -70,6 +70,12 @@ Each chunk MUST include:
 - boardOps: OPTIONAL, only when illustrating a concrete example or spatial relationship
 - Each chunk MUST begin with a 1-2 sentence transition referencing the previous chunk.
 - Write as if speaking to a student; do not describe your plan or structure.
+- Do not reuse the same sentence structure or teaching meta across chunks.
+- Do not restate how you are teaching or why you are teaching that way.
+- Each chunk must introduce EXACTLY ONE new idea not explained before.
+- After the brief transition (1 sentence max), move forward by explaining something new.
+- Do NOT restart from definitions or re-anchor unless it is the optional recap chunk.
+- Do NOT reuse the same opening scaffold (avoid template openings).
 
 4) Novelty & anchors (ANTI-REPETITION)
 - Each chunk must introduce NEW concrete content (no paraphrasing or recycling sentences).
@@ -93,11 +99,15 @@ Each chunk MUST include:
 - Use analogies sparingly and only when they illuminate the core idea.
 - Use concrete details only when needed to explain; avoid random numbers or facts.
 - Avoid bullet lists inside narration; write in smooth paragraphs.
+- Explain the concept itself, not how it feels to explain it.
+- Do not talk about pacing, grounding, intuition, or clarity unless tied to a concrete concept.
 
 7) Ban meta/report framing
 - Do NOT use or paraphrase phrases like:
   "Part 1 focuses on...", "For part X...", "we ground the explanation...",
   "we start with intuition and only add mechanics...", "we end by stating...",
+  "with that foundation in place...", "we keep the explanation grounded...",
+  "this connects directly to how you would reason...", "another detail uses value...",
   "we will keep it lightweight", "notice how each step builds",
   "conversational pace", "anchor the explanation", "we highlight the motivation",
   "walk through in plain language", "focus on the big picture".
@@ -136,7 +146,8 @@ export const buildGeneralLectureRepairPrompt = (
 You receive malformed or partially incorrect JSON-like text for a lecture payload.
 Repair it into valid JSON that matches this schema example.
 Rewrite narrations to follow the narrative arc, remove repetition, add concrete anchors per chunk,
-use smooth transitions, and avoid meta/report framing or banned filler phrases.
+use smooth transitions, avoid meta/report framing or banned filler phrases,
+and ensure each chunk adds exactly one new idea with forward motion.
 Return JSON only. No markdown, no explanations.
 
 ${failureReasons.length ? `Validation failures:\n- ${failureReasons.join("\n- ")}\n` : ""}

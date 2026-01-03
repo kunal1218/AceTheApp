@@ -60,6 +60,11 @@ const BANNED_FILLER_PHRASES = [
   "part 1 focuses on",
   "part one focuses on",
   "for part",
+  "with that foundation in place",
+  "we keep the explanation grounded",
+  "we start with intuition and only add mechanics",
+  "this connects directly to how you would reason",
+  "another detail uses value",
   "we ground the explanation",
   "we start with intuition",
   "we end by stating",
@@ -71,6 +76,13 @@ const BANNED_FILLER_PHRASES = [
   "walk through in plain language",
   "focus on the big picture"
 ];
+
+const BANNED_FILLER_PATTERNS = [
+  /\bpart\s+\d+\s+focuses on\b/i,
+  /\bfor part\s+\d+\b/i
+];
+
+const OPENING_SIMILARITY_THRESHOLD = 0.82;
 
 const devLog = (...args: unknown[]) => {
   if (process.env.NODE_ENV === "production") return;
@@ -125,6 +137,9 @@ type LectureValidationChecks = {
   totalWordsOk: boolean;
   anchorsOk: boolean;
   repetitionOk: boolean;
+  openingVarietyOk: boolean;
+  numericNoiseOk: boolean;
+  groundingOk: boolean;
   boardOpsOk: boolean;
   bannedPhrasesOk: boolean;
   structureOk: boolean;
@@ -221,6 +236,65 @@ const analyzeRepetition = (
   return { repeatedRatio, maxChunkAppearances, repeatedSentence, totalSentences };
 };
 
+const extractOpening = (narration: string, sentenceCount: number = 2) => {
+  const sentences = splitSentences(narration);
+  return sentences.slice(0, sentenceCount).join(" ");
+};
+
+const jaccardSimilarity = (a: string, b: string) => {
+  const tokensA = new Set(normalizeSentence(a).split(" ").filter(Boolean));
+  const tokensB = new Set(normalizeSentence(b).split(" ").filter(Boolean));
+  if (!tokensA.size || !tokensB.size) return 0;
+  let intersection = 0;
+  tokensA.forEach((token) => {
+    if (tokensB.has(token)) intersection += 1;
+  });
+  const union = tokensA.size + tokensB.size - intersection;
+  return union === 0 ? 0 : intersection / union;
+};
+
+const analyzeOpeningSimilarity = (
+  narrations: Array<{ narration: string }>
+): { maxSimilarity: number; pair?: [number, number] } => {
+  let maxSimilarity = 0;
+  let pair: [number, number] | undefined;
+  for (let i = 0; i < narrations.length; i += 1) {
+    const openingA = extractOpening(narrations[i].narration);
+    for (let j = i + 1; j < narrations.length; j += 1) {
+      const openingB = extractOpening(narrations[j].narration);
+      const similarity = jaccardSimilarity(openingA, openingB);
+      if (similarity > maxSimilarity) {
+        maxSimilarity = similarity;
+        pair = [i, j];
+      }
+    }
+  }
+  return { maxSimilarity, pair };
+};
+
+const countNumbers = (value: string) => (value.match(/\b\d+(\.\d+)?\b/g) || []).length;
+
+const hasGroundedSubstance = (narration: string, numberCount: number) => {
+  const lower = narration.toLowerCase();
+  const hasDefinition =
+    /\bis\b/.test(lower) && /\b(not|specifically|in contrast|rather than)\b/.test(lower);
+  const hasMeans = /\bmeans\b/.test(lower);
+  const hasCausal = /\b(because|therefore|which means|so that)\b/.test(lower);
+  const hasRule = /\b(rule|step|algorithm|compute|calculate)\b/.test(lower);
+  const hasConditional = /\bif\b[\s\S]*?\bthen\b/i.test(narration);
+  const hasExample = /\b(example|suppose|for instance|imagine)\b/.test(lower);
+  const hasNumericExample =
+    numberCount > 0 && (hasRule || hasCausal || hasExample || hasConditional);
+  return (
+    hasDefinition ||
+    hasMeans ||
+    hasCausal ||
+    hasRule ||
+    hasConditional ||
+    hasNumericExample
+  );
+};
+
 export const validateGeneralLectureContent = (
   value: unknown
 ): {
@@ -236,6 +310,9 @@ export const validateGeneralLectureContent = (
     totalWordsOk: true,
     anchorsOk: true,
     repetitionOk: true,
+    openingVarietyOk: true,
+    numericNoiseOk: true,
+    groundingOk: true,
     boardOpsOk: true,
     bannedPhrasesOk: true,
     structureOk: true
@@ -279,6 +356,7 @@ export const validateGeneralLectureContent = (
   }
   let totalWords = 0;
   const narrations: Array<{ narration: string }> = [];
+  let boardOpsCount = 0;
   chunks.forEach((chunk, index) => {
     if (!chunk || typeof chunk !== "object") {
       errors.push(`chunk ${index + 1} is not an object`);
@@ -316,6 +394,24 @@ export const validateGeneralLectureContent = (
         errors.push(`chunk ${index + 1} uses banned filler phrase: "${bannedPhrase}"`);
         checks.bannedPhrasesOk = false;
       }
+      const bannedPattern = BANNED_FILLER_PATTERNS.find((pattern) => pattern.test(narration));
+      if (bannedPattern) {
+        errors.push(`chunk ${index + 1} uses banned scaffold pattern`);
+        checks.bannedPhrasesOk = false;
+      }
+      const numberCount = countNumbers(narration);
+      const hasMechanismMarker =
+        /\b(rule|step|algorithm|compute|calculate|because|therefore|which means|so that|if\b|then\b|example|suppose|for instance|imagine)\b/i.test(
+          narration
+        );
+      if (numberCount >= 2 && !hasMechanismMarker) {
+        errors.push(`chunk ${index + 1} uses numbers without explaining a mechanism`);
+        checks.numericNoiseOk = false;
+      }
+      if (!hasGroundedSubstance(narration, numberCount)) {
+        errors.push(`chunk ${index + 1} lacks grounded, checkable substance`);
+        checks.groundingOk = false;
+      }
       const anchorCheck = hasAnchorInNarration(narration, chunkRecord.boardOps as WhiteboardOp[]);
       if (!anchorCheck.ok) {
         errors.push(`chunk ${index + 1} missing concrete anchor`);
@@ -323,6 +419,9 @@ export const validateGeneralLectureContent = (
       }
       const isExampleTitle =
         typeof chunkTitle === "string" && /\bexample\b/i.test(chunkTitle);
+      if (chunkRecord.boardOps) {
+        boardOpsCount += 1;
+      }
       if (chunkRecord.boardOps && !isWhiteboardOps(chunkRecord.boardOps)) {
         errors.push(`chunk ${index + 1} has invalid boardOps`);
         checks.boardOpsOk = false;
@@ -335,6 +434,10 @@ export const validateGeneralLectureContent = (
       }
     }
   });
+  if (boardOpsCount > 2) {
+    errors.push(`too many boardOps chunks (${boardOpsCount})`);
+    checks.boardOpsOk = false;
+  }
   if (totalWords < GENERAL_LECTURE_GUARDS.minTotalWords) {
     errors.push(`total narration too short (${totalWords} words)`);
     checks.totalWordsOk = false;
@@ -352,6 +455,14 @@ export const validateGeneralLectureContent = (
         `sentence repeated across ${repetition.maxChunkAppearances} chunks: "${repetition.repeatedSentence}"`
       );
       checks.repetitionOk = false;
+    }
+    const openingSimilarity = analyzeOpeningSimilarity(narrations);
+    if (openingSimilarity.maxSimilarity > OPENING_SIMILARITY_THRESHOLD) {
+      const pair = openingSimilarity.pair;
+      errors.push(
+        `chunk openings too similar (chunks ${pair ? `${pair[0] + 1} & ${pair[1] + 1}` : "multiple"})`
+      );
+      checks.openingVarietyOk = false;
     }
   }
   const confusionMode = record.confusionMode as Record<string, unknown> | undefined;
@@ -400,9 +511,9 @@ const buildStubLecture = (input: GenerateLectureInput): GeneralLectureContent =>
   const cleanContext = normalizeStubContext(topicName, topicContext);
   const levelLine =
     level === "intro"
-      ? "We start with intuition and only add mechanics once the picture is clear."
+      ? "We move from definition to mechanism, then to implications."
       : level === "exam"
-        ? "We focus on the exact patterns that show up under time pressure."
+        ? "We prioritize the exact patterns that show up under time pressure."
         : "We go deeper into why the mechanism behaves the way it does.";
 
   const chunkSpecs = [
@@ -421,27 +532,31 @@ const buildStubLecture = (input: GenerateLectureInput): GeneralLectureContent =>
     let counter = 0;
     while (countWords(narration) < GENERAL_LECTURE_GUARDS.minWordsPerChunk) {
       const offset = (index + 3) * 7 + counter;
-      narration += ` Another detail uses value ${offset} with offset ${offset + 2}, so the next address is ${1000 + offset * 4}.`;
+      narration += ` For example, if i = ${offset} and size = 4, then addr = base + i * size, which means the offset scales with i.`;
       counter += 1;
     }
     return narration.trim();
   };
 
   const buildTransition = (index: number) => {
-    if (index === 0) {
-      return `Let’s begin with a plain-language definition of ${topicName} and why it exists.`;
-    }
-    if (index === 1) {
-      return `Now that we have a clear definition, we can build the core mental picture that makes the idea intuitive.`;
-    }
-    return `With that foundation in place, we can move one step further and add the next piece.`;
+    const transitions = [
+      `Let’s begin with a plain-language definition of ${topicName} and why it exists.`,
+      "With the definition in place, we can build the core mental picture.",
+      "That picture needs a few precise terms, so we name the key parts.",
+      "Now we can walk through the mechanism step by step.",
+      "To make it concrete, try a small example.",
+      "Now we expand into a fuller worked example.",
+      "That example exposes common pitfalls, so we address them directly.",
+      "With pitfalls cleared, we can see the practical implications."
+    ];
+    return transitions[index] || "Now we can move to the next idea without restarting.";
   };
 
   const buildNarration = (index: number, spec: (typeof chunkSpecs)[number]) => {
     const intro = buildTransition(index);
     const contextLine = cleanContext
-      ? `We keep the explanation grounded using ${cleanContext} so the idea stays concrete.`
-      : `We keep the explanation grounded in concrete inputs so the idea stays tangible.`;
+      ? `We connect ${spec.title.toLowerCase()} to ${cleanContext} so the idea stays concrete.`
+      : `We connect ${spec.title.toLowerCase()} to a simple scenario so the idea stays tangible.`;
     const anchorLines: string[] = [];
     if (spec.anchor === "example") {
       const base = 1000 + index * 64;
@@ -473,7 +588,7 @@ const buildStubLecture = (input: GenerateLectureInput): GeneralLectureContent =>
         "But actually the address changes while the underlying array stays fixed, which is why the offset calculation matters."
       );
     }
-    const close = `${levelLine} This connects directly to how you would reason about ${topicName} when reading or writing real code.`;
+    const close = `${levelLine} For ${spec.title.toLowerCase()}, that matters when you read or write real code involving ${topicName}.`;
     return padNarration([intro, contextLine, ...anchorLines, close], index);
   };
 

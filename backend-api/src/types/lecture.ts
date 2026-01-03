@@ -31,7 +31,8 @@ export type GeneralLectureContent = {
   topQuestions?: string[];
   confusionMode: LecturePackage["confusionMode"];
   diagnostics?: {
-    draftWordCount?: number;
+    call1WordCount?: number;
+    call2WordCount?: number;
     convertPass?: "ok" | "repaired" | "stub_fallback";
     call1AnswerText?: string;
   };

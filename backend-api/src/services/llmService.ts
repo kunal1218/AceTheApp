@@ -6,8 +6,9 @@ import type {
 } from "../types/lecture";
 import {
   GENERAL_LECTURE_SCHEMA_HINT,
-  buildGeneralLectureAnswerToLectureJsonPrompt,
-  buildGeneralLectureNaturalAnswerPrompt,
+  buildGeneralLectureCall1Prompt,
+  buildGeneralLectureCall2TeacherRewritePrompt,
+  buildGeneralLectureCall3JsonizePrompt,
   buildLecturePackageJsonRepairPrompt,
   buildQuestionPrompt,
   buildQuestionRepairPrompt,
@@ -149,7 +150,8 @@ type LectureValidationChecks = {
   boardOpsOk: boolean;
   bannedPhrasesOk: boolean;
   structureOk: boolean;
-  draftWordCount?: number;
+  call1WordCount?: number;
+  call2WordCount?: number;
   convertPass?: "ok" | "repaired" | "stub_fallback";
 };
 
@@ -359,16 +361,25 @@ export const validateGeneralLectureContent = (
     errors.push("chunks must be an array");
     checks.structureOk = false;
   }
-    if ("diagnostics" in record && record.diagnostics !== undefined) {
-      const diagnostics = record.diagnostics;
-      if (typeof diagnostics !== "object" || diagnostics === null) {
-        errors.push("diagnostics must be an object");
-        checks.structureOk = false;
-      } else {
-        const diagRecord = diagnostics as Record<string, unknown>;
-        if (typeof diagRecord.draftWordCount === "number") {
-          checks.draftWordCount = diagRecord.draftWordCount;
-        }
+  if ("diagnostics" in record && record.diagnostics !== undefined) {
+    const diagnostics = record.diagnostics;
+    if (typeof diagnostics !== "object" || diagnostics === null) {
+      errors.push("diagnostics must be an object");
+      checks.structureOk = false;
+    } else {
+      const diagRecord = diagnostics as Record<string, unknown>;
+      if (typeof diagRecord.call1WordCount === "number") {
+        checks.call1WordCount = diagRecord.call1WordCount;
+      }
+      if (typeof diagRecord.call2WordCount === "number") {
+        checks.call2WordCount = diagRecord.call2WordCount;
+      }
+      if (
+        typeof diagRecord.draftWordCount === "number" &&
+        checks.call1WordCount === undefined
+      ) {
+        checks.call1WordCount = diagRecord.draftWordCount;
+      }
       if (
         diagRecord.convertPass === "ok" ||
         diagRecord.convertPass === "repaired" ||
@@ -665,7 +676,7 @@ export const llmService = {
     if (LLM_MODE !== "gemini") {
       return buildStubLecture(input);
     }
-    const call1Prompt = buildGeneralLectureNaturalAnswerPrompt(
+    const call1Prompt = buildGeneralLectureCall1Prompt(
       input.topicContext,
       input.level,
       input.styleVersion
@@ -682,9 +693,23 @@ export const llmService = {
       }
     });
     const call1Text = call1Response.response.text().trim();
-    const draftWordCount = countWords(call1Text);
-    const call2Prompt = buildGeneralLectureAnswerToLectureJsonPrompt(
-      call1Text,
+    const call1WordCount = countWords(call1Text);
+    const call2Prompt = buildGeneralLectureCall2TeacherRewritePrompt(call1Text);
+    const call2Model = getGenAI().getGenerativeModel({
+      model: GEMINI_MODEL,
+      systemInstruction: "You rewrite text into a teacher voice without adding content."
+    });
+    const call2Response = await call2Model.generateContent({
+      contents: [{ role: "user", parts: [{ text: call2Prompt }] }],
+      generationConfig: {
+        temperature: 0.2,
+        maxOutputTokens: 3072
+      }
+    });
+    const call2Text = call2Response.response.text().trim();
+    const call2WordCount = countWords(call2Text);
+    const call3Prompt = buildGeneralLectureCall3JsonizePrompt(
+      call2Text,
       GENERAL_LECTURE_SCHEMA_HINT
     );
     const repairSystemInstruction =
@@ -704,7 +729,7 @@ export const llmService = {
       systemInstruction:
         "You convert structured lecture content into strict JSON for a teaching assistant.",
       repairSystemInstruction,
-      prompt: call2Prompt,
+      prompt: call3Prompt,
       repairPrompt: (rawText) =>
         buildLecturePackageJsonRepairPrompt(
           rawText,
@@ -721,7 +746,8 @@ export const llmService = {
         call1AnswerText: call1Text
       };
       if (process.env.NODE_ENV !== "production") {
-        diagnostics.draftWordCount = draftWordCount;
+        diagnostics.call1WordCount = call1WordCount;
+        diagnostics.call2WordCount = call2WordCount;
         diagnostics.convertPass = convertPass;
       }
       result.diagnostics = diagnostics;
@@ -746,7 +772,8 @@ export const llmService = {
       call1AnswerText: call1Text
     };
     if (process.env.NODE_ENV !== "production") {
-      fallbackDiagnostics.draftWordCount = draftWordCount;
+      fallbackDiagnostics.call1WordCount = call1WordCount;
+      fallbackDiagnostics.call2WordCount = call2WordCount;
       fallbackDiagnostics.convertPass = "stub_fallback";
     }
     fallback.diagnostics = fallbackDiagnostics;

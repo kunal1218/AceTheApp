@@ -127,7 +127,7 @@ Return JSON matching this schema exactly:
 ${GENERAL_LECTURE_SCHEMA_HINT}
 `;
 
-export function buildGeneralLectureNaturalAnswerPrompt(
+export function buildGeneralLectureCall1Prompt(
   topicContext: string,
   level: string,
   styleVersion: string
@@ -137,87 +137,57 @@ export function buildGeneralLectureNaturalAnswerPrompt(
     `Level: ${level}`,
     `Style version: ${styleVersion}`,
     ``,
-    `Answer the following in order, in plain text:`,
+    `Explain the topic clearly and concretely.`,
+    `Cover: what it is, why it matters, common misconceptions, and edge cases (if applicable).`,
+    `Include exactly one worked example explained step-by-step.`,
     ``,
-    `1) What is it?`,
-    `- Give a plain-language definition.`,
-    `- State clear boundaries: what it is and what it is not.`,
-    ``,
-    `2) Why is it important?`,
-    `- What capability it enables or problem it solves.`,
-    `- One practical situation where it matters.`,
-    ``,
-    `3) Common misconceptions`,
-    `- Give at least two misconceptions.`,
-    `- Correct each one clearly.`,
-    ``,
-    `4) Edge cases`,
-    `- Give at least one boundary or failure case,`,
-    `  or explicitly state why edge cases don’t apply.`,
-    ``,
-    `Include EXACTLY ONE worked example demonstrating the core mechanism, explained step-by-step.`,
-    `Do not include a second example.`,
-    ``,
-    `Constraints:`,
-    `- Plain text only (no JSON, no markdown).`,
-    `- Be clear and specific; avoid filler.`,
-    `- Roughly 900–1400 words.`,
-    ``,
-    `Return only your answer.`
+    `Plain text only. No JSON. No markdown.`
   ].join("\n");
 }
 
-export function buildGeneralLectureAnswerToLectureJsonPrompt(
-  call1AnswerText: string,
+export function buildGeneralLectureCall2TeacherRewritePrompt(call1AnswerText: string) {
+  return [
+    `Rewrite the text below so it sounds like a teacher speaking to a class.`,
+    `Do not add any new facts, claims, or examples.`,
+    `Do not remove any important content.`,
+    `Keep the same ordering of ideas as the original.`,
+    `Keep exactly one worked example (do not add more).`,
+    `Plain text only. No JSON. No markdown. No headings or "Part 1/Part 2".`,
+    ``,
+    `Text to rewrite:`,
+    `<<<BEGIN_TEXT`,
+    call1AnswerText,
+    `END_TEXT>>>`
+  ].join("\n");
+}
+
+export function buildGeneralLectureCall3JsonizePrompt(
+  teacherText: string,
   schemaHint: string
 ) {
   return [
-    `You will receive an answer text. That text is authoritative.`,
-    `Your task is to slightly rephrase it so it sounds like a teacher explaining the same ideas aloud,`,
-    `then express that result as STRICT JSON.`,
+    `Convert the text below into STRICT JSON matching the schema.`,
+    `Return ONLY valid JSON (no markdown, no commentary).`,
+    `Do not add new facts or new examples. Preserve meaning.`,
+    `Create 5 to 10 chunks.`,
+    `Each chunk must include: chunkTitle, narration.`,
+    `Chunk titles must be short and content-grounded (no "Part X").`,
+    `Do NOT include topQuestions.`,
+    `Do NOT include any course references or tie-ins.`,
     ``,
-    `CORE CONSTRAINTS (DO NOT VIOLATE):`,
-    `- The answer text is the single source of truth.`,
-    `- Do not introduce new facts, claims, explanations, or examples.`,
-    `- Do not delete or weaken any idea already present.`,
-    `- Do not impose artificial structure or sectioning.`,
-    `- Do not add labels like "Part 1", "Section", or similar.`,
-    `- Preserve the original ordering of ideas:`,
-    `  definition → importance → misconceptions → edge cases.`,
-    `- The worked example must appear once and only once.`,
-    `- Do not generate alternative numbers, variants, or additional examples.`,
-    `- Do not reference courses, classes, assignments, or instructors.`,
-    `- Do not include topQuestions.`,
+    `Whiteboard rules:`,
+    `- Add whiteboardOps ONLY for the chunk that contains the single worked example.`,
+    `- No other chunk may contain whiteboardOps.`,
     ``,
-    `Transformation step (internal only):`,
-    `- Rewrite sentences so they sound natural when spoken by a teacher.`,
-    `- You may smooth transitions or clarify references.`,
-    `- Any transition added must be brief and must not add information.`,
-    `- Do not use headings, bullets, numbering, or explicit structuring language.`,
-    ``,
-    `JSON generation rules:`,
-    `- Output must be valid JSON and nothing else.`,
-    `- Produce between 5 and 10 chunks.`,
-    `- Each chunk must include: chunkTitle and narration.`,
-    `- narration must faithfully reflect the rewritten text.`,
-    `- Chunk titles should be descriptive but minimal (no "Part X").`,
-    `- Chunks together must cover the answer content in the same sequence.`,
-    ``,
-    `Worked example handling:`,
-    `- Locate the single worked example in the answer text.`,
-    `- Only the chunk containing that example may include whiteboardOps.`,
-    `- whiteboardOps must represent exactly what the example already explains.`,
-    `- No other chunk may include whiteboardOps.`,
-    ``,
-    `LecturePackage schema (must match exactly):`,
+    `Schema (must match exactly):`,
     `${schemaHint}`,
     ``,
-    `Answer text to transform:`,
-    `<<<BEGIN_ANSWER`,
-    call1AnswerText,
-    `END_ANSWER>>>`,
+    `Text to convert:`,
+    `<<<BEGIN_TEXT`,
+    teacherText,
+    `END_TEXT>>>`,
     ``,
-    `Return only the JSON object.`
+    `Return ONLY the JSON object.`
   ].join("\n");
 }
 

@@ -12,6 +12,7 @@ export type LectureChunk = {
 };
 
 export type LecturePackage = {
+  // topicId is the SyllabusItem.id for the course.
   topicId: string;
   level: "intro" | "exam" | "deep";
   chunks: LectureChunk[];

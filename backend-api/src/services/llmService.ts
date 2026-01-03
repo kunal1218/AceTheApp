@@ -7,6 +7,7 @@ import type {
 
 type GenerateLectureInput = {
   topicName: string;
+  topicContext: string;
   level: LectureLevel;
   styleVersion: string;
 };
@@ -14,6 +15,7 @@ type GenerateLectureInput = {
 type GenerateTieInInput = {
   courseName: string;
   topicName: string;
+  topicContext: string;
   topicOrdering: string;
   chunkCount: number;
   tieInVersion: string;
@@ -22,6 +24,7 @@ type GenerateTieInInput = {
 type QuestionInput = {
   courseName: string;
   topicName: string;
+  topicContext: string;
   question: string;
   generalChunks: GeneralLectureContent["chunks"];
   tieIns: string[];
@@ -35,11 +38,11 @@ const safeOps: WhiteboardOp[] = [
 export const llmService = {
   async generateLecture(input: GenerateLectureInput): Promise<GeneralLectureContent> {
     // TODO: Replace with real LLM call. Keep this output deterministic for caching.
-    const { topicName, level, styleVersion } = input;
+    const { topicName, topicContext, level, styleVersion } = input;
     return {
       chunks: [
         {
-          generalText: `Intro to ${topicName}: start with the core intuition before formulas.`,
+          generalText: `Intro to ${topicName}: ${topicContext}. Start with the core intuition before formulas.`,
           boardOps: safeOps
         },
         {
@@ -60,17 +63,17 @@ export const llmService = {
 
   async generateTieIns(input: GenerateTieInInput): Promise<string[]> {
     // TODO: Replace with real LLM call for short, course-specific tie-ins.
-    const { courseName, topicName, topicOrdering, chunkCount } = input;
+    const { courseName, topicName, topicContext, topicOrdering, chunkCount } = input;
     return Array.from({ length: chunkCount }, () =>
-      `${topicName} connects to ${courseName} (${topicOrdering}).`
+      `${topicName} (${topicContext}) connects to ${courseName} (${topicOrdering}).`
     );
   },
 
   async answerQuestion(input: QuestionInput): Promise<LectureQuestionAnswer> {
     // TODO: Replace with real LLM call for compact Q&A.
-    const { question, topicName } = input;
+    const { question, topicName, topicContext } = input;
     return {
-      answer: `Short answer on ${topicName}: ${question.trim().slice(0, 120)}.`,
+      answer: `Short answer on ${topicName}: ${topicContext}. ${question.trim().slice(0, 120)}.`,
       boardOps: [{ op: "text", x: 16, y: 20, text: "short answer" }]
     };
   }

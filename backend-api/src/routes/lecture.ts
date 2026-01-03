@@ -8,6 +8,7 @@ import {
   TIE_IN_VERSION,
   buildGeneralCacheKey,
   buildTieInCacheKey,
+  getTopicContextFromSyllabusItem,
   hashKey,
   normalizeTopic
 } from "../services/lectureCache";
@@ -29,24 +30,17 @@ const getTopicOrdering = (topics: { id: string; title: string }[], topicId: stri
   return `Lesson ${index + 1} of ${topics.length}`;
 };
 
-const getNotesVersion = (topics: { id: string; title: string; updatedAt: Date }[]) => {
-  if (!topics.length) return "notes-empty";
-  const payload = topics
-    .map((topic) => `${topic.id}|${topic.updatedAt.toISOString()}|${topic.title}`)
-    .join("|");
-  return hashKey(payload);
+const devLog = (...args: unknown[]) => {
+  if (process.env.NODE_ENV === "production") return;
+  console.log("[lecture]", ...args);
 };
-
-const getTopicName = (
-  topics: { id: string; title: string }[],
-  topicId: string
-) => topics.find((topic) => topic.id === topicId)?.title || topicId;
 
 router.use(requireAuth);
 
 router.post("/generate", async (req, res) => {
   try {
     const courseId = typeof req.body?.courseId === "string" ? req.body.courseId.trim() : "";
+    // topicId refers to SyllabusItem.id
     const topicId = typeof req.body?.topicId === "string" ? req.body.topicId.trim() : "";
     const level = parseLevel(req.body?.level);
 
@@ -54,21 +48,30 @@ router.post("/generate", async (req, res) => {
       return res.status(400).json({ error: "courseId and topicId are required" });
     }
 
-    const course = await prisma.course.findFirst({
-      where: { id: courseId, userId: req.user!.id },
-      include: { syllabusItems: { orderBy: { date: "asc" } } }
-    });
-    if (!course) {
+    const course = await prisma.course.findUnique({ where: { id: courseId } });
+    if (!course || course.userId !== req.user!.id) {
       return res.status(404).json({ error: "Course not found" });
     }
 
-    const topics = course.syllabusItems
-      .filter((item) => item.type !== "syllabus-json")
-      .map((item) => ({ id: item.id, title: item.title, updatedAt: item.updatedAt }));
-    const topicName = getTopicName(topics, topicId);
-    const normalizedTopic = normalizeTopic(topicName);
-    const notesVersion = getNotesVersion(topics);
-    const topicOrdering = getTopicOrdering(topics, topicId);
+    const topicItem = await prisma.syllabusItem.findFirst({
+      where: { id: topicId, courseId }
+    });
+    if (!topicItem) {
+      return res.status(404).json({ error: "Topic not found for course" });
+    }
+
+    const syllabusItems = await prisma.syllabusItem.findMany({
+      where: { courseId },
+      orderBy: { date: "asc" },
+      select: { id: true, title: true }
+    });
+    const topicOrdering = getTopicOrdering(syllabusItems, topicId);
+    const topicContext = getTopicContextFromSyllabusItem(topicItem);
+    const normalizedTopic = normalizeTopic(topicContext);
+    const topicContextHash = hashKey(normalizedTopic);
+    const topicName = topicItem.title || "Untitled Topic";
+
+    devLog("generate", { courseId, topicId, level });
 
     // General cache: reusable across users/courses. Never store tie-ins here.
     const generalCacheKey = buildGeneralCacheKey(normalizedTopic, level);
@@ -77,10 +80,13 @@ router.post("/generate", async (req, res) => {
     });
     let generalLecture: GeneralLectureContent;
     if (generalCache) {
+      devLog("general cache HIT", { generalCacheKey });
       generalLecture = generalCache.payload as GeneralLectureContent;
     } else {
+      devLog("general cache MISS", { generalCacheKey });
       generalLecture = await llmService.generateLecture({
         topicName,
+        topicContext,
         level,
         styleVersion: STYLE_VERSION
       });
@@ -97,17 +103,20 @@ router.post("/generate", async (req, res) => {
     }
 
     // Tie-in cache: course-specific only. No general text stored here.
-    const tieInCacheKey = buildTieInCacheKey(courseId, topicId, notesVersion);
+    const tieInCacheKey = buildTieInCacheKey(courseId, topicContextHash);
     let tieInCache = await prisma.lectureTieInCache.findUnique({
       where: { cacheKey: tieInCacheKey }
     });
     let tieIns: string[];
     if (tieInCache) {
+      devLog("tie-in cache HIT", { tieInCacheKey });
       tieIns = tieInCache.tieInChunks as string[];
     } else {
+      devLog("tie-in cache MISS", { tieInCacheKey });
       tieIns = await llmService.generateTieIns({
         courseName: course.name,
         topicName,
+        topicContext,
         topicOrdering,
         chunkCount: generalLecture.chunks.length,
         tieInVersion: TIE_IN_VERSION
@@ -117,7 +126,7 @@ router.post("/generate", async (req, res) => {
           cacheKey: tieInCacheKey,
           courseId,
           topicId,
-          notesVersion,
+          notesVersion: topicContextHash,
           tieInVersion: TIE_IN_VERSION,
           tieInChunks: tieIns
         }
@@ -173,6 +182,7 @@ router.post("/generate", async (req, res) => {
 router.post("/question", async (req, res) => {
   try {
     const courseId = typeof req.body?.courseId === "string" ? req.body.courseId.trim() : "";
+    // topicId refers to SyllabusItem.id
     const topicId = typeof req.body?.topicId === "string" ? req.body.topicId.trim() : "";
     const question = typeof req.body?.question === "string" ? req.body.question.trim() : "";
 
@@ -180,21 +190,30 @@ router.post("/question", async (req, res) => {
       return res.status(400).json({ error: "courseId, topicId, and question are required" });
     }
 
-    const course = await prisma.course.findFirst({
-      where: { id: courseId, userId: req.user!.id },
-      include: { syllabusItems: { orderBy: { date: "asc" } } }
-    });
-    if (!course) {
+    const course = await prisma.course.findUnique({ where: { id: courseId } });
+    if (!course || course.userId !== req.user!.id) {
       return res.status(404).json({ error: "Course not found" });
     }
 
-    const topics = course.syllabusItems
-      .filter((item) => item.type !== "syllabus-json")
-      .map((item) => ({ id: item.id, title: item.title, updatedAt: item.updatedAt }));
-    const topicName = getTopicName(topics, topicId);
-    const normalizedTopic = normalizeTopic(topicName);
-    const notesVersion = getNotesVersion(topics);
-    const topicOrdering = getTopicOrdering(topics, topicId);
+    const topicItem = await prisma.syllabusItem.findFirst({
+      where: { id: topicId, courseId }
+    });
+    if (!topicItem) {
+      return res.status(404).json({ error: "Topic not found for course" });
+    }
+
+    const syllabusItems = await prisma.syllabusItem.findMany({
+      where: { courseId },
+      orderBy: { date: "asc" },
+      select: { id: true, title: true }
+    });
+    const topicOrdering = getTopicOrdering(syllabusItems, topicId);
+    const topicContext = getTopicContextFromSyllabusItem(topicItem);
+    const normalizedTopic = normalizeTopic(topicContext);
+    const topicContextHash = hashKey(normalizedTopic);
+    const topicName = topicItem.title || "Untitled Topic";
+
+    devLog("question", { courseId, topicId });
 
     const latestUserCache = await prisma.lectureUserCache.findFirst({
       where: { userId: req.user!.id, courseId, topicId },
@@ -208,10 +227,13 @@ router.post("/question", async (req, res) => {
     });
     let generalLecture: GeneralLectureContent;
     if (generalCache) {
+      devLog("general cache HIT", { generalCacheKey });
       generalLecture = generalCache.payload as GeneralLectureContent;
     } else {
+      devLog("general cache MISS", { generalCacheKey });
       generalLecture = await llmService.generateLecture({
         topicName,
+        topicContext,
         level,
         styleVersion: STYLE_VERSION
       });
@@ -227,17 +249,20 @@ router.post("/question", async (req, res) => {
       });
     }
 
-    const tieInCacheKey = buildTieInCacheKey(courseId, topicId, notesVersion);
+    const tieInCacheKey = buildTieInCacheKey(courseId, topicContextHash);
     let tieInCache = await prisma.lectureTieInCache.findUnique({
       where: { cacheKey: tieInCacheKey }
     });
     let tieIns: string[];
     if (tieInCache) {
+      devLog("tie-in cache HIT", { tieInCacheKey });
       tieIns = tieInCache.tieInChunks as string[];
     } else {
+      devLog("tie-in cache MISS", { tieInCacheKey });
       tieIns = await llmService.generateTieIns({
         courseName: course.name,
         topicName,
+        topicContext,
         topicOrdering,
         chunkCount: generalLecture.chunks.length,
         tieInVersion: TIE_IN_VERSION
@@ -247,7 +272,7 @@ router.post("/question", async (req, res) => {
           cacheKey: tieInCacheKey,
           courseId,
           topicId,
-          notesVersion,
+          notesVersion: topicContextHash,
           tieInVersion: TIE_IN_VERSION,
           tieInChunks: tieIns
         }
@@ -257,6 +282,7 @@ router.post("/question", async (req, res) => {
     const answer = await llmService.answerQuestion({
       courseName: course.name,
       topicName,
+      topicContext,
       question,
       generalChunks: generalLecture.chunks,
       tieIns

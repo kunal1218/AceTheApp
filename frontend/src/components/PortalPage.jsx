@@ -195,9 +195,16 @@ const normalizeSyllabusRows = (rows) => {
         date,
         type: row.type || "lesson",
         description: row.description || "",
+        courseId: row.courseId || "",
       };
     });
 };
+
+const normalizeTitleKey = (value) =>
+  (value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 
 export default function PortalPage() {
   const { id } = useParams();
@@ -216,6 +223,7 @@ export default function PortalPage() {
   const [facing, setFacing] = useState("right");
   const [dbLessons, setDbLessons] = useState([]);
   const [enterMessage, setEnterMessage] = useState("");
+  const [isResolvingLecture, setIsResolvingLecture] = useState(false);
   const walkStateRef = useRef({
     active: false,
     startTime: 0,
@@ -256,7 +264,7 @@ export default function PortalPage() {
     return () => {
       cancelled = true;
     };
-  }, [portal]);
+  }, [portal, dbLessons]);
 
   const lessons = useMemo(() => {
     if (dbLessons.length) return dbLessons;
@@ -377,14 +385,55 @@ export default function PortalPage() {
   const activeLessonTitle = activeNode?.type === "lesson"
     ? activeNode.title || `Lesson ${activeIndex + 1}`
     : "Special Level";
-  const handleEnter = () => {
+  const handleEnter = async () => {
     if (!activeNode || activeNode.type !== "lesson") return;
-    if (!portal?.courseId || !activeNode.topicId) {
+    if (isResolvingLecture) return;
+    setIsResolvingLecture(true);
+    setEnterMessage("Loading lecture...");
+    const lessonIndex = typeof activeNode.lessonIndex === "number" ? activeNode.lessonIndex : null;
+    const lesson = lessonIndex !== null ? lessons[lessonIndex] : null;
+    let resolvedCourseId = portal?.courseId || "";
+    let resolvedTopicId = activeNode.topicId || lesson?.id || "";
+    if (!resolvedCourseId || !resolvedTopicId) {
+      let rows = [];
+      try {
+        if (resolvedCourseId) {
+          const res = await getCourseSyllabus(resolvedCourseId);
+          rows = res?.data?.syllabus || res?.syllabus || res?.items || res || [];
+        } else if (portal?.title) {
+          const res = await getWorkspaceSyllabus(portal.title);
+          rows = res?.items || res?.data || res || [];
+        }
+      } catch (err) {
+        console.warn("[PortalPage] Failed to resolve syllabus rows", err);
+      }
+      const normalizedRows = normalizeSyllabusRows(rows);
+      if (normalizedRows.length) {
+        setDbLessons(normalizedRows);
+      }
+      if (!resolvedCourseId) {
+        resolvedCourseId = normalizedRows[0]?.courseId || "";
+      }
+      if (!resolvedTopicId) {
+        const targetTitle = lesson?.title || activeNode.title || "";
+        const titleKey = normalizeTitleKey(targetTitle);
+        const dateKey = lesson?.date ? lesson.date.slice(0, 10) : "";
+        let match = normalizedRows.find(
+          (row) => normalizeTitleKey(row.title) === titleKey
+        );
+        if (!match && dateKey) {
+          match = normalizedRows.find((row) => row.date?.slice(0, 10) === dateKey);
+        }
+        resolvedTopicId = match?.id || "";
+      }
+    }
+    setIsResolvingLecture(false);
+    if (!resolvedCourseId || !resolvedTopicId) {
       setEnterMessage("Lecture not available for this node yet.");
       return;
     }
     setEnterMessage("");
-    navigate(`/lecture/${portal.courseId}/${activeNode.topicId}`, {
+    navigate(`/lecture/${resolvedCourseId}/${resolvedTopicId}`, {
       state: {
         lessonTitle: activeNode.title,
         portalId: portal.id,
@@ -446,7 +495,7 @@ export default function PortalPage() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [path, selectedIndex, isWalking, activeNode, portal, navigate]);
+  }, [path, selectedIndex, isWalking, handleEnter]);
 
   useEffect(() => {
     if (!isWalking) return undefined;

@@ -18,7 +18,10 @@ import { validateGeneralLectureContent } from "../services/llmService";
 const router = Router();
 
 const LEVELS: LectureLevel[] = ["intro", "exam", "deep"];
-const LLM_MODE = (process.env.LLM_MODE || "stub").toLowerCase();
+const LLM_MODE = (
+  process.env.LLM_MODE ||
+  (process.env.GOOGLE_API_KEY ? "gemini" : "stub")
+).toLowerCase();
 
 const parseLevel = (value: unknown): LectureLevel => {
   if (typeof value === "string") {

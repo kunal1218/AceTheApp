@@ -41,7 +41,10 @@ type QuestionInput = {
 };
 
 const GEMINI_MODEL = "gemini-2.0-flash";
-const LLM_MODE = (process.env.LLM_MODE || "stub").toLowerCase();
+const LLM_MODE = (
+  process.env.LLM_MODE ||
+  (process.env.GOOGLE_API_KEY ? "gemini" : "stub")
+).toLowerCase();
 export const GENERAL_LECTURE_GUARDS = {
   minChunks: 1,
   minWordsPerChunk: 30,

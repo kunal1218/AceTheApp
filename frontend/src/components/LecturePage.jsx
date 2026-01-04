@@ -10,6 +10,7 @@ import aceIdle4 from "../assets/characters/Ace/Idle/HeroKnight_Idle_4.png";
 import aceIdle5 from "../assets/characters/Ace/Idle/HeroKnight_Idle_5.png";
 import aceIdle6 from "../assets/characters/Ace/Idle/HeroKnight_Idle_6.png";
 import aceIdle7 from "../assets/characters/Ace/Idle/HeroKnight_Idle_7.png";
+import aceHead from "../assets/characters/Ace/KnightHead.png";
 
 const extractResponse = (response) => ({
   data: response?.data ?? response,
@@ -194,10 +195,10 @@ export default function LecturePage() {
         />
       </div>
       <div className="lecture-dialogue">
-        <div className="lecture-dialogue__title">
-          {lessonTitle || "Lecture"}
+        <div className="lecture-dialogue__portrait">
+          <img className="lecture-dialogue__portrait-img" src={aceHead} alt="Ace" />
         </div>
-        <p className="lecture-dialogue__text">{currentLine}</p>
+        <div className="lecture-dialogue__text">{currentLine}</div>
       </div>
       {showTranscript && (
         <div className="lecture-transcript">

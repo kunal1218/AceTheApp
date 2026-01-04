@@ -35,32 +35,51 @@
 .lecture-dialogue {
   position: absolute;
   left: 50%;
-  bottom: 40px;
+  bottom: 28px;
   transform: translateX(-50%);
   width: min(900px, 92vw);
   background: rgba(15, 23, 42, 0.9);
   color: #f8fafc;
-  border-radius: 16px;
-  padding: 16px 20px;
-  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.28);
+  border-radius: 14px;
+  padding: 14px 18px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.25);
   font-family: "Press Start 2P", "Courier New", monospace;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  gap: 16px;
+  border: 2px solid rgba(248, 250, 252, 0.15);
+  pointer-events: none;
 }
 
-.lecture-dialogue__title {
-  font-size: 0.7rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(226, 232, 240, 0.75);
+.lecture-dialogue__portrait {
+  --lecture-portrait-padding: 6px;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: 10px;
+  padding: var(--lecture-portrait-padding) var(--lecture-portrait-padding) 0;
+  border: 1px solid rgba(248, 250, 252, 0.2);
+}
+
+.lecture-dialogue__portrait-img {
+  width: 100%;
+  height: 100%;
+  flex-shrink: 0;
+  object-fit: contain;
+  object-position: bottom center;
+  image-rendering: pixelated;
+  display: block;
 }
 
 .lecture-dialogue__text {
   margin: 0;
-  font-size: 0.8rem;
-  line-height: 1.6;
-  letter-spacing: 0.03em;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
 }
 
 .lecture-transcript {
@@ -96,11 +115,17 @@
 @media (max-width: 768px) {
   .lecture-dialogue {
     bottom: 24px;
-    padding: 14px 16px;
+    padding: 12px 14px;
+    gap: 12px;
   }
 
   .lecture-dialogue__text {
-    font-size: 0.7rem;
+    font-size: 16px;
+  }
+
+  .lecture-dialogue__portrait {
+    width: 52px;
+    height: 52px;
   }
 
   .lecture-transcript {

@@ -28,7 +28,8 @@
 .lecture-hand {
   position: absolute;
   top: 24px;
-  left: 24px;
+  right: 24px;
+  left: auto;
   z-index: 6;
   padding: 10px 14px;
   border-radius: 12px;
@@ -217,7 +218,8 @@
 
   .lecture-hand {
     top: 16px;
-    left: 16px;
+    right: 16px;
+    left: auto;
     font-size: 0.5rem;
   }
 

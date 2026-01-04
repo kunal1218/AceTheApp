@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import "./LecturePage.css";
-import { generateLecture, getCourseSyllabus } from "../api";
+import { askLectureQuestion, generateLecture, getCourseSyllabus } from "../api";
 import aceIdle0 from "../assets/characters/Ace/Idle/HeroKnight_Idle_0.png";
 import aceIdle1 from "../assets/characters/Ace/Idle/HeroKnight_Idle_1.png";
 import aceIdle2 from "../assets/characters/Ace/Idle/HeroKnight_Idle_2.png";
@@ -73,6 +73,15 @@ export default function LecturePage() {
   const [showTranscript, setShowTranscript] = useState(false);
   const [lineIndex, setLineIndex] = useState(0);
   const [aceFrame, setAceFrame] = useState(0);
+  const [isInputOpen, setIsInputOpen] = useState(false);
+  const [inputPrompt, setInputPrompt] = useState("");
+  const [inputValue, setInputValue] = useState("");
+  const [isLoadingAnswer, setIsLoadingAnswer] = useState(false);
+  const [answerLines, setAnswerLines] = useState([]);
+  const [answerIndex, setAnswerIndex] = useState(0);
+  const resumeIndexRef = useRef(0);
+  const intervalRef = useRef({ intervalIndex: 0, askedInInterval: false });
+  const promptSeedRef = useRef(0);
   useEffect(() => {
     let cancelled = false;
     const loadLecture = async () => {
@@ -148,14 +157,78 @@ export default function LecturePage() {
       .join(" ");
   }, [lecture]);
 
-  const dialogueLines = useMemo(
-    () => splitDialogueLines(fullTranscriptText),
-    [fullTranscriptText]
-  );
+  const lectureLines = useMemo(() => {
+    if (!lecture?.chunks) return [];
+    const lines = [];
+    lecture.chunks.forEach((chunk, chunkIndex) => {
+      const chunkText = chunk.narration || chunk.generalText || "";
+      const chunkLines = splitDialogueLines(chunkText);
+      chunkLines.forEach((line, lineIndexInChunk) => {
+        lines.push({
+          text: line,
+          chunkIndex,
+          isLastLine: lineIndexInChunk === chunkLines.length - 1,
+        });
+      });
+    });
+    return lines;
+  }, [lecture]);
 
   useEffect(() => {
     setLineIndex(0);
-  }, [fullTranscriptText]);
+    intervalRef.current = { intervalIndex: 0, askedInInterval: false };
+  }, [lectureLines.length]);
+
+  useEffect(() => {
+    if (!lectureLines.length) return;
+    const currentChunk = lectureLines[lineIndex]?.chunkIndex ?? 0;
+    const intervalIndex = Math.floor(currentChunk / 3);
+    if (intervalIndex !== intervalRef.current.intervalIndex) {
+      intervalRef.current.intervalIndex = intervalIndex;
+      intervalRef.current.askedInInterval = false;
+    }
+  }, [lineIndex, lectureLines]);
+
+  const openQuestionInput = (prompt) => {
+    resumeIndexRef.current = lineIndex;
+    intervalRef.current.askedInInterval = true;
+    setInputPrompt(prompt);
+    setInputValue("");
+    promptSeedRef.current += 1;
+    setIsInputOpen(true);
+  };
+
+  const handleQuestionSubmit = async () => {
+    const trimmed = inputValue.trim();
+    if (!trimmed || !courseId || !topicId) return;
+    setIsInputOpen(false);
+    setIsLoadingAnswer(true);
+    try {
+      const res = await askLectureQuestion({ courseId, topicId, question: trimmed });
+      const answerText = res?.data?.answer || res?.answer || "";
+      const lines = splitDialogueLines(answerText);
+      setAnswerLines(lines.length ? lines : ["Hmm... I need a moment to think."]);
+      setAnswerIndex(0);
+    } catch (err) {
+      setAnswerLines(["Hmm... I couldn't get an answer just now."]);
+      setAnswerIndex(0);
+    } finally {
+      setIsLoadingAnswer(false);
+    }
+  };
+
+  const advanceAnswer = () => {
+    if (!answerLines.length) return;
+    if (answerIndex < answerLines.length - 1) {
+      setAnswerIndex((prev) => prev + 1);
+      return;
+    }
+    setAnswerLines([]);
+    setAnswerIndex(0);
+    const resumeIndex = resumeIndexRef.current;
+    const nextIndex = Math.min(resumeIndex + 1, Math.max(lectureLines.length - 1, 0));
+    setLineIndex(nextIndex);
+  };
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -165,28 +238,52 @@ export default function LecturePage() {
         setShowTranscript((prev) => !prev);
         return;
       }
+      if (isInputOpen || isLoadingAnswer) return;
       if (key === " " || event.code === "Space") {
         event.preventDefault();
-        setLineIndex((prev) => {
-          const next = prev + 1;
-          if (next >= dialogueLines.length) return prev;
-          return next;
-        });
+        if (answerLines.length) {
+          advanceAnswer();
+          return;
+        }
+        const current = lectureLines[lineIndex];
+        if (
+          current?.isLastLine &&
+          (current.chunkIndex + 1) % 3 === 0 &&
+          !intervalRef.current.askedInInterval
+        ) {
+          openQuestionInput(
+            "Please, try to restate everything I've said till now as simply as you can."
+          );
+          return;
+        }
+        const next = Math.min(lineIndex + 1, Math.max(lectureLines.length - 1, 0));
+        if (next !== lineIndex) {
+          setLineIndex(next);
+        }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [dialogueLines.length]);
+  }, [answerLines.length, answerIndex, isInputOpen, isLoadingAnswer, lectureLines, lineIndex]);
 
   const currentLine = useMemo(() => {
+    if (isLoadingAnswer) return "Hmm...";
+    if (answerLines.length) return answerLines[answerIndex] || "";
     if (loading) return "Loading transcript...";
     if (error) return error;
-    if (!dialogueLines.length) return "Transcript unavailable.";
-    return dialogueLines[lineIndex] || "";
-  }, [loading, error, dialogueLines, lineIndex]);
+    if (!lectureLines.length) return "Transcript unavailable.";
+    return lectureLines[lineIndex]?.text || "";
+  }, [isLoadingAnswer, answerLines, answerIndex, loading, error, lectureLines, lineIndex]);
 
   return (
     <div className="lecture-page">
+      <button
+        type="button"
+        className="lecture-hand"
+        onClick={() => openQuestionInput("Yes, what is your question?")}
+      >
+        Raise Hand
+      </button>
       <div className="lecture-stage">
         <img
           src={ACE_IDLE_FRAMES[aceFrame]}
@@ -194,12 +291,35 @@ export default function LecturePage() {
           className="lecture-ace"
         />
       </div>
-      <div className="lecture-dialogue">
-        <div className="lecture-dialogue__portrait">
-          <img className="lecture-dialogue__portrait-img" src={aceHead} alt="Ace" />
+      {!isInputOpen && (
+        <div className="lecture-dialogue">
+          <div className="lecture-dialogue__portrait">
+            <img className="lecture-dialogue__portrait-img" src={aceHead} alt="Ace" />
+          </div>
+          <div className="lecture-dialogue__text">{currentLine}</div>
         </div>
-        <div className="lecture-dialogue__text">{currentLine}</div>
-      </div>
+      )}
+      {isInputOpen && (
+        <form
+          className="lecture-question"
+          onSubmit={(event) => {
+            event.preventDefault();
+            handleQuestionSubmit();
+          }}
+        >
+          <div className="lecture-question__prompt">{inputPrompt}</div>
+          <input
+            key={`question-input-${promptSeedRef.current}`}
+            className="lecture-question__input"
+            value={inputValue}
+            onChange={(event) => setInputValue(event.target.value)}
+            placeholder="Type your question..."
+          />
+          <button type="submit" className="lecture-question__submit">
+            Ask
+          </button>
+        </form>
+      )}
       {showTranscript && (
         <div className="lecture-transcript">
           <div className="lecture-transcript__title">Full Transcript</div>

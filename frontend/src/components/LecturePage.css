@@ -25,6 +25,27 @@
   pointer-events: none;
 }
 
+.lecture-hand {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  z-index: 6;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.2);
+  background: rgba(15, 23, 42, 0.08);
+  font-family: "Press Start 2P", "Courier New", monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #0f172a;
+  cursor: pointer;
+}
+
+.lecture-hand:hover {
+  background: rgba(15, 23, 42, 0.12);
+}
+
 .lecture-ace {
   width: min(320px, 70vw);
   height: auto;
@@ -85,6 +106,62 @@
   letter-spacing: 0.2px;
 }
 
+.lecture-question {
+  position: absolute;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  width: min(720px, 90%);
+  background: rgba(15, 23, 42, 0.9);
+  color: #f8fafc;
+  border-radius: 14px;
+  padding: 16px 18px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.25);
+  font-family: "Press Start 2P", "Courier New", monospace;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 2px solid rgba(248, 250, 252, 0.15);
+  z-index: 6;
+}
+
+.lecture-question__prompt {
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+}
+
+.lecture-question__input {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid rgba(248, 250, 252, 0.25);
+  background: rgba(15, 23, 42, 0.65);
+  color: #f8fafc;
+  font-family: "Press Start 2P", "Courier New", monospace;
+  font-size: 0.65rem;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.lecture-question__input::placeholder {
+  color: rgba(226, 232, 240, 0.5);
+}
+
+.lecture-question__submit {
+  align-self: flex-end;
+  border-radius: 10px;
+  border: none;
+  background: #38bdf8;
+  color: #0f172a;
+  font-family: "Press Start 2P", "Courier New", monospace;
+  font-size: 0.6rem;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.lecture-question__submit:hover {
+  background: #22d3ee;
+}
+
 .lecture-transcript {
   position: absolute;
   top: 20px;
@@ -136,5 +213,24 @@
     right: 12px;
     left: 12px;
     width: auto;
+  }
+
+  .lecture-hand {
+    top: 16px;
+    left: 16px;
+    font-size: 0.5rem;
+  }
+
+  .lecture-question {
+    bottom: 24px;
+    padding: 12px 14px;
+  }
+
+  .lecture-question__prompt {
+    font-size: 0.6rem;
+  }
+
+  .lecture-question__input {
+    font-size: 0.6rem;
   }
 }

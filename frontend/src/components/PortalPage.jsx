@@ -258,7 +258,15 @@ export default function PortalPage() {
           rows = Array.isArray(items) ? items : [];
         }
         if (!cancelled) {
-          setDbLessons(normalizeSyllabusRows(rows));
+          const normalizedRows = normalizeSyllabusRows(rows);
+          const fallbackLessons = normalizeLessons(portal);
+          if (!normalizedRows.length) {
+            return;
+          }
+          if (fallbackLessons.length && normalizedRows.length < fallbackLessons.length) {
+            return;
+          }
+          setDbLessons(normalizedRows);
         }
       } catch (err) {
         console.warn("[PortalPage] Failed to hydrate syllabus items", err);

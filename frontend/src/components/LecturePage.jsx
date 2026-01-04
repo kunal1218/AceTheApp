@@ -2,6 +2,14 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import "./LecturePage.css";
 import { generateLecture, getCourseSyllabus } from "../api";
+import aceIdle0 from "../assets/characters/Ace/Idle/HeroKnight_Idle_0.png";
+import aceIdle1 from "../assets/characters/Ace/Idle/HeroKnight_Idle_1.png";
+import aceIdle2 from "../assets/characters/Ace/Idle/HeroKnight_Idle_2.png";
+import aceIdle3 from "../assets/characters/Ace/Idle/HeroKnight_Idle_3.png";
+import aceIdle4 from "../assets/characters/Ace/Idle/HeroKnight_Idle_4.png";
+import aceIdle5 from "../assets/characters/Ace/Idle/HeroKnight_Idle_5.png";
+import aceIdle6 from "../assets/characters/Ace/Idle/HeroKnight_Idle_6.png";
+import aceIdle7 from "../assets/characters/Ace/Idle/HeroKnight_Idle_7.png";
 
 const extractResponse = (response) => ({
   data: response?.data ?? response,
@@ -14,6 +22,45 @@ const findLessonTitle = (rows, topicId) => {
   return match?.title || "";
 };
 
+const ACE_IDLE_FRAMES = [
+  aceIdle0,
+  aceIdle1,
+  aceIdle2,
+  aceIdle3,
+  aceIdle4,
+  aceIdle5,
+  aceIdle6,
+  aceIdle7,
+];
+const ACE_IDLE_FPS = 8;
+
+const splitDialogueLines = (text) => {
+  if (!text) return [];
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (!normalized) return [];
+  const lines = [];
+  let buffer = "";
+  for (let i = 0; i < normalized.length; i += 1) {
+    const char = normalized[i];
+    const next = normalized[i + 1] || "";
+    buffer += char;
+    if (char === "." || char === "!" || char === "*" || char === "?") {
+      const nextIsBreak = next === "" || next === " ";
+      if (nextIsBreak) {
+        const trimmed = buffer.trim();
+        if (trimmed) lines.push(trimmed);
+        buffer = "";
+        while (normalized[i + 1] === " ") {
+          i += 1;
+        }
+      }
+    }
+  }
+  const tail = buffer.trim();
+  if (tail) lines.push(tail);
+  return lines;
+};
+
 export default function LecturePage() {
   const { courseId, topicId } = useParams();
   const location = useLocation();
@@ -22,6 +69,9 @@ export default function LecturePage() {
   const [error, setError] = useState("");
   const [lessonTitle, setLessonTitle] = useState(location.state?.lessonTitle || "");
   const [meta, setMeta] = useState(null);
+  const [showTranscript, setShowTranscript] = useState(false);
+  const [lineIndex, setLineIndex] = useState(0);
+  const [aceFrame, setAceFrame] = useState(0);
   useEffect(() => {
     let cancelled = false;
     const loadLecture = async () => {
@@ -56,6 +106,21 @@ export default function LecturePage() {
   }, [courseId, topicId]);
 
   useEffect(() => {
+    let rafId;
+    const frameDuration = 1000 / ACE_IDLE_FPS;
+    let lastFrame = performance.now();
+    const step = (now) => {
+      if (now - lastFrame >= frameDuration) {
+        lastFrame = now;
+        setAceFrame((prev) => (prev + 1) % ACE_IDLE_FRAMES.length);
+      }
+      rafId = requestAnimationFrame(step);
+    };
+    rafId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafId);
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     const hydrateTitle = async () => {
       if (lessonTitle || !courseId || !topicId) return;
@@ -74,72 +139,72 @@ export default function LecturePage() {
     };
   }, [courseId, topicId, lessonTitle]);
 
-  const transcript = useMemo(() => {
-    if (!lecture?.chunks) return [];
-    const tieIns = Array.isArray(lecture?.tieIns) ? lecture.tieIns : [];
-    return lecture.chunks.map((chunk, index) => ({
-      id: `chunk-${index}`,
-      chunkTitle: chunk.chunkTitle || "",
-      narration: chunk.narration || chunk.generalText || "",
-      tieInText: chunk.tieInText || tieIns[index],
-    }));
+  const fullTranscriptText = useMemo(() => {
+    if (!lecture?.chunks) return "";
+    return lecture.chunks
+      .map((chunk) => chunk.narration || chunk.generalText || "")
+      .filter(Boolean)
+      .join(" ");
   }, [lecture]);
 
-  const call2Transcript = useMemo(() => {
-    if (!transcript.length) return "";
-    return transcript.map((chunk) => chunk.narration).filter(Boolean).join("\n\n");
-  }, [transcript]);
+  const dialogueLines = useMemo(
+    () => splitDialogueLines(fullTranscriptText),
+    [fullTranscriptText]
+  );
 
-  const call1Answer = meta?.debug?.call1AnswerText;
+  useEffect(() => {
+    setLineIndex(0);
+  }, [fullTranscriptText]);
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.repeat) return;
+      const key = event.key.toLowerCase();
+      if (key === "x") {
+        setShowTranscript((prev) => !prev);
+        return;
+      }
+      if (key === " " || event.code === "Space") {
+        event.preventDefault();
+        setLineIndex((prev) => {
+          const next = prev + 1;
+          if (next >= dialogueLines.length) return prev;
+          return next;
+        });
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [dialogueLines.length]);
+
+  const currentLine = useMemo(() => {
+    if (loading) return "Loading transcript...";
+    if (error) return error;
+    if (!dialogueLines.length) return "Transcript unavailable.";
+    return dialogueLines[lineIndex] || "";
+  }, [loading, error, dialogueLines, lineIndex]);
 
   return (
     <div className="lecture-page">
-      <div className="lecture-page__header">
-        <div className="lecture-page__title">
-          {lessonTitle || "Lecture Transcript"}
+      <div className="lecture-stage">
+        <img
+          src={ACE_IDLE_FRAMES[aceFrame]}
+          alt="Ace"
+          className="lecture-ace"
+        />
+      </div>
+      <div className="lecture-dialogue">
+        <div className="lecture-dialogue__title">
+          {lessonTitle || "Lecture"}
         </div>
+        <p className="lecture-dialogue__text">{currentLine}</p>
       </div>
-      <div className="lecture-page__panel">
-        {loading && <div className="lecture-page__status">Loading lecture...</div>}
-        {!loading && error && <div className="lecture-page__status lecture-page__status--error">{error}</div>}
-        {!loading && !error && lecture && (
-          <div className="lecture-page__scroll">
-            {call1Answer && (
-              <div className="lecture-page__compare">
-                <div className="lecture-page__compare-pane">
-                  <div className="lecture-page__compare-title">Call 1 Draft</div>
-                  <pre className="lecture-page__compare-text">{call1Answer}</pre>
-                </div>
-                <div className="lecture-page__compare-pane">
-                  <div className="lecture-page__compare-title">Call 2 Lecture</div>
-                  <pre className="lecture-page__compare-text">{call2Transcript}</pre>
-                </div>
-              </div>
-            )}
-            <div className="lecture-page__section-title">Transcript</div>
-            {transcript.map((chunk, index) => (
-              <div key={chunk.id} className="lecture-chunk">
-                <div className="lecture-chunk__index">Part {index + 1}</div>
-                {chunk.chunkTitle && (
-                  <div className="lecture-chunk__title">{chunk.chunkTitle}</div>
-                )}
-                <p className="lecture-chunk__text">{chunk.narration}</p>
-                {chunk.tieInText && (
-                  <p className="lecture-chunk__text lecture-chunk__text--tie">
-                    Course tie-in: {chunk.tieInText}
-                  </p>
-                )}
-              </div>
-            ))}
-            {lecture?.confusionMode?.summary && (
-              <div className="lecture-chunk lecture-chunk--summary">
-                <p className="lecture-chunk__label">If you get stuck:</p>
-                <p className="lecture-chunk__text">{lecture.confusionMode.summary}</p>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      {showTranscript && (
+        <div className="lecture-transcript">
+          <div className="lecture-transcript__title">Full Transcript</div>
+          <pre className="lecture-transcript__text">{fullTranscriptText}</pre>
+        </div>
+      )}
     </div>
   );
 }

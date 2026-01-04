@@ -4,172 +4,108 @@
   min-height: 100vh;
   height: 100vh;
   width: 100%;
-  padding: 24px;
+  margin: 0;
+  padding: 0;
   box-sizing: border-box;
   display: flex;
-  flex-direction: column;
-  gap: 16px;
-  background:
-    radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.75), transparent 45%),
-    radial-gradient(circle at 80% 12%, rgba(148, 163, 184, 0.3), transparent 55%),
-    linear-gradient(180deg, #eef2ff 0%, #f8fafc 45%, #e2e8f0 100%);
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
   color: #0f172a;
+  position: relative;
+  overflow: hidden;
 }
 
-.lecture-page__header {
+.lecture-stage {
+  position: absolute;
+  inset: 0;
   display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
-  gap: 16px;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
 }
 
-.lecture-page__title {
-  font-family: "Press Start 2P", "Courier New", monospace;
-  font-size: clamp(1rem, 2vw, 1.6rem);
-  line-height: 1.4;
-  text-align: right;
-  max-width: 70%;
-  word-break: break-word;
+.lecture-ace {
+  width: min(320px, 70vw);
+  height: auto;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 12px 24px rgba(15, 23, 42, 0.2));
 }
 
-.lecture-page__panel {
-  flex: 1;
-  border-radius: 20px;
+.lecture-dialogue {
+  position: absolute;
+  left: 50%;
+  bottom: 40px;
+  transform: translateX(-50%);
+  width: min(900px, 92vw);
   background: rgba(15, 23, 42, 0.9);
   color: #f8fafc;
-  padding: 20px;
-  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.35);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.lecture-page__scroll {
-  overflow-y: auto;
-  padding-right: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.lecture-page__compare {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.lecture-page__compare-pane {
-  border-radius: 12px;
-  border: 1px solid rgba(226, 232, 240, 0.18);
-  background: rgba(15, 23, 42, 0.7);
-  padding: 12px;
+  border-radius: 16px;
+  padding: 16px 20px;
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.28);
+  font-family: "Press Start 2P", "Courier New", monospace;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.lecture-page__compare-title {
-  font-family: "Press Start 2P", "Courier New", monospace;
-  font-size: 0.55rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: rgba(226, 232, 240, 0.8);
-}
-
-.lecture-page__compare-text {
-  margin: 0;
-  font-family: "Press Start 2P", "Courier New", monospace;
-  font-size: 0.55rem;
-  line-height: 1.6;
-  white-space: pre-wrap;
-  color: rgba(226, 232, 240, 0.9);
-}
-
-.lecture-page__section-title {
-  font-family: "Press Start 2P", "Courier New", monospace;
+.lecture-dialogue__title {
   font-size: 0.7rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(226, 232, 240, 0.8);
+  color: rgba(226, 232, 240, 0.75);
 }
 
-.lecture-page__status {
-  font-family: "Press Start 2P", "Courier New", monospace;
-  font-size: 0.7rem;
-  letter-spacing: 0.04em;
-}
-
-.lecture-page__status--error {
-  color: #fca5a5;
-}
-
-.lecture-chunk {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.lecture-chunk__index {
-  font-family: "Press Start 2P", "Courier New", monospace;
-  font-size: 0.6rem;
-  letter-spacing: 0.07em;
-  color: rgba(226, 232, 240, 0.7);
-}
-
-.lecture-chunk__title {
-  font-family: "Press Start 2P", "Courier New", monospace;
-  font-size: 0.7rem;
-  letter-spacing: 0.05em;
-  color: #f8fafc;
-}
-
-.lecture-chunk__text {
+.lecture-dialogue__text {
   margin: 0;
   font-size: 0.8rem;
-  line-height: 1.75;
+  line-height: 1.6;
   letter-spacing: 0.03em;
+}
+
+.lecture-transcript {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: min(420px, 70vw);
+  max-height: min(70vh, 560px);
+  overflow: auto;
+  background: rgba(15, 23, 42, 0.9);
+  color: #f8fafc;
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.25);
   font-family: "Press Start 2P", "Courier New", monospace;
-  word-break: break-word;
 }
 
-.lecture-chunk__text--tie {
-  color: rgba(226, 232, 240, 0.8);
-}
-
-.lecture-chunk--summary {
-  padding-top: 6px;
-  border-top: 1px solid rgba(226, 232, 240, 0.2);
-}
-
-.lecture-chunk__label {
-  margin: 0;
-  font-size: 0.6rem;
-  letter-spacing: 0.05em;
+.lecture-transcript__title {
+  font-size: 0.55rem;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  font-family: "Press Start 2P", "Courier New", monospace;
   color: rgba(226, 232, 240, 0.7);
+  margin-bottom: 8px;
+}
+
+.lecture-transcript__text {
+  margin: 0;
+  font-size: 0.55rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
 }
 
 @media (max-width: 768px) {
-  .lecture-page {
-    padding: 16px;
+  .lecture-dialogue {
+    bottom: 24px;
+    padding: 14px 16px;
   }
 
-  .lecture-page__header {
-    flex-direction: column;
-    align-items: flex-start;
+  .lecture-dialogue__text {
+    font-size: 0.7rem;
   }
 
-  .lecture-page__title {
-    text-align: left;
-    max-width: 100%;
-  }
-
-  .lecture-page__button {
-    align-self: flex-start;
-  }
-
-  .lecture-page__compare {
-    grid-template-columns: 1fr;
+  .lecture-transcript {
+    right: 12px;
+    left: 12px;
+    width: auto;
   }
 }

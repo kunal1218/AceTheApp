@@ -43,7 +43,7 @@ export function buildGeneralLectureCall1Prompt(
   styleVersion: string
 ) {
   return [
-    `Explain "${topicContext}" clearly and concretely for a ${level} learner (style ${styleVersion}).`,
+    `Explain "${topicContext}" clearly and concretely for a ${level} learner (style ${styleVersion}), in as few words as possible.`,
     `Cover what it is, why it matters, common misconceptions, edge cases, and include exactly one worked example explained step-by-step.`,
     `Plain text only.`
   ].join("\n");

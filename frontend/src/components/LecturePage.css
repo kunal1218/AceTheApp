@@ -78,8 +78,10 @@
 
 .lecture-dialogue__text {
   margin: 0;
+  margin-top: -4px;
   font-size: 16px;
   font-weight: 600;
+  line-height: 1.75;
   letter-spacing: 0.2px;
 }
 
@@ -122,6 +124,7 @@
 
   .lecture-dialogue__text {
     font-size: 14px;
+    line-height: 1.75;
   }
 
   .lecture-dialogue__portrait {

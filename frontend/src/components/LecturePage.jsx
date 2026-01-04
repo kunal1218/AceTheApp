@@ -45,7 +45,7 @@ const splitDialogueLines = (text) => {
     const char = normalized[i];
     const next = normalized[i + 1] || "";
     buffer += char;
-    if (char === "." || char === "!" || char === "*" || char === "?") {
+    if (char === "." || char === "!" || char === "?") {
       const nextIsBreak = next === "" || next === " ";
       if (nextIsBreak) {
         const trimmed = buffer.trim();

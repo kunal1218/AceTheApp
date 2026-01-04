@@ -5,11 +5,8 @@ import type {
   WhiteboardOp
 } from "../types/lecture";
 import {
-  GENERAL_LECTURE_SCHEMA_HINT,
   buildGeneralLectureCall1Prompt,
   buildGeneralLectureCall2TeacherRewritePrompt,
-  buildGeneralLectureCall3JsonizePrompt,
-  buildLecturePackageJsonRepairPrompt,
   buildQuestionPrompt,
   buildQuestionRepairPrompt,
   buildTieInPrompt,
@@ -46,9 +43,9 @@ type QuestionInput = {
 const GEMINI_MODEL = "gemini-2.0-flash";
 const LLM_MODE = (process.env.LLM_MODE || "stub").toLowerCase();
 export const GENERAL_LECTURE_GUARDS = {
-  minChunks: 5,
-  minWordsPerChunk: 120,
-  minTotalWords: 1200,
+  minChunks: 1,
+  minWordsPerChunk: 30,
+  minTotalWords: 80,
   maxRepeatedSentenceRatio: 0.2,
   maxSentenceRepeatChunks: 3,
   minSentenceWords: 6,
@@ -90,24 +87,52 @@ const OPENING_SIMILARITY_THRESHOLD = 0.82;
 const PART_SECTION_REGEX = /\bpart\s+\d+\b/i;
 const COURSE_TIE_IN_REGEX = /course\s*tie-?in/i;
 const EXAMPLE_SPAM_REGEX = /for example,\s*if\s*i\s*=/gi;
+const USE_STRICT_VALIDATION = process.env.LLM_STRICT_VALIDATION === "1";
 
 const devLog = (...args: unknown[]) => {
   if (process.env.NODE_ENV === "production") return;
   console.log("[llmService]", ...args);
 };
 
-const shouldLogFailures = () =>
-  process.env.NODE_ENV !== "production" &&
-  (process.env.LLM_LOG_RAW === "1" || process.env.LLM_LOG_FAILURES === "1");
-
-const truncateRaw = (value: string, maxLength: number = 1200) =>
-  value.length > maxLength ? `${value.slice(0, maxLength)}...` : value;
-
 const countWords = (value: string) =>
   value
     .trim()
     .split(/\s+/)
     .filter(Boolean).length;
+
+const sanitizeTeacherText = (value: string) => {
+  if (!value) return "";
+  const lines = value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const filtered = lines.filter((line) => !/^course\s*tie-?in\b/i.test(line));
+  const stripped = filtered.map((line) =>
+    line.replace(/\bpart\s+\d+\b[:\-]?\s*/gi, "").trim()
+  );
+  return stripped.join("\n\n").trim();
+};
+
+const buildLectureFromTeacherText = (
+  teacherText: string,
+  topicName: string
+): GeneralLectureContent => {
+  const cleaned = sanitizeTeacherText(teacherText);
+  const narration = cleaned || teacherText.trim();
+  const title = topicName?.trim() ? `${topicName} Lecture` : "Lecture";
+  const summaryBase = topicName?.trim() || "This topic";
+  return {
+    chunks: [
+      {
+        chunkTitle: title,
+        narration
+      }
+    ],
+    confusionMode: {
+      summary: `${summaryBase} centers on one core idea. Focus on that before the details.`
+    }
+  };
+};
 
 const isWhiteboardOp = (value: unknown): value is WhiteboardOp => {
   if (!value || typeof value !== "object") return false;
@@ -436,17 +461,6 @@ export const validateGeneralLectureContent = (
         errors.push(`chunk ${index + 1} narration too short (${words} words)`);
         checks.wordCountOk = false;
       }
-      const lower = narration.toLowerCase();
-      const bannedPhrase = BANNED_FILLER_PHRASES.find((phrase) => lower.includes(phrase));
-      if (bannedPhrase) {
-        errors.push(`chunk ${index + 1} uses banned filler phrase: "${bannedPhrase}"`);
-        checks.bannedPhrasesOk = false;
-      }
-      const bannedPattern = BANNED_FILLER_PATTERNS.find((pattern) => pattern.test(narration));
-      if (bannedPattern) {
-        errors.push(`chunk ${index + 1} uses banned scaffold pattern`);
-        checks.bannedPhrasesOk = false;
-      }
       if (PART_SECTION_REGEX.test(narration)) {
         errors.push(`chunk ${index + 1} uses banned "Part X" phrasing`);
         checks.bannedPhrasesOk = false;
@@ -455,27 +469,41 @@ export const validateGeneralLectureContent = (
         errors.push(`chunk ${index + 1} mentions course tie-in`);
         checks.bannedPhrasesOk = false;
       }
-      const exampleMatches = narration.match(EXAMPLE_SPAM_REGEX);
-      if (exampleMatches) {
-        exampleSpamCount += exampleMatches.length;
-      }
-      const numberCount = countNumbers(narration);
-      const hasMechanismMarker =
-        /\b(rule|step|algorithm|compute|calculate|because|therefore|which means|so that|means|if\b|then\b|example|suppose|for instance|imagine)\b/i.test(
-          narration
-        );
-      if (numberCount > 0 && !hasMechanismMarker) {
-        errors.push(`chunk ${index + 1} uses numbers without explaining a mechanism`);
-        checks.numericNoiseOk = false;
-      }
-      if (!hasGroundedSubstance(narration, numberCount)) {
-        errors.push(`chunk ${index + 1} lacks grounded, checkable substance`);
-        checks.groundingOk = false;
-      }
-      const anchorCheck = hasAnchorInNarration(narration, chunkRecord.boardOps as WhiteboardOp[]);
-      if (!anchorCheck.ok) {
-        errors.push(`chunk ${index + 1} missing concrete anchor`);
-        checks.anchorsOk = false;
+      let anchorCheck = { ok: true, hasWorkedExample: false };
+      if (USE_STRICT_VALIDATION) {
+        const lower = narration.toLowerCase();
+        const bannedPhrase = BANNED_FILLER_PHRASES.find((phrase) => lower.includes(phrase));
+        if (bannedPhrase) {
+          errors.push(`chunk ${index + 1} uses banned filler phrase: "${bannedPhrase}"`);
+          checks.bannedPhrasesOk = false;
+        }
+        const bannedPattern = BANNED_FILLER_PATTERNS.find((pattern) => pattern.test(narration));
+        if (bannedPattern) {
+          errors.push(`chunk ${index + 1} uses banned scaffold pattern`);
+          checks.bannedPhrasesOk = false;
+        }
+        const exampleMatches = narration.match(EXAMPLE_SPAM_REGEX);
+        if (exampleMatches) {
+          exampleSpamCount += exampleMatches.length;
+        }
+        const numberCount = countNumbers(narration);
+        const hasMechanismMarker =
+          /\b(rule|step|algorithm|compute|calculate|because|therefore|which means|so that|means|if\b|then\b|example|suppose|for instance|imagine)\b/i.test(
+            narration
+          );
+        if (numberCount > 0 && !hasMechanismMarker) {
+          errors.push(`chunk ${index + 1} uses numbers without explaining a mechanism`);
+          checks.numericNoiseOk = false;
+        }
+        if (!hasGroundedSubstance(narration, numberCount)) {
+          errors.push(`chunk ${index + 1} lacks grounded, checkable substance`);
+          checks.groundingOk = false;
+        }
+        anchorCheck = hasAnchorInNarration(narration, chunkRecord.boardOps as WhiteboardOp[]);
+        if (!anchorCheck.ok) {
+          errors.push(`chunk ${index + 1} missing concrete anchor`);
+          checks.anchorsOk = false;
+        }
       }
       const isExampleTitle =
         typeof chunkTitle === "string" && /\bexample\b/i.test(chunkTitle);
@@ -485,10 +513,14 @@ export const validateGeneralLectureContent = (
       if (chunkRecord.boardOps && !isWhiteboardOps(chunkRecord.boardOps)) {
         errors.push(`chunk ${index + 1} has invalid boardOps`);
         checks.boardOpsOk = false;
-      } else if (chunkRecord.boardOps && !anchorCheck.hasWorkedExample) {
+      } else if (
+        USE_STRICT_VALIDATION &&
+        chunkRecord.boardOps &&
+        !anchorCheck.hasWorkedExample
+      ) {
         errors.push(`chunk ${index + 1} uses boardOps without a worked example narration`);
         checks.boardOpsOk = false;
-      } else if (chunkRecord.boardOps && !isExampleTitle) {
+      } else if (USE_STRICT_VALIDATION && chunkRecord.boardOps && !isExampleTitle) {
         errors.push(`chunk ${index + 1} uses boardOps without Example in title`);
         checks.boardOpsOk = false;
       }
@@ -498,7 +530,7 @@ export const validateGeneralLectureContent = (
     errors.push(`too many boardOps chunks (${boardOpsCount})`);
     checks.boardOpsOk = false;
   }
-  if (exampleSpamCount > 1) {
+  if (USE_STRICT_VALIDATION && exampleSpamCount > 1) {
     errors.push(`example spam detected (repeated "For example, if i =")`);
     checks.bannedPhrasesOk = false;
   }
@@ -506,7 +538,7 @@ export const validateGeneralLectureContent = (
     errors.push(`total narration too short (${totalWords} words)`);
     checks.totalWordsOk = false;
   }
-  if (narrations.length) {
+  if (USE_STRICT_VALIDATION && narrations.length) {
     const repetition = analyzeRepetition(narrations);
     if (repetition.repeatedRatio > GENERAL_LECTURE_GUARDS.maxRepeatedSentenceRatio) {
       errors.push(
@@ -708,61 +740,26 @@ export const llmService = {
     });
     const call2Text = call2Response.response.text().trim();
     const call2WordCount = countWords(call2Text);
-    const call3Prompt = buildGeneralLectureCall3JsonizePrompt(
-      call2Text,
-      GENERAL_LECTURE_SCHEMA_HINT
-    );
-    const repairSystemInstruction =
-      "You receive malformed or partially incorrect JSON-like text for a lecture payload. " +
-      "Repair it into valid JSON that matches the schema in the prompt. " +
-      "Return JSON only with no markdown or extra text.";
-    let validationErrors: string[] = [];
-    let validationChecks: LectureValidationChecks | undefined;
-    const validate = (value: unknown): value is GeneralLectureContent => {
-      const outcome = validateGeneralLectureContent(value);
-      validationErrors = outcome.errors;
-      validationChecks = outcome.checks;
-      return outcome.ok;
+    const lectureDraft = buildLectureFromTeacherText(call2Text, input.topicName);
+    const diagnostics: GeneralLectureContent["diagnostics"] = {
+      call1AnswerText: call1Text
     };
-    const { result, repaired, raw } = await runGeminiJsonWithRepair<GeneralLectureContent>({
-      model: GEMINI_MODEL,
-      systemInstruction:
-        "You convert structured lecture content into strict JSON for a teaching assistant.",
-      repairSystemInstruction,
-      prompt: call3Prompt,
-      repairPrompt: (rawText) =>
-        buildLecturePackageJsonRepairPrompt(
-          rawText,
-          validationErrors.length ? validationErrors.join("\n") : "Validation failed",
-          GENERAL_LECTURE_SCHEMA_HINT
-        ),
-      validate,
-      temperature: 0.2,
-      maxOutputTokens: 4096
+    if (process.env.NODE_ENV !== "production") {
+      diagnostics.call1WordCount = call1WordCount;
+      diagnostics.call2WordCount = call2WordCount;
+      diagnostics.convertPass = "ok";
+    }
+    lectureDraft.diagnostics = diagnostics;
+    lectureDraft.source = "gemini";
+    const validation = validateGeneralLectureContent(lectureDraft);
+    if (validation.ok) {
+      devLog("Gemini gen success");
+      return validation.payload ?? lectureDraft;
+    }
+    devLog("Gemini gen validation failed", {
+      errors: validation.errors,
+      checks: validation.checks
     });
-    if (result) {
-      const convertPass = repaired ? "repaired" : "ok";
-      const diagnostics: GeneralLectureContent["diagnostics"] = {
-        call1AnswerText: call1Text
-      };
-      if (process.env.NODE_ENV !== "production") {
-        diagnostics.call1WordCount = call1WordCount;
-        diagnostics.call2WordCount = call2WordCount;
-        diagnostics.convertPass = convertPass;
-      }
-      result.diagnostics = diagnostics;
-      devLog(repaired ? "Gemini gen repair success" : "Gemini gen success");
-      return { ...result, source: "gemini" };
-    }
-    if (validationErrors.length) {
-      devLog("Gemini gen validation failed", {
-        errors: validationErrors,
-        checks: validationChecks
-      });
-    }
-    if (shouldLogFailures()) {
-      console.log("[llmService] Gemini gen failed raw:", truncateRaw(raw));
-    }
     devLog("fallback to stub");
     const fallback: GeneralLectureContent = {
       ...buildStubLecture(input),

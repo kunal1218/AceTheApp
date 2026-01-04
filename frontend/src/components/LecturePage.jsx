@@ -235,41 +235,72 @@ export default function LecturePage() {
     setLineIndex(nextIndex);
   };
 
+  const goBack = () => {
+    if (answerLines.length) {
+      setAnswerIndex((prev) => Math.max(0, prev - 1));
+      return;
+    }
+    setLineIndex((prev) => Math.max(0, prev - 1));
+  };
+
+  const goForward = () => {
+    if (answerLines.length) {
+      advanceAnswer();
+      return;
+    }
+    const current = lectureLines[lineIndex];
+    if (
+      current?.isLastLine &&
+      (current.chunkIndex + 1) % 3 === 0 &&
+      !intervalRef.current.askedInInterval
+    ) {
+      openQuestionInput(
+        "Please, try to restate everything I've said till now as simply as you can."
+      );
+      return;
+    }
+    const next = Math.min(lineIndex + 1, Math.max(lectureLines.length - 1, 0));
+    if (next !== lineIndex) {
+      setLineIndex(next);
+    }
+  };
+
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.repeat) return;
+      if (isInputOpen) return;
       const key = event.key.toLowerCase();
+      if (key === "a" || key === "arrowleft") {
+        event.preventDefault();
+        goBack();
+        return;
+      }
+      if (key === "d" || key === "arrowright") {
+        event.preventDefault();
+        goForward();
+        return;
+      }
       if (key === "x") {
+        if (isLoadingAnswer) return;
         setShowTranscript((prev) => !prev);
         return;
       }
-      if (isInputOpen || isLoadingAnswer) return;
+      if (isLoadingAnswer) return;
       if (key === " " || event.code === "Space") {
         event.preventDefault();
-        if (answerLines.length) {
-          advanceAnswer();
-          return;
-        }
-        const current = lectureLines[lineIndex];
-        if (
-          current?.isLastLine &&
-          (current.chunkIndex + 1) % 3 === 0 &&
-          !intervalRef.current.askedInInterval
-        ) {
-          openQuestionInput(
-            "Please, try to restate everything I've said till now as simply as you can."
-          );
-          return;
-        }
-        const next = Math.min(lineIndex + 1, Math.max(lectureLines.length - 1, 0));
-        if (next !== lineIndex) {
-          setLineIndex(next);
-        }
+        goForward();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [answerLines.length, answerIndex, isInputOpen, isLoadingAnswer, lectureLines, lineIndex]);
+  }, [
+    answerLines.length,
+    answerIndex,
+    isInputOpen,
+    isLoadingAnswer,
+    lectureLines,
+    lineIndex
+  ]);
 
   const currentLine = useMemo(() => {
     if (isLoadingAnswer) return "Hmm...";

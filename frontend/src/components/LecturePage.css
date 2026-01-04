@@ -55,6 +55,7 @@
   --lecture-portrait-padding: 6px;
   width: 64px;
   height: 64px;
+  flex: 0 0 64px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -77,7 +78,7 @@
 
 .lecture-dialogue__text {
   margin: 0;
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 600;
   letter-spacing: 0.2px;
 }
@@ -120,7 +121,7 @@
   }
 
   .lecture-dialogue__text {
-    font-size: 16px;
+    font-size: 14px;
   }
 
   .lecture-dialogue__portrait {

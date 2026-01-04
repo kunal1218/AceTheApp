@@ -198,19 +198,24 @@ export default function LecturePage() {
     setIsInputOpen(true);
   };
 
+  const buildResumeLine = () =>
+    `Anyway, back to ${lessonTitle || "the lesson"}.`;
+
   const handleQuestionSubmit = async () => {
     const trimmed = inputValue.trim();
     if (!trimmed || !courseId || !topicId) return;
     setIsInputOpen(false);
     setIsLoadingAnswer(true);
+    const resumeLine = buildResumeLine();
     try {
       const res = await askLectureQuestion({ courseId, topicId, question: trimmed });
       const answerText = res?.data?.answer || res?.answer || "";
       const lines = splitDialogueLines(answerText);
-      setAnswerLines(lines.length ? lines : ["Hmm... I need a moment to think."]);
+      const merged = lines.length ? [...lines, resumeLine] : ["Hmm... I need a moment to think.", resumeLine];
+      setAnswerLines(merged);
       setAnswerIndex(0);
     } catch (err) {
-      setAnswerLines(["Hmm... I couldn't get an answer just now."]);
+      setAnswerLines(["Hmm... I couldn't get an answer just now.", resumeLine]);
       setAnswerIndex(0);
     } finally {
       setIsLoadingAnswer(false);
@@ -315,9 +320,21 @@ export default function LecturePage() {
             onChange={(event) => setInputValue(event.target.value)}
             placeholder="Type your question..."
           />
-          <button type="submit" className="lecture-question__submit">
-            Ask
-          </button>
+          <div className="lecture-question__actions">
+            <button
+              type="button"
+              className="lecture-question__cancel"
+              onClick={() => {
+                setIsInputOpen(false);
+                setInputValue("");
+              }}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="lecture-question__submit">
+              Ask
+            </button>
+          </div>
         </form>
       )}
       {showTranscript && (

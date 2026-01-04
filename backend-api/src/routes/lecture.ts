@@ -45,6 +45,9 @@ const devLog = (...args: unknown[]) => {
   console.log("[lecture]", ...args);
 };
 
+const isStubSource = (payload?: GeneralLectureContent | null) =>
+  payload?.source === "stub" || payload?.source === "stub_fallback";
+
 const stripDiagnostics = (lecture: GeneralLectureContent): GeneralLectureContent => {
   const { diagnostics, ...rest } = lecture;
   return rest;
@@ -139,25 +142,55 @@ router.post("/generate", async (req, res) => {
         level,
         styleVersion: STYLE_VERSION
       });
-      const cachePayload = stripDiagnostics(generalLecture);
-      generalCache = await prisma.lectureGeneralCache.upsert({
-        where: { cacheKey: generalCacheKey },
-        create: {
-          cacheKey: generalCacheKey,
-          topicName,
-          normalizedTopic,
-          level,
-          styleVersion: STYLE_VERSION,
-          payload: cachePayload
-        },
-        update: {
-          topicName,
-          normalizedTopic,
-          level,
-          styleVersion: STYLE_VERSION,
-          payload: cachePayload
+      if (LLM_MODE === "gemini" && isStubSource(generalLecture)) {
+        const userCacheFallback = await prisma.lectureUserCache.findUnique({
+          where: {
+            userId_courseId_topicId_level: {
+              userId: req.user!.id,
+              courseId,
+              topicId,
+              level
+            }
+          }
+        });
+        if (userCacheFallback?.payload) {
+          devLog("stub lecture ignored, serving user cache", {
+            generalCacheKey,
+            userCacheKey: userCacheFallback.generalCacheKey
+          });
+          return res.json({
+            data: userCacheFallback.payload,
+            meta: {
+              generalCache: "user_cache",
+              tieInCache: "user_cache",
+              styleVersionUsed: STYLE_VERSION,
+              tieInVersionUsed: TIE_IN_VERSION,
+              promptFingerprint: GENERAL_PROMPT_FINGERPRINT
+            }
+          });
         }
-      });
+        devLog("stub lecture not cached", { generalCacheKey });
+      } else {
+        const cachePayload = stripDiagnostics(generalLecture);
+        generalCache = await prisma.lectureGeneralCache.upsert({
+          where: { cacheKey: generalCacheKey },
+          create: {
+            cacheKey: generalCacheKey,
+            topicName,
+            normalizedTopic,
+            level,
+            styleVersion: STYLE_VERSION,
+            payload: cachePayload
+          },
+          update: {
+            topicName,
+            normalizedTopic,
+            level,
+            styleVersion: STYLE_VERSION,
+            payload: cachePayload
+          }
+        });
+      }
     }
     if (!generalLecture) {
       throw new Error("General lecture generation failed");
@@ -247,30 +280,35 @@ router.post("/generate", async (req, res) => {
     };
 
     // LectureUserCache is for per-user playback only; do not use it to generate or validate content.
-    await prisma.lectureUserCache.upsert({
-      where: {
-        userId_courseId_topicId_level: {
+    const shouldPersistUserCache = !(LLM_MODE === "gemini" && isStubSource(generalLecture));
+    if (shouldPersistUserCache) {
+      await prisma.lectureUserCache.upsert({
+        where: {
+          userId_courseId_topicId_level: {
+            userId: req.user!.id,
+            courseId,
+            topicId,
+            level
+          }
+        },
+        create: {
           userId: req.user!.id,
           courseId,
           topicId,
-          level
+          level,
+          generalCacheKey,
+          tieInCacheKey,
+          payload: lecturePackage
+        },
+        update: {
+          generalCacheKey,
+          tieInCacheKey,
+          payload: lecturePackage
         }
-      },
-      create: {
-        userId: req.user!.id,
-        courseId,
-        topicId,
-        level,
-        generalCacheKey,
-        tieInCacheKey,
-        payload: lecturePackage
-      },
-      update: {
-        generalCacheKey,
-        tieInCacheKey,
-        payload: lecturePackage
-      }
-    });
+      });
+    } else {
+      devLog("skipping user cache for stub lecture", { generalCacheKey });
+    }
 
     const meta: Record<string, unknown> = {
       generalCache: generalCacheStatus,
@@ -350,6 +388,15 @@ router.post("/question", async (req, res) => {
     let generalLecture: GeneralLectureContent | null = null;
     let generalCacheStatus: "hit" | "miss" | "bypassed" = generalCache ? "hit" : "miss";
     if (forceRefresh) generalCacheStatus = "bypassed";
+    if (generalCache && LLM_MODE === "gemini") {
+      const cachedPayload = generalCache.payload as GeneralLectureContent | null;
+      const cachedSource = typeof cachedPayload?.source === "string" ? cachedPayload.source : "";
+      if (cachedSource === "stub" || cachedSource === "stub_fallback") {
+        devLog("general cache stub payload ignored", { generalCacheKey, cachedSource });
+        generalCache = null;
+        generalCacheStatus = "miss";
+      }
+    }
     if (generalCache) {
       const validation = validateGeneralLectureContent(generalCache.payload as GeneralLectureContent);
       if (!validation.ok) {
@@ -369,25 +416,29 @@ router.post("/question", async (req, res) => {
         level,
         styleVersion: STYLE_VERSION
       });
-      const cachePayload = stripDiagnostics(generalLecture);
-      generalCache = await prisma.lectureGeneralCache.upsert({
-        where: { cacheKey: generalCacheKey },
-        create: {
-          cacheKey: generalCacheKey,
-          topicName,
-          normalizedTopic,
-          level,
-          styleVersion: STYLE_VERSION,
-          payload: cachePayload
-        },
-        update: {
-          topicName,
-          normalizedTopic,
-          level,
-          styleVersion: STYLE_VERSION,
-          payload: cachePayload
-        }
-      });
+      if (LLM_MODE === "gemini" && isStubSource(generalLecture)) {
+        devLog("stub lecture not cached", { generalCacheKey });
+      } else {
+        const cachePayload = stripDiagnostics(generalLecture);
+        generalCache = await prisma.lectureGeneralCache.upsert({
+          where: { cacheKey: generalCacheKey },
+          create: {
+            cacheKey: generalCacheKey,
+            topicName,
+            normalizedTopic,
+            level,
+            styleVersion: STYLE_VERSION,
+            payload: cachePayload
+          },
+          update: {
+            topicName,
+            normalizedTopic,
+            level,
+            styleVersion: STYLE_VERSION,
+            payload: cachePayload
+          }
+        });
+      }
     }
     if (!generalLecture) {
       throw new Error("General lecture generation failed");

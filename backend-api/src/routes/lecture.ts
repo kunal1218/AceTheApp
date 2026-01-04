@@ -18,6 +18,7 @@ import { validateGeneralLectureContent } from "../services/llmService";
 const router = Router();
 
 const LEVELS: LectureLevel[] = ["intro", "exam", "deep"];
+const LLM_MODE = (process.env.LLM_MODE || "stub").toLowerCase();
 
 const parseLevel = (value: unknown): LectureLevel => {
   if (typeof value === "string") {
@@ -107,6 +108,15 @@ router.post("/generate", async (req, res) => {
     let generalLecture: GeneralLectureContent | null = null;
     let generalCacheStatus: "hit" | "miss" | "bypassed" = generalCache ? "hit" : "miss";
     if (forceRefresh) generalCacheStatus = "bypassed";
+    if (generalCache && LLM_MODE === "gemini") {
+      const cachedPayload = generalCache.payload as GeneralLectureContent | null;
+      const cachedSource = typeof cachedPayload?.source === "string" ? cachedPayload.source : "";
+      if (cachedSource === "stub" || cachedSource === "stub_fallback") {
+        devLog("general cache stub payload ignored", { generalCacheKey, cachedSource });
+        generalCache = null;
+        generalCacheStatus = "miss";
+      }
+    }
     if (generalCache) {
       const validation = validateGeneralLectureContent(generalCache.payload as GeneralLectureContent);
       if (!validation.ok) {

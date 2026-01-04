@@ -43,7 +43,7 @@ export function buildGeneralLectureCall1Prompt(
   styleVersion: string
 ) {
   return [
-    `Explain "${topicContext}" clearly and concretely for a ${level} learner (style ${styleVersion}), in as few words as possible.`,
+    `Explain "${topicContext}" clearly and concretely for a ${level} learner (style ${styleVersion}), in as few words as possible, but fully; use 1-7 short paragraphs and do not truncate required parts.`,
     `Cover what it is, why it matters, common misconceptions, edge cases, and include exactly one worked example explained step-by-step.`,
     `Plain text only.`
   ].join("\n");
@@ -55,7 +55,7 @@ export function buildGeneralLectureCall2TeacherRewritePrompt(call1AnswerText: st
     ``,
     `Important constraints:`,
     `- Do NOT add, remove, or change any facts, claims, or examples.`,
-    `- Keep the same overall order of ideas and keep EXACTLY one worked example.`,
+    `- Keep the same overall order of ideas, paragraph breaks, and keep EXACTLY one worked example.`,
     `- Do NOT introduce headings, section titles, bullet lists, or numbered lists.`,
     `- Do NOT speak or imply headers such as "What They Are", "Why They Matter", or similar.`,
     `- Do NOT use textbook-style formatting or pauses that sound like reading slides.`,

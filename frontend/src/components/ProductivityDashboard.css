@@ -37,6 +37,13 @@
   filter: drop-shadow(0 6px 12px rgba(15, 23, 42, 0.2));
   transform-origin: center;
 }
+.pd-ace {
+  position: absolute;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 6px 12px rgba(15, 23, 42, 0.18));
+  pointer-events: none;
+  z-index: 3;
+}
 .pd-player {
   pointer-events: none;
   z-index: 5;
@@ -163,6 +170,17 @@
   letter-spacing: 0.5px;
   font-family: "Press Start 2P", "Courier New", monospace;
   z-index: 5;
+}
+.pd-ace-hint {
+  position: absolute;
+  background: rgba(15, 23, 42, 0.85);
+  color: #e2e8f0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 12px;
+  letter-spacing: 0.4px;
+  font-family: "Press Start 2P", "Courier New", monospace;
+  z-index: 6;
 }
 
 @keyframes pdPortalPulse {

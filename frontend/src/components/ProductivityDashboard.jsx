@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import "./ProductivityDashboard.css";
 import { CARD_COLORS, addSemester, loadItems, saveItems } from "../utils/semesters";
 import { uploadSyllabusFile, deleteCourse } from "../api";
@@ -9,6 +9,14 @@ import runSprite from "../assets/characters/mainChar/RUN.png";
 import jumpSprite from "../assets/characters/mainChar/JUMP.png";
 import oracleSheet from "../assets/characters/Oracle/SPRITE_SHEET.png";
 import oraclePortrait from "../assets/characters/Oracle/SPRITE_PORTRAIT.png";
+import aceIdle0 from "../assets/characters/Ace/Idle/HeroKnight_Idle_0.png";
+import aceIdle1 from "../assets/characters/Ace/Idle/HeroKnight_Idle_1.png";
+import aceIdle2 from "../assets/characters/Ace/Idle/HeroKnight_Idle_2.png";
+import aceIdle3 from "../assets/characters/Ace/Idle/HeroKnight_Idle_3.png";
+import aceIdle4 from "../assets/characters/Ace/Idle/HeroKnight_Idle_4.png";
+import aceIdle5 from "../assets/characters/Ace/Idle/HeroKnight_Idle_5.png";
+import aceIdle6 from "../assets/characters/Ace/Idle/HeroKnight_Idle_6.png";
+import aceIdle7 from "../assets/characters/Ace/Idle/HeroKnight_Idle_7.png";
 
 const PLAYER_FRAME_WIDTH = 96;
 const PLAYER_FRAME_HEIGHT = 84;
@@ -35,6 +43,24 @@ const ORACLE_GROUND_OFFSET = 30;
 const ORACLE_INTERACT_DISTANCE = 120;
 const ORACLE_IDLE_FRAMES = 6;
 const ORACLE_IDLE_FPS = 6;
+
+const ACE_FRAME_WIDTH = 100;
+const ACE_FRAME_HEIGHT = 55;
+const ACE_SCALE = 3;
+const ACE_WIDTH = ACE_FRAME_WIDTH * ACE_SCALE;
+const ACE_HEIGHT = ACE_FRAME_HEIGHT * ACE_SCALE;
+const ACE_GROUND_OFFSET = 1;
+const ACE_IDLE_FPS = 8;
+const ACE_IDLE_FRAMES = [
+  aceIdle0,
+  aceIdle1,
+  aceIdle2,
+  aceIdle3,
+  aceIdle4,
+  aceIdle5,
+  aceIdle6,
+  aceIdle7,
+];
 
 const PORTAL_WIDTH = 72;
 const PORTAL_HEIGHT = 96;
@@ -77,7 +103,9 @@ export default function ProductivityDashboard() {
   const [arena, setArena] = useState({ width: 0, height: 0, groundY: 0 });
   const [player, setPlayer] = useState({ x: 0, y: 0 });
   const [, setAnimationTick] = useState(0);
+  const [aceHint, setAceHint] = useState("");
   const navigate = useNavigate();
+  const location = useLocation();
   const containerRef = useRef(null);
   const playerRef = useRef(player);
   const heldKeys = useRef(new Set());
@@ -96,13 +124,28 @@ export default function ProductivityDashboard() {
     frame: 0,
     lastFrameTime: performance.now(),
   });
+  const aceAnimRef = useRef({
+    frame: 0,
+    lastFrameTime: performance.now(),
+  });
   const facingRef = useRef("right");
   const initialPlacementRef = useRef(false);
   const semesterFileInputRef = useRef(null);
+  const aceHintShownRef = useRef(false);
 
   useEffect(() => {
     saveItems(items);
   }, [items]);
+
+  useEffect(() => {
+    if (!location.state?.aceOracleHint || aceHintShownRef.current) return;
+    aceHintShownRef.current = true;
+    setAceHint("Speak with the oracle!");
+    const timeoutId = window.setTimeout(() => {
+      setAceHint("");
+    }, 4000);
+    return () => window.clearTimeout(timeoutId);
+  }, [location.state]);
 
   useLayoutEffect(() => {
     const updateBounds = () => {
@@ -251,6 +294,14 @@ export default function ProductivityDashboard() {
           const framesToAdvance = Math.floor((now - oracleAnim.lastFrameTime) / oracleFrameDuration);
           oracleAnim.frame = (oracleAnim.frame + framesToAdvance) % ORACLE_IDLE_FRAMES;
           oracleAnim.lastFrameTime += framesToAdvance * oracleFrameDuration;
+          setAnimationTick((prev) => prev + 1);
+        }
+        const aceAnim = aceAnimRef.current;
+        const aceFrameDuration = 1000 / ACE_IDLE_FPS;
+        if (now - aceAnim.lastFrameTime >= aceFrameDuration) {
+          const framesToAdvance = Math.floor((now - aceAnim.lastFrameTime) / aceFrameDuration);
+          aceAnim.frame = (aceAnim.frame + framesToAdvance) % ACE_IDLE_FRAMES.length;
+          aceAnim.lastFrameTime += framesToAdvance * aceFrameDuration;
           setAnimationTick((prev) => prev + 1);
         }
       }
@@ -410,12 +461,15 @@ export default function ProductivityDashboard() {
   }, [portalItems, arena]);
 
   const playerCenterX = player.x + PLAYER_WIDTH / 2;
+  const aceX = clamp(24, 0, Math.max(arena.width - ACE_WIDTH, 0));
+  const aceY = arena.groundY - ACE_HEIGHT + ACE_GROUND_OFFSET;
   const oracleX = arena.width / 2 - ORACLE_WIDTH / 2;
   const oracleY = arena.groundY - ORACLE_HEIGHT + ORACLE_GROUND_OFFSET;
   const oracleCenterX = oracleX + ORACLE_WIDTH / 2;
   const playerNearOracle = Math.abs(playerCenterX - oracleCenterX) <= ORACLE_INTERACT_DISTANCE;
   const oracleFacingLeft = playerCenterX < oracleCenterX;
   const oracleFrameIndex = oracleAnimRef.current.frame;
+  const aceFrameIndex = aceAnimRef.current.frame;
 
   const oracleStyle = {
     left: oracleX,
@@ -476,7 +530,23 @@ export default function ProductivityDashboard() {
           onClick={handleOracleClick}
           aria-label="Oracle"
         />
+        <img
+          className="pd-ace"
+          src={ACE_IDLE_FRAMES[aceFrameIndex]}
+          alt="Ace"
+          style={{ left: aceX, top: aceY, width: ACE_WIDTH, height: ACE_HEIGHT }}
+        />
         <div className={playerClassName} style={playerStyle} />
+        {aceHint && (
+          <div
+            className="pd-ace-hint"
+            role="status"
+            aria-live="polite"
+            style={{ left: aceX + 12, top: Math.max(aceY - 54, 16) }}
+          >
+            {aceHint}
+          </div>
+        )}
         {oracleOpen && (
           <div className="pd-oracle-dialogue" role="dialog" aria-live="polite">
             <div className="pd-oracle-dialogue__portrait">

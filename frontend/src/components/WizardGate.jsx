@@ -1678,7 +1678,7 @@ export default function WizardGate() {
           && nextPlayer.x > rect.width
         ) {
           exitNavigationRef.current = true;
-          navigate("/dashboard/main", { replace: true });
+          navigate("/dashboard/main", { replace: true, state: { aceOracleHint: true } });
           return;
         }
         playerMovedThisTick = Math.abs(nextPlayer.x - currentPlayer.x) > 0.2

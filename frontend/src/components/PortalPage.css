@@ -68,6 +68,18 @@
   font-family: "Press Start 2P", "Courier New", monospace;
   text-transform: uppercase;
 }
+.portal-map__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+.portal-map__sync {
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+  padding: 6px 10px;
+  text-transform: uppercase;
+}
 
 .portal-bridge {
   position: absolute;
@@ -83,7 +95,7 @@
   height: 20px;
   border-radius: 50%;
   border: 2px solid #f8fafc;
-  background: radial-gradient(circle at 30% 30%, #fef08a, #f59e0b 60%, #b45309 100%);
+  background: radial-gradient(circle at 30% 30%, #fdba74, #f97316 60%, #c2410c 100%);
   box-shadow: 0 10px 20px rgba(15, 23, 42, 0.25);
   cursor: pointer;
   z-index: 3;
@@ -105,6 +117,14 @@
   background: radial-gradient(circle at 30% 30%, #bbf7d0, #34d399 55%, #166534 100%);
   box-shadow: 0 0 16px rgba(52, 211, 153, 0.55);
 }
+.portal-node--assignment {
+  border-color: #facc15;
+  background: radial-gradient(circle at 30% 30%, #fef9c3, #facc15 55%, #ca8a04 100%);
+  box-shadow: 0 0 16px rgba(250, 204, 21, 0.5);
+}
+.portal-node--assignment .portal-node__pulse {
+  border-color: rgba(250, 204, 21, 0.55);
+}
 
 .portal-node__pulse {
   position: absolute;
@@ -124,6 +144,9 @@
   font-family: "Press Start 2P", "Courier New", monospace;
   color: #052e16;
 }
+.portal-node__badge--assignment {
+  color: #78350f;
+}
 
 .portal-player {
   position: absolute;
@@ -132,6 +155,62 @@
   filter: drop-shadow(0 10px 20px rgba(15, 23, 42, 0.3));
   z-index: 4;
   pointer-events: none;
+}
+
+.portal-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 12;
+}
+.portal-modal {
+  background: #0f172a;
+  color: #f8fafc;
+  width: min(520px, 92vw);
+  border-radius: 18px;
+  padding: 20px 22px;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  font-family: "Press Start 2P", "Courier New", monospace;
+}
+.portal-modal h2 {
+  margin: 8px 0 8px;
+  font-size: 1rem;
+}
+.portal-modal__eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.6rem;
+  color: rgba(226, 232, 240, 0.6);
+  margin: 0;
+}
+.portal-modal__muted {
+  font-size: 0.58rem;
+  line-height: 1.6;
+  color: rgba(226, 232, 240, 0.7);
+}
+.portal-modal__drop {
+  border: 2px dashed rgba(148, 163, 184, 0.5);
+  border-radius: 12px;
+  padding: 14px;
+  text-align: center;
+  margin-top: 12px;
+  cursor: pointer;
+}
+.portal-modal__drop input {
+  display: none;
+}
+.portal-modal__actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 14px;
+  gap: 12px;
+}
+.portal-modal__status {
+  margin-top: 8px;
 }
 
 

@@ -2,7 +2,7 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "re
 import { useNavigate, useParams } from "react-router-dom";
 import "./PortalPage.css";
 import { loadItems } from "../utils/semesters";
-import { getCourseSyllabus, getWorkspaceSyllabus } from "../api";
+import { getCourseSyllabus, getWorkspaceSyllabus, getCalendarEvents, importCalendarIcs } from "../api";
 import idleSprite from "../assets/characters/mainChar/IDLE.png";
 import walkSprite from "../assets/characters/mainChar/WALK.png";
 
@@ -206,6 +206,46 @@ const normalizeTitleKey = (value) =>
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 
+const normalizeCalendarEvents = (events) => {
+  if (!Array.isArray(events)) return [];
+  const mapped = events
+    .map((event) => {
+      const dueAt = event?.dueAt || event?.date;
+      if (!dueAt) return null;
+      const date = new Date(dueAt);
+      if (Number.isNaN(date.getTime())) return null;
+      return {
+        id: event.id || event.sourceId || `${event.title}-${date.toISOString()}`,
+        title: event.title || "Assignment",
+        date: date.toISOString().slice(0, 10),
+        courseId: event.courseId || "",
+        description: event.description || "",
+      };
+    })
+    .filter(Boolean);
+  const seen = new Set();
+  return mapped.filter((event) => {
+    if (seen.has(event.id)) return false;
+    seen.add(event.id);
+    return true;
+  });
+};
+
+const filterAssignmentsForPortal = (events, portal) => {
+  if (!portal || !events.length) return [];
+  if (portal.courseId) {
+    const direct = events.filter((event) => event.courseId === portal.courseId);
+    if (direct.length) return direct;
+  }
+  const portalKey = normalizeTitleKey(portal.title || "");
+  if (!portalKey) return [];
+  return events.filter((event) => {
+    const titleKey = normalizeTitleKey(event.title || "");
+    const descKey = normalizeTitleKey(event.description || "");
+    return titleKey.includes(portalKey) || descKey.includes(portalKey);
+  });
+};
+
 export default function PortalPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -222,8 +262,13 @@ export default function PortalPage() {
   const [idleFrame, setIdleFrame] = useState(0);
   const [facing, setFacing] = useState("right");
   const [dbLessons, setDbLessons] = useState([]);
+  const [assignments, setAssignments] = useState([]);
   const [enterMessage, setEnterMessage] = useState("");
   const [isResolvingLecture, setIsResolvingLecture] = useState(false);
+  const [icsModalOpen, setIcsModalOpen] = useState(false);
+  const [icsFile, setIcsFile] = useState(null);
+  const [icsStatus, setIcsStatus] = useState("");
+  const [icsLoading, setIcsLoading] = useState(false);
   const hydratedIdRef = useRef(null);
   const walkStateRef = useRef({
     active: false,
@@ -233,6 +278,7 @@ export default function PortalPage() {
     toIndex: null,
   });
   const idleStartRef = useRef(performance.now());
+  const icsInputRef = useRef(null);
 
   const portal = useMemo(() => {
     const items = loadItems();
@@ -278,6 +324,29 @@ export default function PortalPage() {
     };
   }, [portal]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const hydrateAssignments = async () => {
+      if (!portal) {
+        if (!cancelled) setAssignments([]);
+        return;
+      }
+      try {
+        const events = await getCalendarEvents();
+        const normalized = normalizeCalendarEvents(events);
+        const filtered = filterAssignmentsForPortal(normalized, portal);
+        if (!cancelled) setAssignments(filtered);
+      } catch (err) {
+        if (!cancelled) setAssignments([]);
+        console.warn("[PortalPage] Failed to load assignments", err);
+      }
+    };
+    hydrateAssignments();
+    return () => {
+      cancelled = true;
+    };
+  }, [portal]);
+
   const lessons = useMemo(() => {
     if (dbLessons.length) return dbLessons;
     const extracted = normalizeLessons(portal);
@@ -288,42 +357,91 @@ export default function PortalPage() {
       date: "",
     }));
   }, [portal, dbLessons]);
-  const nodeMeta = useMemo(() => {
-    const lessonCount = lessons.length;
-    const specialCount = Math.min(SPECIAL_NODE_COUNT, Math.max(lessonCount - 1, 0));
-    if (!specialCount) {
-      return lessons.map((lesson, index) => ({ type: "lesson", lessonIndex: index, title: lesson.title }));
+  const baseNodes = useMemo(() => {
+    const lessonNodes = lessons.map((lesson, index) => ({
+      type: "lesson",
+      lessonIndex: index,
+      title: lesson.title || `Lesson ${index + 1}`,
+      topicId: lesson.id,
+      date: lesson.date || "",
+    }));
+    const assignmentNodes = assignments.map((assignment, index) => ({
+      type: "assignment",
+      assignmentIndex: index,
+      title: assignment.title || "Assignment",
+      date: assignment.date || "",
+      description: assignment.description || "",
+    }));
+    const sortable = [...lessonNodes, ...assignmentNodes].map((node, index) => {
+      const parsed = node.date ? Date.parse(node.date) : Number.NaN;
+      return {
+        ...node,
+        sortKey: Number.isNaN(parsed) ? null : parsed,
+        order: index,
+      };
+    });
+    const sorted = sortable
+      .sort((a, b) => {
+        const aHas = a.sortKey !== null;
+        const bHas = b.sortKey !== null;
+        if (aHas && bHas) {
+          if (a.sortKey !== b.sortKey) return a.sortKey - b.sortKey;
+          if (a.type !== b.type) return a.type === "lesson" ? -1 : 1;
+          return a.order - b.order;
+        }
+        if (aHas) return -1;
+        if (bHas) return 1;
+        return a.order - b.order;
+      })
+      .map(({ sortKey, order, ...rest }) => rest);
+
+    if (!lessonNodes.length) return sorted;
+    if (lessonNodes.length === 1) {
+      const only = lessonNodes[0];
+      const remainder = sorted.filter(
+        (node) => !(node.type === "lesson" && node.lessonIndex === only.lessonIndex)
+      );
+      return [only, ...remainder];
     }
+
+    const firstLesson = lessonNodes[0];
+    const lastLesson = lessonNodes[lessonNodes.length - 1];
+    const middle = sorted.filter((node) => {
+      if (node.type !== "lesson") return true;
+      return node.lessonIndex !== firstLesson.lessonIndex && node.lessonIndex !== lastLesson.lessonIndex;
+    });
+    return [firstLesson, ...middle, lastLesson];
+  }, [lessons, assignments]);
+
+  const nodeMeta = useMemo(() => {
+    const nodeCount = baseNodes.length;
+    const specialCount = Math.min(SPECIAL_NODE_COUNT, Math.max(nodeCount - 1, 0));
+    if (!specialCount) return baseNodes;
     const insertAfter = new Set();
-    const stride = lessonCount / (specialCount + 1);
+    const stride = nodeCount / (specialCount + 1);
     for (let i = 1; i <= specialCount; i += 1) {
       let idx = Math.round(stride * i);
-      idx = clamp(idx, 1, lessonCount - 1);
-      while (insertAfter.has(idx) && idx < lessonCount - 1) idx += 1;
+      idx = clamp(idx, 1, nodeCount - 1);
+      while (insertAfter.has(idx) && idx < nodeCount - 1) idx += 1;
       while (insertAfter.has(idx) && idx > 1) idx -= 1;
       insertAfter.add(idx);
     }
     let filled = insertAfter.size;
-    for (let idx = 1; idx < lessonCount && filled < specialCount; idx += 1) {
+    for (let idx = 1; idx < nodeCount && filled < specialCount; idx += 1) {
       if (!insertAfter.has(idx)) {
         insertAfter.add(idx);
         filled += 1;
       }
     }
     const nodes = [];
-    lessons.forEach((lesson, index) => {
-      nodes.push({
-        type: "lesson",
-        lessonIndex: index,
-        title: lesson.title,
-        topicId: lesson.id,
-      });
+    baseNodes.forEach((node, index) => {
+      nodes.push(node);
       if (insertAfter.has(index + 1)) {
         nodes.push({ type: "special", lessonIndex: null, title: "Special Level" });
       }
     });
     return nodes;
-  }, [lessons]);
+  }, [baseNodes]);
 
   useLayoutEffect(() => {
     const updateSize = () => {
@@ -396,7 +514,9 @@ export default function PortalPage() {
   const activeNode = nodeMeta[activeIndex];
   const activeLessonTitle = activeNode?.type === "lesson"
     ? activeNode.title || `Lesson ${activeIndex + 1}`
-    : "Special Level";
+    : activeNode?.type === "assignment"
+      ? `Assignment: ${activeNode.title || "Assignment"}`
+      : "Special Level";
   const handleEnter = async () => {
     if (!activeNode || activeNode.type !== "lesson") return;
     if (isResolvingLecture) return;
@@ -451,6 +571,42 @@ export default function PortalPage() {
         portalId: portal.id,
       },
     });
+  };
+
+  const handleImportIcs = async () => {
+    if (!icsFile) return;
+    setIcsLoading(true);
+    setIcsStatus("");
+    try {
+      const result = await importCalendarIcs(icsFile);
+      const events = await getCalendarEvents();
+      const normalized = normalizeCalendarEvents(events);
+      const filtered = filterAssignmentsForPortal(normalized, portal);
+      setAssignments(filtered);
+      const imported = result?.imported ?? 0;
+      const updated = result?.updated ?? 0;
+      setIcsStatus(`Imported ${imported} new events, updated ${updated} existing events.`);
+      setIcsFile(null);
+    } catch (err) {
+      setIcsStatus(err.message || "Failed to import ICS file");
+    } finally {
+      setIcsLoading(false);
+    }
+  };
+
+  const closeIcsModal = () => {
+    setIcsModalOpen(false);
+    setIcsFile(null);
+    setIcsStatus("");
+  };
+
+  const handleIcsDrop = (event) => {
+    event.preventDefault();
+    const dropped = event.dataTransfer?.files?.[0];
+    if (dropped) {
+      setIcsFile(dropped);
+      setIcsStatus("");
+    }
   };
   useLayoutEffect(() => {
     const handleKeyDown = (event) => {
@@ -613,6 +769,19 @@ export default function PortalPage() {
           </div>
           <div className="portal-map__hint">hit enter to enter level</div>
           {enterMessage && <div className="portal-map__hint">{enterMessage}</div>}
+          <div className="portal-map__actions">
+            <button
+              type="button"
+              className="ace-btn ghost portal-map__sync"
+              onClick={() => {
+                setIcsModalOpen(true);
+                setIcsStatus("");
+                setIcsFile(null);
+              }}
+            >
+              Sync homework assignments
+            </button>
+          </div>
         </div>
       </div>
       {layout.bridges.map((bridge) => (
@@ -620,14 +789,17 @@ export default function PortalPage() {
       ))}
       {layout.points.map((point, index) => {
         const isSpecial = nodeMeta[index]?.type === "special";
+        const isAssignment = nodeMeta[index]?.type === "assignment";
         const label = nodeMeta[index]?.type === "lesson"
           ? nodeMeta[index]?.title || `Lesson ${index + 1}`
-          : "Special Level";
+          : isAssignment
+            ? `Assignment: ${nodeMeta[index]?.title || "Assignment"}`
+            : "Special Level";
         return (
           <button
             key={`node-${index}`}
             type="button"
-            className={`portal-node${index === selectedIndex ? " portal-node--active" : ""}${isSpecial ? " portal-node--special" : ""}`}
+            className={`portal-node${index === selectedIndex ? " portal-node--active" : ""}${isSpecial ? " portal-node--special" : ""}${isAssignment ? " portal-node--assignment" : ""}`}
             style={{ left: point.x - POINT_SIZE / 2, top: point.y - POINT_SIZE / 2 }}
             onClick={() => {
               setSelectedIndex(index);
@@ -638,10 +810,63 @@ export default function PortalPage() {
           >
             <span className="portal-node__pulse" />
             {isSpecial && <span className="portal-node__badge">S</span>}
+            {isAssignment && <span className="portal-node__badge portal-node__badge--assignment">A</span>}
           </button>
         );
       })}
       {playerStyle && <div className="portal-player" style={playerStyle} />}
+      {icsModalOpen && (
+        <div className="portal-modal-backdrop">
+          <div className="portal-modal" role="dialog" aria-modal="true" aria-label="Sync with Canvas">
+            <p className="portal-modal__eyebrow">Sync with Canvas</p>
+            <h2>Import your Canvas / ICS calendar</h2>
+            <p className="portal-modal__muted">
+              In Canvas, open your calendar, click "Calendar Feed / Live Feed", download the .ics file,
+              then drop it here.
+            </p>
+            <div
+              className="portal-modal__drop"
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={handleIcsDrop}
+              onClick={() => icsInputRef.current?.click()}
+            >
+              <input
+                ref={icsInputRef}
+                type="file"
+                accept=".ics,text/calendar"
+                onChange={(event) => {
+                  setIcsFile(event.target.files?.[0] || null);
+                  setIcsStatus("");
+                }}
+              />
+              {icsFile ? (
+                <p><strong>{icsFile.name}</strong></p>
+              ) : (
+                <p className="portal-modal__muted">Click to browse or drag an .ics file here</p>
+              )}
+            </div>
+            {icsStatus && <p className="portal-modal__muted portal-modal__status">{icsStatus}</p>}
+            <div className="portal-modal__actions">
+              <button
+                className="ace-btn ghost"
+                type="button"
+                onClick={closeIcsModal}
+                disabled={icsLoading}
+              >
+                Cancel
+              </button>
+              <button
+                className="ace-btn"
+                type="button"
+                onClick={handleImportIcs}
+                disabled={!icsFile || icsLoading}
+              >
+                {icsLoading ? "Importing..." : "Import"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

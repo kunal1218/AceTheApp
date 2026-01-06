@@ -234,8 +234,7 @@ const normalizeCalendarEvents = (events) => {
 const filterAssignmentsForPortal = (events, portal) => {
   if (!portal || !events.length) return [];
   if (portal.courseId) {
-    const direct = events.filter((event) => event.courseId === portal.courseId);
-    if (direct.length) return direct;
+    return events.filter((event) => event.courseId === portal.courseId);
   }
   const portalKey = normalizeTitleKey(portal.title || "");
   if (!portalKey) return [];

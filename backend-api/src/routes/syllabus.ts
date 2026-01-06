@@ -9,6 +9,26 @@ import { requireAuth } from "../middleware/auth";
 const router = Router();
 const upload = multer();
 
+const normalizeCourseName = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+
+const buildOfficialCourseName = (syllabus: any) => {
+  const code = typeof syllabus?.course_code === "string" ? syllabus.course_code.trim() : "";
+  const title = typeof syllabus?.course_title === "string" ? syllabus.course_title.trim() : "";
+  if (code && title) {
+    const normalizedTitle = normalizeCourseName(title);
+    const normalizedCode = normalizeCourseName(code);
+    if (normalizedTitle.includes(normalizedCode)) {
+      return title;
+    }
+    return `${code} ${title}`;
+  }
+  return title || code || "";
+};
+
 router.post("/parse", upload.single("file"), async (req, res) => {
   try {
     const file = req.file as Express.Multer.File | undefined;
@@ -60,6 +80,7 @@ router.post("/parse-and-store", requireAuth, upload.single("file"), async (req, 
     const syllabus = await parseSyllabusFromBuffer(buffer, mimeType);
     const syllabusId = crypto.randomUUID();
     const syllabusWithWorkspace = { ...syllabus, "workspace-name": workspaceName };
+    const officialCourseName = buildOfficialCourseName(syllabusWithWorkspace);
 
     let courseId = courseIdRaw || null;
 
@@ -70,22 +91,56 @@ router.post("/parse-and-store", requireAuth, upload.single("file"), async (req, 
       if (!course) {
         return res.status(404).json({ error: "Course not found for this user" });
       }
+      const namePlaceholders = new Set(
+        [courseNameRaw, workspaceName, "Untitled Course"]
+          .filter(Boolean)
+          .map((name) => normalizeCourseName(name))
+      );
+      if (
+        officialCourseName
+        && (!course.name || namePlaceholders.has(normalizeCourseName(course.name)))
+      ) {
+        await prisma.course.update({
+          where: { id: course.id },
+          data: { name: officialCourseName }
+        });
+      }
     } else {
-      const name = courseNameRaw || workspaceName || "Untitled Course";
-      // Reuse an existing course with the same name for this user if present
-      const existing = await prisma.course.findFirst({
-        where: { name, userId: req.user!.id }
-      });
-      if (existing) {
-        courseId = existing.id;
-      } else {
-        const newCourse = await prisma.course.create({
-          data: {
-            name,
-            userId: req.user!.id
+      const candidateNames = [courseNameRaw, workspaceName].filter(Boolean);
+      let existing = null;
+      if (candidateNames.length) {
+        existing = await prisma.course.findFirst({
+          where: {
+            userId: req.user!.id,
+            name: { in: candidateNames }
           }
         });
-        courseId = newCourse.id;
+      }
+      if (existing) {
+        courseId = existing.id;
+        if (officialCourseName && normalizeCourseName(existing.name) !== normalizeCourseName(officialCourseName)) {
+          await prisma.course.update({
+            where: { id: existing.id },
+            data: { name: officialCourseName }
+          });
+        }
+      } else {
+        const name = officialCourseName || courseNameRaw || workspaceName || "Untitled Course";
+        // Reuse an existing course with the same name for this user if present
+        const existingByName = await prisma.course.findFirst({
+          where: { name, userId: req.user!.id }
+        });
+        if (existingByName) {
+          courseId = existingByName.id;
+        } else {
+          const newCourse = await prisma.course.create({
+            data: {
+              name,
+              userId: req.user!.id
+            }
+          });
+          courseId = newCourse.id;
+        }
       }
     }
 

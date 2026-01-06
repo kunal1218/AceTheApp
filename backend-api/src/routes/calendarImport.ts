@@ -56,11 +56,19 @@ router.post('/import-ics', requireAuth, upload.single('file'), async (req: Reque
 
     const url = (ev as any).url || (ev as any).URL || null;
     const parsedCourseId = parseCourseIdFromUrl(typeof url === 'string' ? url : null);
-    const courseId = parsedCourseId || (fallbackCourseId || null);
-    const courseName =
-      fallbackCourseName && (!parsedCourseId || parsedCourseId === fallbackCourseId)
-        ? fallbackCourseName
-        : null;
+    let courseRecord = null;
+    if (fallbackCourseId) {
+      courseRecord = await prisma.course.findFirst({
+        where: { id: fallbackCourseId, userId: req.user!.id }
+      });
+    }
+    if (!courseRecord && parsedCourseId) {
+      courseRecord = await prisma.course.findFirst({
+        where: { id: parsedCourseId, userId: req.user!.id }
+      });
+    }
+    const courseId = courseRecord?.id || null;
+    const courseName = courseRecord?.name || (courseId ? null : (fallbackCourseName || null));
 
     const data = {
       userId: req.user!.id,

@@ -30,6 +30,13 @@ router.post('/import-ics', requireAuth, upload.single('file'), async (req: Reque
   const fallbackCourseId = typeof req.body.courseId === 'string' ? req.body.courseId.trim() : '';
   const fallbackCourseName = typeof req.body.courseName === 'string' ? req.body.courseName.trim() : '';
 
+  let fallbackCourseRecord = null;
+  if (fallbackCourseId) {
+    fallbackCourseRecord = await prisma.course.findFirst({
+      where: { id: fallbackCourseId, userId: req.user!.id }
+    });
+  }
+
   const raw = file.buffer.toString('utf8');
 
   let parsed: Record<string, ical.VEvent>;
@@ -56,12 +63,7 @@ router.post('/import-ics', requireAuth, upload.single('file'), async (req: Reque
 
     const url = (ev as any).url || (ev as any).URL || null;
     const parsedCourseId = parseCourseIdFromUrl(typeof url === 'string' ? url : null);
-    let courseRecord = null;
-    if (fallbackCourseId) {
-      courseRecord = await prisma.course.findFirst({
-        where: { id: fallbackCourseId, userId: req.user!.id }
-      });
-    }
+    let courseRecord = fallbackCourseRecord;
     if (!courseRecord && parsedCourseId) {
       courseRecord = await prisma.course.findFirst({
         where: { id: parsedCourseId, userId: req.user!.id }

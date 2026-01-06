@@ -84,6 +84,9 @@ router.post("/parse-and-store", requireAuth, upload.single("file"), async (req, 
 
     let courseId = courseIdRaw || null;
 
+    let courseRecord = null;
+    let previousCourseName = "";
+
     if (courseId) {
       const course = await prisma.course.findFirst({
         where: { id: courseId, userId: req.user!.id }
@@ -91,20 +94,8 @@ router.post("/parse-and-store", requireAuth, upload.single("file"), async (req, 
       if (!course) {
         return res.status(404).json({ error: "Course not found for this user" });
       }
-      const namePlaceholders = new Set(
-        [courseNameRaw, workspaceName, "Untitled Course"]
-          .filter(Boolean)
-          .map((name) => normalizeCourseName(name))
-      );
-      if (
-        officialCourseName
-        && (!course.name || namePlaceholders.has(normalizeCourseName(course.name)))
-      ) {
-        await prisma.course.update({
-          where: { id: course.id },
-          data: { name: officialCourseName }
-        });
-      }
+      courseRecord = course;
+      previousCourseName = course.name;
     } else {
       const candidateNames = [courseNameRaw, workspaceName].filter(Boolean);
       let existing = null;
@@ -118,12 +109,8 @@ router.post("/parse-and-store", requireAuth, upload.single("file"), async (req, 
       }
       if (existing) {
         courseId = existing.id;
-        if (officialCourseName && normalizeCourseName(existing.name) !== normalizeCourseName(officialCourseName)) {
-          await prisma.course.update({
-            where: { id: existing.id },
-            data: { name: officialCourseName }
-          });
-        }
+        courseRecord = existing;
+        previousCourseName = existing.name;
       } else {
         const name = officialCourseName || courseNameRaw || workspaceName || "Untitled Course";
         // Reuse an existing course with the same name for this user if present
@@ -132,6 +119,8 @@ router.post("/parse-and-store", requireAuth, upload.single("file"), async (req, 
         });
         if (existingByName) {
           courseId = existingByName.id;
+          courseRecord = existingByName;
+          previousCourseName = existingByName.name;
         } else {
           const newCourse = await prisma.course.create({
             data: {
@@ -140,8 +129,50 @@ router.post("/parse-and-store", requireAuth, upload.single("file"), async (req, 
             }
           });
           courseId = newCourse.id;
+          courseRecord = newCourse;
+          previousCourseName = newCourse.name;
         }
       }
+    }
+
+    if (courseRecord && officialCourseName) {
+      if (normalizeCourseName(courseRecord.name) !== normalizeCourseName(officialCourseName)) {
+        const updated = await prisma.course.update({
+          where: { id: courseRecord.id },
+          data: { name: officialCourseName }
+        });
+        courseRecord = updated;
+      }
+    }
+
+    if (courseRecord) {
+      const matchNames = Array.from(new Set(
+        [courseNameRaw, workspaceName, previousCourseName, officialCourseName]
+          .filter(Boolean)
+          .map((name) => name.trim())
+          .filter((name) => name.length > 0)
+      ));
+      if (matchNames.length) {
+        await prisma.calendarEvent.updateMany({
+          where: {
+            userId: req.user!.id,
+            courseId: null,
+            courseName: { in: matchNames }
+          },
+          data: {
+            courseId: courseRecord.id,
+            courseName: courseRecord.name
+          }
+        });
+      }
+      await prisma.calendarEvent.updateMany({
+        where: {
+          userId: req.user!.id,
+          courseId: courseRecord.id,
+          courseName: { not: courseRecord.name }
+        },
+        data: { courseName: courseRecord.name }
+      });
     }
 
     const entries = Array.isArray(syllabus.schedule_entries) ? syllabus.schedule_entries : [];

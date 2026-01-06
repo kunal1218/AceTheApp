@@ -27,6 +27,9 @@ router.post('/import-ics', requireAuth, upload.single('file'), async (req: Reque
     return;
   }
 
+  const fallbackCourseId = typeof req.body.courseId === 'string' ? req.body.courseId.trim() : '';
+  const fallbackCourseName = typeof req.body.courseName === 'string' ? req.body.courseName.trim() : '';
+
   const raw = file.buffer.toString('utf8');
 
   let parsed: Record<string, ical.VEvent>;
@@ -52,7 +55,12 @@ router.post('/import-ics', requireAuth, upload.single('file'), async (req: Reque
     total += 1;
 
     const url = (ev as any).url || (ev as any).URL || null;
-    const courseId = parseCourseIdFromUrl(typeof url === 'string' ? url : null);
+    const parsedCourseId = parseCourseIdFromUrl(typeof url === 'string' ? url : null);
+    const courseId = parsedCourseId || (fallbackCourseId || null);
+    const courseName =
+      fallbackCourseName && (!parsedCourseId || parsedCourseId === fallbackCourseId)
+        ? fallbackCourseName
+        : null;
 
     const data = {
       userId: req.user!.id,
@@ -61,7 +69,7 @@ router.post('/import-ics', requireAuth, upload.single('file'), async (req: Reque
       title: ev.summary || 'Untitled event',
       description: ev.description || null,
       courseId,
-      courseName: null as string | null,
+      courseName,
       dueAt,
       htmlUrl: typeof url === 'string' ? url : null
     };

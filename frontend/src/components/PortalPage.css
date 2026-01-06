@@ -38,6 +38,13 @@
   gap: 6px;
   width: 100%;
 }
+.portal-map__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
 
 .portal-map__card h1 {
   margin: 0;
@@ -68,17 +75,12 @@
   font-family: "Press Start 2P", "Courier New", monospace;
   text-transform: uppercase;
 }
-.portal-map__actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 6px;
-}
 .portal-map__sync {
   font-size: 0.6rem;
   letter-spacing: 0.04em;
   padding: 6px 10px;
   text-transform: uppercase;
+  margin-left: auto;
 }
 
 .portal-bridge {

@@ -283,7 +283,10 @@ export default function SemesterWorkspace() {
     setIcsLoading(true);
     setIcsStatus("");
     try {
-      const result = await importCalendarIcs(icsFile);
+      const result = await importCalendarIcs(icsFile, {
+        courseId: item?.courseId || "",
+        courseName: item?.title || "",
+      });
       await refreshCalendarEvents();
       const imported = result?.imported ?? 0;
       const updated = result?.updated ?? 0;

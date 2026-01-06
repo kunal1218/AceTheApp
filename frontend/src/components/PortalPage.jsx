@@ -578,7 +578,10 @@ export default function PortalPage() {
     setIcsLoading(true);
     setIcsStatus("");
     try {
-      const result = await importCalendarIcs(icsFile);
+      const result = await importCalendarIcs(icsFile, {
+        courseId: portal?.courseId || "",
+        courseName: portal?.title || "",
+      });
       const events = await getCalendarEvents();
       const normalized = normalizeCalendarEvents(events);
       const filtered = filterAssignmentsForPortal(normalized, portal);
@@ -763,13 +766,8 @@ export default function PortalPage() {
     <div className="portal-map" ref={containerRef}>
       <div className="portal-map__hud" ref={hudRef}>
         <div className="portal-map__card">
-          <h1>{portal?.title || "World Map"}</h1>
-          <div className="portal-map__meta">
-            <span>{activeLessonTitle}</span>
-          </div>
-          <div className="portal-map__hint">hit enter to enter level</div>
-          {enterMessage && <div className="portal-map__hint">{enterMessage}</div>}
-          <div className="portal-map__actions">
+          <div className="portal-map__title-row">
+            <h1>{portal?.title || "World Map"}</h1>
             <button
               type="button"
               className="ace-btn ghost portal-map__sync"
@@ -782,6 +780,11 @@ export default function PortalPage() {
               Sync homework assignments
             </button>
           </div>
+          <div className="portal-map__meta">
+            <span>{activeLessonTitle}</span>
+          </div>
+          <div className="portal-map__hint">hit enter to enter level</div>
+          {enterMessage && <div className="portal-map__hint">{enterMessage}</div>}
         </div>
       </div>
       {layout.bridges.map((bridge) => (

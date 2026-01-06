@@ -508,7 +508,7 @@ export async function deleteCourse(courseId) {
   return null;
 }
 
-export async function importCalendarIcs(file) {
+export async function importCalendarIcs(file, options = {}) {
   const token = getToken();
   if (!token) throw new Error("Not authenticated");
   const base = API_BASE.replace(/\/$/, "");
@@ -516,6 +516,12 @@ export async function importCalendarIcs(file) {
   const url = `${base}${wantsApiPrefix ? "/api" : ""}/calendar/import-ics`;
   const form = new FormData();
   form.append("file", file);
+  if (options.courseId) {
+    form.append("courseId", options.courseId);
+  }
+  if (options.courseName) {
+    form.append("courseName", options.courseName);
+  }
 
   const res = await apiFetch(url, {
     method: "POST",

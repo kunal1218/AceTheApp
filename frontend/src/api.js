@@ -465,6 +465,21 @@ export async function askLectureQuestion({ courseId, topicId, question }) {
   return handleResponse(res, "Failed to answer question");
 }
 
+export async function markOracleCutsceneSeen(seen = true) {
+  const token = getToken();
+  if (!token) return null;
+  const res = await apiFetch(`${API_BASE}/auth/oracle-seen`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ seen }),
+  });
+  if (res.status === 401 || res.status === 404) return null;
+  return handleResponse(res, "Failed to update cutscene state");
+}
+
 export async function getWorkspaceSyllabus(workspaceName) {
   const token = getToken();
   if (!token) return null;

@@ -135,6 +135,25 @@ router.get('/me', requireAuth, (req: Request, res: Response) => {
   res.json({ success: true, data: { user: sanitizeUser(req.user) } });
 });
 
+router.post('/oracle-seen', requireAuth, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, error: 'Authentication required' });
+      return;
+    }
+    const seen = req.body?.seen === false ? false : true;
+    const updated = await prisma.user.update({
+      where: { id: req.user.id },
+      data: { hasSeenOracleCutscene: seen }
+    });
+    await cacheUser(updated);
+    res.json({ success: true, data: { user: sanitizeUser(updated) } });
+  } catch (err) {
+    console.error('Failed to update oracle cutscene flag', err);
+    res.status(500).json({ success: false, error: 'Failed to update cutscene state' });
+  }
+});
+
 // Google OAuth: redirect to Google's consent screen
 router.get('/google', (_req: Request, res: Response) => {
   if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CALLBACK_URL) {

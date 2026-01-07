@@ -19,12 +19,16 @@ export default function LoginPage({ setLoggedIn }) {
     e.preventDefault();
     try {
       // Call backend API to log in
-      await login({ email: form.email, password: form.password });
+      const user = await login({ email: form.email, password: form.password });
       // login() in api.js should set the token in localStorage
       setLoggedIn(true);
       await refreshColleges(); // Ensure college list is loaded after login
       localStorage.removeItem("wizardGatePassed");
-      navigate("/dashboard", { replace: true });
+      if (user?.hasSeenOracleCutscene) {
+        navigate("/dashboard/main", { replace: true });
+      } else {
+        navigate("/dashboard", { replace: true });
+      }
     } catch (err) {
       setError(err.message || "Invalid email or password.");
     }

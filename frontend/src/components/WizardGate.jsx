@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./WizardGate.css";
+import { getProfile, markOracleCutsceneSeen } from "../api";
 import idleSprite from "../assets/characters/mainChar/IDLE.png";
 import walkSprite from "../assets/characters/mainChar/WALK.png";
 import runSprite from "../assets/characters/mainChar/RUN.png";
@@ -419,6 +420,25 @@ export default function WizardGate() {
       allowOffscreen ? -PLAYER_WIDTH : 0,
       allowOffscreen ? rectWidth + PLAYER_WIDTH : rectWidth - PLAYER_WIDTH
     );
+
+  useEffect(() => {
+    let cancelled = false;
+    const checkCutscene = async () => {
+      try {
+        const profile = await getProfile();
+        if (cancelled) return;
+        if (profile?.hasSeenOracleCutscene) {
+          navigate("/dashboard/main", { replace: true });
+        }
+      } catch (err) {
+        console.warn("[WizardGate] Failed to check cutscene flag", err);
+      }
+    };
+    checkCutscene();
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate]);
   const createSkeleton = ({
     x,
     y,
@@ -1678,6 +1698,7 @@ export default function WizardGate() {
           && nextPlayer.x > rect.width
         ) {
           exitNavigationRef.current = true;
+          void markOracleCutsceneSeen(true);
           navigate("/dashboard/main", { replace: true, state: { aceOracleHint: true } });
           return;
         }

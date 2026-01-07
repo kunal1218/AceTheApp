@@ -58,6 +58,7 @@ export function buildGeneralLectureCall2TeacherRewritePrompt(call1AnswerText: st
     `- Keep the same overall order of ideas, paragraph breaks, and keep EXACTLY one worked example.`,
     `- Do NOT introduce headings, section titles, bullet lists, or numbered lists.`,
     `- Do NOT speak or imply headers such as "What They Are", "Why They Matter", or similar.`,
+    `- End with a complete, logical final sentence (do not cut off mid-thought).`,
     `- Do NOT use textbook-style formatting or pauses that sound like reading slides.`,
     ``,
     `Lecture style guidance:`,

@@ -103,6 +103,19 @@ const countWords = (value: string) =>
     .split(/\s+/)
     .filter(Boolean).length;
 
+const finalizeLectureText = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (/[.!?]$/.test(trimmed)) return trimmed;
+  for (let i = trimmed.length - 1; i >= 0; i -= 1) {
+    const char = trimmed[i];
+    if (char === "." || char === "!" || char === "?") {
+      return trimmed.slice(0, i + 1).trim();
+    }
+  }
+  return trimmed;
+};
+
 const sanitizeTeacherText = (value: string) => {
   if (!value) return "";
   const lines = value
@@ -113,7 +126,7 @@ const sanitizeTeacherText = (value: string) => {
   const stripped = filtered.map((line) =>
     line.replace(/\bpart\s+\d+\b[:\-]?\s*/gi, "").trim()
   );
-  return stripped.join("\n\n").trim();
+  return finalizeLectureText(stripped.join("\n\n"));
 };
 
 const buildLectureFromTeacherText = (

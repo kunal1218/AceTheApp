@@ -23,9 +23,8 @@ const HUD_SAFE_WIDTH = 320;
 const HUD_SAFE_PADDING = 24;
 const MAP_IDLE_FRAMES = 7;
 const MAP_WALK_FRAMES = 8;
-const MAP_WALK_FPS = 10;
+const MAP_WALK_FPS = 16;
 const MAP_IDLE_FPS = 6;
-const PORTAL_INTERACT_DISTANCE = 90;
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
@@ -520,11 +519,6 @@ export default function PortalPage() {
   const handleEnter = async () => {
     if (!activeNode || activeNode.type !== "lesson") return;
     if (isResolvingLecture) return;
-    const entryPoint = layout.points[selectedIndex] || layout.points[0];
-    if (!isNearPoint(entryPoint)) {
-      setEnterMessage("Move closer to enter.");
-      return;
-    }
     setIsResolvingLecture(true);
     setEnterMessage("Loading lecture...");
     const lessonIndex = typeof activeNode.lessonIndex === "number" ? activeNode.lessonIndex : null;
@@ -766,13 +760,6 @@ export default function PortalPage() {
       transform: facing === "left" ? "scaleX(-1)" : "scaleX(1)",
     }
     : null;
-  const playerCenter = displayPoint ? { x: displayPoint.x, y: displayPoint.y } : null;
-  const isNearPoint = (point) => {
-    if (!playerCenter || !point) return false;
-    const dx = point.x - playerCenter.x;
-    const dy = point.y - playerCenter.y;
-    return Math.hypot(dx, dy) <= PORTAL_INTERACT_DISTANCE;
-  };
 
   return (
     <div className="portal-map" ref={containerRef}>
@@ -817,10 +804,6 @@ export default function PortalPage() {
             className={`portal-node${index === selectedIndex ? " portal-node--active" : ""}${isSpecial ? " portal-node--special" : ""}${isAssignment ? " portal-node--assignment" : ""}`}
             style={{ left: point.x - POINT_SIZE / 2, top: point.y - POINT_SIZE / 2 }}
             onClick={() => {
-              if (!isNearPoint(point)) {
-                setEnterMessage("Move closer to enter.");
-                return;
-              }
               setSelectedIndex(index);
               setHasSelected(true);
               setActiveIndex(index);

@@ -502,16 +502,20 @@ export default function ProductivityDashboard() {
     setOracleOpen(true);
   };
 
+  const isPortalReachable = (x, y) => {
+    const portalCenterX = x + PORTAL_WIDTH / 2;
+    const portalCenterY = y + PORTAL_HEIGHT / 2;
+    const playerCenterX = player.x + PLAYER_WIDTH / 2;
+    const playerCenterY = player.y + PLAYER_HEIGHT - PLAYER_FOOT_OFFSET;
+    return Math.hypot(portalCenterX - playerCenterX, portalCenterY - playerCenterY) <= PORTAL_INTERACT_DISTANCE;
+  };
+
   const handlePortalClick = (item, x, y) => {
     if (portalDeleteMode) {
       setPendingDelete(item);
       return;
     }
-    const portalCenterX = x + PORTAL_WIDTH / 2;
-    const portalCenterY = y + PORTAL_HEIGHT / 2;
-    const playerCenterX = player.x + PLAYER_WIDTH / 2;
-    const playerCenterY = player.y + PLAYER_HEIGHT - PLAYER_FOOT_OFFSET;
-    if (Math.hypot(portalCenterX - playerCenterX, portalCenterY - playerCenterY) > PORTAL_INTERACT_DISTANCE) {
+    if (!isPortalReachable(x, y)) {
       return;
     }
     navigate(`/portal/${item.id}`);
@@ -527,6 +531,7 @@ export default function ProductivityDashboard() {
             className={`pd-portal${portalDeleteMode ? " pd-portal--delete" : ""}`}
             style={{ left: x, top: y, "--portal-glow": item.color }}
             onClick={() => handlePortalClick(item, x, y)}
+            disabled={!isPortalReachable(x, y)}
             aria-label={`Portal: ${item.title}`}
             title={item.title}
           />

@@ -1,6 +1,6 @@
 import crypto from "crypto";
 
-export const STYLE_VERSION = "v13";
+export const STYLE_VERSION = "v14";
 export const TIE_IN_VERSION = "v1";
 
 type TopicContextSource = {

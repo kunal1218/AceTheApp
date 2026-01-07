@@ -45,6 +45,7 @@ const LLM_MODE = (
   process.env.LLM_MODE ||
   (process.env.GOOGLE_API_KEY ? "gemini" : "stub")
 ).toLowerCase();
+const LESSON_CLOSING_LINE = "Well that's the lesson class, ask me questions if you have any!";
 export const GENERAL_LECTURE_GUARDS = {
   minChunks: 1,
   minWordsPerChunk: 30,
@@ -116,6 +117,15 @@ const finalizeLectureText = (value: string) => {
   return trimmed;
 };
 
+const ensureClosingLine = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return LESSON_CLOSING_LINE;
+  const normalized = trimmed.replace(/\s+/g, " ").toLowerCase();
+  const closingNormalized = LESSON_CLOSING_LINE.toLowerCase();
+  if (normalized.endsWith(closingNormalized)) return trimmed;
+  return `${trimmed}\n\n${LESSON_CLOSING_LINE}`;
+};
+
 const sanitizeTeacherText = (value: string) => {
   if (!value) return "";
   const lines = value
@@ -126,7 +136,8 @@ const sanitizeTeacherText = (value: string) => {
   const stripped = filtered.map((line) =>
     line.replace(/\bpart\s+\d+\b[:\-]?\s*/gi, "").trim()
   );
-  return finalizeLectureText(stripped.join("\n\n"));
+  const finalized = finalizeLectureText(stripped.join("\n\n"));
+  return ensureClosingLine(finalized);
 };
 
 const buildLectureFromTeacherText = (
@@ -737,7 +748,7 @@ export const llmService = {
       contents: [{ role: "user", parts: [{ text: call1Prompt }] }],
       generationConfig: {
         temperature: 0.2,
-        maxOutputTokens: 3072
+        maxOutputTokens: 4096
       }
     });
     const call1Text = call1Response.response.text().trim();
@@ -751,7 +762,7 @@ export const llmService = {
       contents: [{ role: "user", parts: [{ text: call2Prompt }] }],
       generationConfig: {
         temperature: 0.2,
-        maxOutputTokens: 3072
+        maxOutputTokens: 4096
       }
     });
     const call2Text = call2Response.response.text().trim();

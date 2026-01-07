@@ -59,6 +59,7 @@ export function buildGeneralLectureCall2TeacherRewritePrompt(call1AnswerText: st
     `- Do NOT introduce headings, section titles, bullet lists, or numbered lists.`,
     `- Do NOT speak or imply headers such as "What They Are", "Why They Matter", or similar.`,
     `- End with a complete, logical final sentence (do not cut off mid-thought).`,
+    `- End the lecture with this exact sentence: "Well that's the lesson class, ask me questions if you have any!"`,
     `- Do NOT use textbook-style formatting or pauses that sound like reading slides.`,
     ``,
     `Lecture style guidance:`,

@@ -66,6 +66,7 @@ const PORTAL_WIDTH = 72;
 const PORTAL_HEIGHT = 96;
 const PORTAL_SPACING = 140;
 const PORTAL_GROUND_OFFSET = 6;
+const PORTAL_INTERACT_DISTANCE = 140;
 
 const PLAYER_SPRITES = {
   idle: { src: idleSprite, frames: 7, fps: 6 },
@@ -501,9 +502,16 @@ export default function ProductivityDashboard() {
     setOracleOpen(true);
   };
 
-  const handlePortalClick = (item) => {
+  const handlePortalClick = (item, x, y) => {
     if (portalDeleteMode) {
       setPendingDelete(item);
+      return;
+    }
+    const portalCenterX = x + PORTAL_WIDTH / 2;
+    const portalCenterY = y + PORTAL_HEIGHT / 2;
+    const playerCenterX = player.x + PLAYER_WIDTH / 2;
+    const playerCenterY = player.y + PLAYER_HEIGHT - PLAYER_FOOT_OFFSET;
+    if (Math.hypot(portalCenterX - playerCenterX, portalCenterY - playerCenterY) > PORTAL_INTERACT_DISTANCE) {
       return;
     }
     navigate(`/portal/${item.id}`);
@@ -518,7 +526,7 @@ export default function ProductivityDashboard() {
             type="button"
             className={`pd-portal${portalDeleteMode ? " pd-portal--delete" : ""}`}
             style={{ left: x, top: y, "--portal-glow": item.color }}
-            onClick={() => handlePortalClick(item)}
+            onClick={() => handlePortalClick(item, x, y)}
             aria-label={`Portal: ${item.title}`}
             title={item.title}
           />

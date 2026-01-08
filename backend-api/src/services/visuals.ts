@@ -430,6 +430,15 @@ export const validateVisualOutput = (
   return { ok: errors.length === 0, errors, normalized: visuals };
 };
 
+export const isVisualsPayload = (value: unknown): value is VisualsResult => {
+  if (Array.isArray(value)) return true;
+  if (isObject(value) && isObject(value.needs_clarification)) {
+    const questions = (value.needs_clarification as { questions?: unknown }).questions;
+    return Array.isArray(questions);
+  }
+  return false;
+};
+
 export const generateVisuals = async (
   transcriptChunk: string,
   codeSnippets: string[]

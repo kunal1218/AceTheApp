@@ -9,7 +9,7 @@ import type {
 import { prisma } from "../db/prisma";
 import { requireAuth } from "../middleware/auth";
 import { llmService } from "../services/llmService";
-import { generateVisuals } from "../services/visuals";
+import { generateVisuals, isVisualsPayload } from "../services/visuals";
 import {
   STYLE_VERSION,
   TIE_IN_VERSION,
@@ -373,7 +373,11 @@ router.post("/generate", async (req, res) => {
     const visualsResults = await Promise.all(
       chunks.map(async (chunk, index) => {
         const cachedVisuals = cachedChunks[index]?.visuals;
-        if (cachedVisuals && cachedVisualsVersion === VISUALS_VERSION) {
+        if (
+          cachedVisuals &&
+          cachedVisualsVersion === VISUALS_VERSION &&
+          isVisualsPayload(cachedVisuals)
+        ) {
           return cachedVisuals;
         }
         const codeSnippets = extractCodeSnippets(chunk.narration || "");

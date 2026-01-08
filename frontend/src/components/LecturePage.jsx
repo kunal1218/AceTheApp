@@ -181,36 +181,46 @@ export default function LecturePage() {
   const visualSchedule = useMemo(() => {
     if (!lecture?.chunks || !lectureLines.length) return [];
     const schedule = [];
-    const chunkLineMap = new Map();
-    lectureLines.forEach((line, index) => {
-      const indices = chunkLineMap.get(line.chunkIndex) || [];
-      indices.push(index);
-      chunkLineMap.set(line.chunkIndex, indices);
-    });
+    let globalLineCursor = 0;
     lecture.chunks.forEach((chunk, chunkIndex) => {
+      const chunkText = chunk.narration || "";
+      const chunkLines = splitDialogueLines(chunkText);
+      const chunkLineIndices = chunkLines.map((_, index) => globalLineCursor + index);
+      globalLineCursor += chunkLines.length;
       const visuals = Array.isArray(chunk.visuals) ? chunk.visuals : [];
-      if (!visuals.length) return;
-      const chunkLineIndices = chunkLineMap.get(chunkIndex) || [];
+      if (!visuals.length || !chunkLineIndices.length) return;
       const usedLines = new Set();
       visuals.forEach((visual, visualIndex) => {
-        if (!visual || !visual.anchor_quote) return;
-        let targetLine = chunkLineIndices.find(
-          (lineIndex) =>
-            !usedLines.has(lineIndex) &&
-            lectureLines[lineIndex]?.text.includes(visual.anchor_quote)
-        );
-        if (typeof targetLine !== "number") {
-          targetLine = chunkLineIndices.find((lineIndex) => !usedLines.has(lineIndex));
+        if (!visual) return;
+        const anchor = (visual.anchor_quote || "").trim();
+        let targetLine;
+        if (anchor) {
+          const lineMatchIndex = chunkLines.findIndex((line) => line.includes(anchor));
+          if (lineMatchIndex >= 0) {
+            targetLine = chunkLineIndices[lineMatchIndex];
+          } else {
+            const fallbackIndex = chunkLines.findIndex((line) => anchor.includes(line));
+            if (fallbackIndex >= 0) {
+              targetLine = chunkLineIndices[fallbackIndex];
+            }
+          }
+        }
+        if (typeof targetLine !== "number" || usedLines.has(targetLine)) {
+          const remaining = chunkLineIndices.find((lineIndex) => !usedLines.has(lineIndex));
+          if (typeof remaining === "number") {
+            targetLine = remaining;
+          }
         }
         if (typeof targetLine !== "number") {
-          targetLine = chunkLineIndices[0];
+          targetLine = chunkLineIndices[Math.min(visualIndex, chunkLineIndices.length - 1)];
         }
         if (typeof targetLine !== "number") return;
         usedLines.add(targetLine);
         schedule.push({
           line: targetLine + 1,
           visual,
-          order: visualIndex
+          order: visualIndex,
+          chunkIndex
         });
       });
     });

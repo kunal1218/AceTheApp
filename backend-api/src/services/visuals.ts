@@ -421,11 +421,13 @@ export const validateVisualOutput = (
     }
   });
 
-  anchors.forEach((anchor) => {
-    if (!anchorCoverage.has(anchor)) {
-      errors.push("anchor missing visual coverage");
-    }
-  });
+  if (anchors.length) {
+    anchors.forEach((anchor) => {
+      if (!anchorCoverage.has(anchor)) {
+        errors.push("anchor missing visual coverage");
+      }
+    });
+  }
 
   return { ok: errors.length === 0, errors, normalized: visuals };
 };
@@ -456,29 +458,9 @@ export const generateVisuals = async (
   const cleanSnippets = codeSnippets.map((snippet) => snippet.trim()).filter(Boolean);
   const { anchors, exampleCount } = extractVisualAnchors(cleanTranscript, cleanSnippets);
   const { selected } = detectDomains(cleanTranscript, cleanSnippets);
-
-  if (!anchors.length) {
-    return {
-      needs_clarification: {
-        reason: "no_visual_anchors",
-        questions: [
-          "Which exact sentence in this chunk should be visualized?",
-          "Is there a concrete example or mechanism that should be drawn?"
-        ]
-      }
-    };
-  }
-  if (anchors.length > 6 || exampleCount > 6) {
-    return {
-      needs_clarification: {
-        reason: "too_many_visual_anchors",
-        questions: [
-          "Can you split this chunk so each chunk has at most 6 visual anchors?",
-          "Which 2-6 anchors are most important to visualize first?"
-        ]
-      }
-    };
-  }
+  const anchorLimit = 6;
+  const selectedAnchors = anchors.slice(0, anchorLimit);
+  const boundedExampleCount = Math.min(exampleCount, anchorLimit);
 
   let lastErrors: string[] = [];
   let normalizedResult: VisualsResult | null = null;
@@ -489,7 +471,12 @@ export const generateVisuals = async (
       cleanTranscript,
       cleanSnippets
     );
-    const result = validateVisualOutput(normalized, cleanTranscript, anchors, exampleCount);
+    const result = validateVisualOutput(
+      normalized,
+      cleanTranscript,
+      selectedAnchors,
+      boundedExampleCount
+    );
     lastErrors = result.errors;
     normalizedResult = result.ok ? normalized : null;
     return result.ok;
@@ -498,8 +485,8 @@ export const generateVisuals = async (
   const prompt = buildVisualsPrompt({
     transcriptChunk: cleanTranscript,
     codeSnippets: cleanSnippets,
-    anchors,
-    exampleCount,
+    anchors: selectedAnchors,
+    exampleCount: boundedExampleCount,
     selectedDomains: selected
   });
 
@@ -517,7 +504,7 @@ export const generateVisuals = async (
         rawText,
         transcriptChunk: cleanTranscript,
         codeSnippets: cleanSnippets,
-        anchors,
+        anchors: selectedAnchors,
         errors: lastErrors
       }),
     validate,

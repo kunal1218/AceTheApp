@@ -427,7 +427,7 @@ export const buildVisualsPrompt = ({
     ? `You must produce at least one visual for each of the following anchors:\n${anchors
         .map((anchor) => `- "${anchor}"`)
         .join("\n")}`
-    : "No anchors were detected. Do NOT invent visuals without an exact quote.";
+    : "No anchors were detected. Select 2-6 exact quotes from the transcript as anchors (copy/paste exact substrings).";
   const snippetLines = codeSnippets.length
     ? codeSnippets.map((snippet) => `- ${snippet}`).join("\n")
     : "- (none)";

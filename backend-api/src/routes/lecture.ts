@@ -386,6 +386,15 @@ router.post("/generate", async (req, res) => {
     }));
     lecturePackage.chunks = chunksWithVisuals;
     lecturePackage.visualsVersion = VISUALS_VERSION;
+
+    const visualsSummary = {
+      chunks: chunksWithVisuals.length,
+      withVisuals: chunksWithVisuals.filter((chunk) => !!chunk.visuals).length,
+      needsClarification: chunksWithVisuals.filter(
+        (chunk) => !!(chunk.visuals as { needs_clarification?: unknown })?.needs_clarification
+      ).length
+    };
+    devLog("visuals summary", visualsSummary);
     const cachedWhiteboard = (existingUserCache?.payload as LecturePackage | null)?.whiteboard;
     if (
       cachedWhiteboard?.whiteboard?.length &&
@@ -447,7 +456,9 @@ router.post("/generate", async (req, res) => {
       tieInCache: tieInCacheStatus,
       styleVersionUsed: STYLE_VERSION,
       tieInVersionUsed: TIE_IN_VERSION,
-      promptFingerprint: GENERAL_PROMPT_FINGERPRINT
+      promptFingerprint: GENERAL_PROMPT_FINGERPRINT,
+      visualsVersion: VISUALS_VERSION,
+      visualsSummary
     };
     if (process.env.NODE_ENV !== "production") {
       meta.validation = validationSummary.checks;

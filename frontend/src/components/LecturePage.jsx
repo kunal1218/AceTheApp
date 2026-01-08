@@ -282,6 +282,23 @@ export default function LecturePage() {
   }, [visualSchedule, currentTranscriptLine]);
 
   useEffect(() => {
+    if (!lecture?.chunks?.length) return;
+    if (visualSchedule.length) return;
+    const summary = lecture.chunks.map((chunk) => ({
+      title: chunk.chunkTitle,
+      visualsType: Array.isArray(chunk.visuals)
+        ? "array"
+        : chunk.visuals?.needs_clarification
+        ? "needs_clarification"
+        : "missing"
+    }));
+    console.warn("[LecturePage] No visuals scheduled", {
+      visualsSummary: meta?.visualsSummary,
+      perChunk: summary
+    });
+  }, [lecture, visualSchedule, meta]);
+
+  useEffect(() => {
     setLineIndex(0);
     intervalRef.current = { intervalIndex: 0, askedInInterval: false };
   }, [lectureLines.length]);

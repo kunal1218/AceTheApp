@@ -213,6 +213,16 @@ export default function LecturePage() {
     return lineIndex + 1;
   }, [lineIndex, lectureLines.length]);
 
+  const whiteboardActive = useMemo(() => {
+    if (!whiteboardPlan.length || !currentTranscriptLine) return false;
+    const lines = whiteboardPlan
+      .map((entry) => Number(entry?.line))
+      .filter((line) => Number.isFinite(line));
+    if (!lines.length) return false;
+    const firstLine = Math.min(...lines);
+    return currentTranscriptLine >= firstLine;
+  }, [whiteboardPlan, currentTranscriptLine]);
+
   useEffect(() => {
     setLineIndex(0);
     intervalRef.current = { intervalIndex: 0, askedInInterval: false };
@@ -368,7 +378,7 @@ export default function LecturePage() {
         <img
           src={ACE_IDLE_FRAMES[aceFrame]}
           alt="Ace"
-          className="lecture-ace"
+          className={`lecture-ace${whiteboardActive ? " lecture-ace--side" : ""}`}
         />
       </div>
       {!isInputOpen && (

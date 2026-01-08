@@ -53,8 +53,18 @@
   height: auto;
   image-rendering: pixelated;
   filter: drop-shadow(0 12px 24px rgba(15, 23, 42, 0.2));
-  position: relative;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   z-index: 2;
+  transition: transform 220ms ease, left 220ms ease, right 220ms ease;
+}
+
+.lecture-ace--side {
+  left: auto;
+  right: 8%;
+  transform: translate(0, -50%);
 }
 
 .lecture-whiteboard {

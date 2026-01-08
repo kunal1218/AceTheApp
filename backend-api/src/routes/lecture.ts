@@ -1,4 +1,5 @@
 import { Router } from "express";
+import type { Prisma } from "@prisma/client";
 import type {
   LectureLevel,
   LecturePackage,
@@ -375,6 +376,8 @@ router.post("/generate", async (req, res) => {
       };
     }
 
+    const lecturePayload = lecturePackage as unknown as Prisma.InputJsonValue;
+
     // LectureUserCache is for per-user playback only; do not use it to generate or validate content.
     const shouldPersistUserCache = !(LLM_MODE === "gemini" && isStubSource(generalLecture));
     if (shouldPersistUserCache) {
@@ -394,12 +397,12 @@ router.post("/generate", async (req, res) => {
           level,
           generalCacheKey,
           tieInCacheKey,
-          payload: lecturePackage
+          payload: lecturePayload
         },
         update: {
           generalCacheKey,
           tieInCacheKey,
-          payload: lecturePackage
+          payload: lecturePayload
         }
       });
     } else {

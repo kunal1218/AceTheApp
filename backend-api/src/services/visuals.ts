@@ -191,8 +191,11 @@ const sanitizeMemoryDiagram = (
     `${transcriptChunk}\n${codeSnippets.join("\n")}`
   );
   const variables = Array.isArray(content.variables) ? content.variables : [];
-  const arrays = variables.filter((variable) => variable?.kind === "array");
-  const arrayName = arrays[0]?.name;
+  const arrays = variables.filter(
+    (variable): variable is Record<string, unknown> =>
+      isObject(variable) && variable.kind === "array"
+  );
+  const arrayName = typeof arrays[0]?.name === "string" ? arrays[0].name : undefined;
 
   const nextVariables = variables.map((variable) => {
     if (!isObject(variable)) return variable;

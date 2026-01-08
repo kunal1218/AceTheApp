@@ -21,6 +21,7 @@ export type WhiteboardFigure = {
 };
 
 export type WhiteboardPlan = {
+  version?: string;
   whiteboard: WhiteboardFigure[];
 };
 

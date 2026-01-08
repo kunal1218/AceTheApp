@@ -11,6 +11,7 @@ import { llmService } from "../services/llmService";
 import {
   STYLE_VERSION,
   TIE_IN_VERSION,
+  WHITEBOARD_VERSION,
   buildGeneralCacheKey,
   buildTieInCacheKey,
   getTopicContextFromSyllabusItem,
@@ -321,7 +322,10 @@ router.post("/generate", async (req, res) => {
       }
     });
     const cachedWhiteboard = (existingUserCache?.payload as LecturePackage | null)?.whiteboard;
-    if (cachedWhiteboard?.whiteboard?.length) {
+    if (
+      cachedWhiteboard?.whiteboard?.length &&
+      cachedWhiteboard.version === WHITEBOARD_VERSION
+    ) {
       whiteboard = cachedWhiteboard;
     } else {
       const { transcriptLines, actionSlots } = buildWhiteboardInputs(chunks);
@@ -334,7 +338,10 @@ router.post("/generate", async (req, res) => {
       }
     }
     if (whiteboard?.whiteboard?.length) {
-      lecturePackage.whiteboard = whiteboard;
+      lecturePackage.whiteboard = {
+        ...whiteboard,
+        version: WHITEBOARD_VERSION
+      };
     }
 
     // LectureUserCache is for per-user playback only; do not use it to generate or validate content.

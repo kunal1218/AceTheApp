@@ -311,12 +311,18 @@ const validatePointerArrows = (variables: unknown[], arrows: unknown[]) => {
   const errors: string[] = [];
   const pointerNames = new Set(
     variables
-      .filter((variable) => isObject(variable) && variable.kind === "pointer")
+      .filter(
+        (variable): variable is Record<string, unknown> =>
+          isObject(variable) && variable.kind === "pointer"
+      )
       .map((variable) => String(variable.name))
   );
   const arrayNames = new Set(
     variables
-      .filter((variable) => isObject(variable) && variable.kind === "array")
+      .filter(
+        (variable): variable is Record<string, unknown> =>
+          isObject(variable) && variable.kind === "array"
+      )
       .map((variable) => String(variable.name))
   );
   if (!pointerNames.size) return errors;

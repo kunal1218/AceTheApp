@@ -2,6 +2,7 @@ import type {
   GeneralLectureContent,
   LectureLevel,
   LectureQuestionAnswer,
+  WhiteboardPlan,
   WhiteboardOp
 } from "../types/lecture";
 import {
@@ -10,7 +11,9 @@ import {
   buildQuestionPrompt,
   buildQuestionRepairPrompt,
   buildTieInPrompt,
-  buildTieInRepairPrompt
+  buildTieInRepairPrompt,
+  buildWhiteboardRepairPrompt,
+  buildWhiteboardSvgPrompt
 } from "../lecture/lecturePrompts";
 import { getGenAI } from "../gemini/client";
 import { runGeminiJsonWithRepair } from "../gemini/jsonRepair";
@@ -38,6 +41,17 @@ type QuestionInput = {
   question: string;
   generalChunks: GeneralLectureContent["chunks"];
   tieIns: string[];
+};
+
+type WhiteboardInput = {
+  transcriptLines: string[];
+  actionSlots: Array<{ line: number; intent: string }>;
+  figureCache: Array<{
+    figure_id: string;
+    tags: string[];
+    concept_context: string;
+    svg?: string;
+  }>;
 };
 
 const GEMINI_MODEL = "gemini-2.0-flash";
@@ -98,6 +112,9 @@ const devLog = (...args: unknown[]) => {
   console.log("[llmService]", ...args);
 };
 
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === "object" && !Array.isArray(value);
+
 const countWords = (value: string) =>
   value
     .trim()
@@ -138,6 +155,26 @@ const sanitizeTeacherText = (value: string) => {
   );
   const finalized = finalizeLectureText(stripped.join("\n\n"));
   return ensureClosingLine(finalized);
+};
+
+const isWhiteboardEntry = (value: unknown) => {
+  if (!isObject(value)) return false;
+  const line = Number(value.line);
+  if (!Number.isFinite(line)) return false;
+  if (typeof value.use_cached !== "boolean") return false;
+  if (typeof value.figure_id !== "string" || !value.figure_id.trim()) return false;
+  if (!Array.isArray(value.tags) || !value.tags.every((tag) => typeof tag === "string")) {
+    return false;
+  }
+  if (typeof value.concept_context !== "string") return false;
+  if (value.svg !== null && typeof value.svg !== "string") return false;
+  return true;
+};
+
+const isWhiteboardPayload = (value: unknown): value is WhiteboardPlan => {
+  if (!isObject(value)) return false;
+  if (!Array.isArray(value.whiteboard)) return false;
+  return value.whiteboard.every(isWhiteboardEntry);
 };
 
 const buildLectureFromTeacherText = (
@@ -802,6 +839,35 @@ export const llmService = {
     }
     fallback.diagnostics = fallbackDiagnostics;
     return fallback;
+  },
+
+  async generateWhiteboardPlan(input: WhiteboardInput): Promise<WhiteboardPlan | null> {
+    if (LLM_MODE !== "gemini") return null;
+    const prompt = buildWhiteboardSvgPrompt(
+      input.transcriptLines,
+      input.actionSlots,
+      input.figureCache
+    );
+    const repairSystemInstruction =
+      "You receive malformed JSON-like text for whiteboard SVG planning. " +
+      "Repair it into valid JSON that matches the schema in the prompt. " +
+      "Return JSON only with no markdown or extra text.";
+    const { result, repaired } = await runGeminiJsonWithRepair<WhiteboardPlan>({
+      model: GEMINI_MODEL,
+      systemInstruction: "You generate whiteboard SVG plans as strict JSON.",
+      repairSystemInstruction,
+      prompt,
+      repairPrompt: (rawText) => buildWhiteboardRepairPrompt(rawText),
+      validate: isWhiteboardPayload,
+      temperature: 0.2,
+      maxOutputTokens: 2048
+    });
+    if (result) {
+      devLog(repaired ? "Gemini whiteboard repair success" : "Gemini whiteboard success");
+      return result;
+    }
+    devLog("whiteboard generation failed");
+    return null;
   },
 
   async generateTieIns(input: GenerateTieInInput): Promise<string[]> {

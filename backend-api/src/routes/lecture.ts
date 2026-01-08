@@ -1,5 +1,10 @@
 import { Router } from "express";
-import type { LectureLevel, LecturePackage, GeneralLectureContent } from "../types/lecture";
+import type {
+  LectureLevel,
+  LecturePackage,
+  GeneralLectureContent,
+  WhiteboardPlan
+} from "../types/lecture";
 import { prisma } from "../db/prisma";
 import { requireAuth } from "../middleware/auth";
 import { llmService } from "../services/llmService";
@@ -38,6 +43,29 @@ const getTopicOrdering = (topics: { id: string; title: string }[], topicId: stri
   const index = topics.findIndex((topic) => topic.id === topicId);
   if (index === -1) return "ordering unknown";
   return `Lesson ${index + 1} of ${topics.length}`;
+};
+
+const splitTranscriptLines = (text: string) => {
+  if (!text) return [];
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (!normalized) return [];
+  return normalized.split(/(?<=[.!?])\s+/).map((line) => line.trim()).filter(Boolean);
+};
+
+const buildWhiteboardInputs = (chunks: { chunkTitle: string; narration: string }[]) => {
+  const transcriptLines: string[] = [];
+  const actionSlots: Array<{ line: number; intent: string }> = [];
+
+  chunks.forEach((chunk, index) => {
+    const lines = splitTranscriptLines(chunk.narration || "");
+    if (!lines.length) return;
+    const lineNumber = transcriptLines.length + 1;
+    const intent = chunk.chunkTitle?.trim() || `chunk_${index + 1}`;
+    actionSlots.push({ line: lineNumber, intent });
+    transcriptLines.push(...lines);
+  });
+
+  return { transcriptLines, actionSlots };
 };
 
 const devLog = (...args: unknown[]) => {
@@ -278,6 +306,34 @@ router.post("/generate", async (req, res) => {
       topQuestions: generalLecture.topQuestions,
       confusionMode: generalLecture.confusionMode
     };
+
+    let whiteboard: WhiteboardPlan | null = null;
+    const existingUserCache = await prisma.lectureUserCache.findUnique({
+      where: {
+        userId_courseId_topicId_level: {
+          userId: req.user!.id,
+          courseId,
+          topicId,
+          level
+        }
+      }
+    });
+    const cachedWhiteboard = (existingUserCache?.payload as LecturePackage | null)?.whiteboard;
+    if (cachedWhiteboard?.whiteboard?.length) {
+      whiteboard = cachedWhiteboard;
+    } else {
+      const { transcriptLines, actionSlots } = buildWhiteboardInputs(chunks);
+      if (transcriptLines.length && actionSlots.length) {
+        whiteboard = await llmService.generateWhiteboardPlan({
+          transcriptLines,
+          actionSlots,
+          figureCache: []
+        });
+      }
+    }
+    if (whiteboard?.whiteboard?.length) {
+      lecturePackage.whiteboard = whiteboard;
+    }
 
     // LectureUserCache is for per-user playback only; do not use it to generate or validate content.
     const shouldPersistUserCache = !(LLM_MODE === "gemini" && isStubSource(generalLecture));

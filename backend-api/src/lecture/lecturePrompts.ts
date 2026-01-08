@@ -27,6 +27,23 @@ export const QUESTION_SCHEMA_HINT = JSON.stringify(
   2
 );
 
+export const WHITEBOARD_SCHEMA_HINT = JSON.stringify(
+  {
+    whiteboard: [
+      {
+        line: 1,
+        use_cached: false,
+        figure_id: "example_figure",
+        tags: ["example", "diagram"],
+        concept_context: "Clarifies the concept at this line with a simple diagram.",
+        svg: "<svg width=\"800\" height=\"450\" viewBox=\"0 0 800 450\"></svg>"
+      }
+    ]
+  },
+  null,
+  2
+);
+
 export const buildGeneralLecturePrompt = (
   topicContext: string,
   level: string,
@@ -222,6 +239,59 @@ export const buildQuestionRepairPrompt = (
 ) => `
 You receive malformed JSON-like text for a short answer payload.
 Repair it into valid JSON matching this schema.
+Return JSON only. No markdown, no explanations.
+
+Schema:
+${schemaHint}
+
+Malformed input:
+${rawText}
+`;
+
+export const buildWhiteboardSvgPrompt = (
+  transcriptLines: string[],
+  actionSlots: Array<{ line: number; intent: string }>,
+  figureCache: Array<{
+    figure_id: string;
+    tags: string[];
+    concept_context: string;
+    svg?: string;
+  }>
+) => `
+You will receive JSON inputs for transcript_lines, action_slots, and figure_cache.
+Read them as JSON and return ONLY valid JSON matching the required schema.
+
+Rules:
+- Output exactly one entry per action_slots item, in the same order.
+- Do not add, remove, or reorder slots.
+- Preserve the slot line numbers.
+- If a cached figure fits the slot intent and nearby transcript meaning, reuse it:
+  use_cached=true, figure_id=cached id, svg=null.
+- If none fit, create a new figure:
+  use_cached=false, unique snake_case figure_id, and svg must be a complete standalone SVG string.
+- Include tags (3-8 keywords) and a 1-2 sentence concept_context for every entry.
+
+SVG constraints:
+- width="800" height="450" viewBox="0 0 800 450"
+- Only elements: svg, rect, line, path, circle, text, polygon.
+- No scripts, no external assets, no animation.
+- Black stroke, white fill, readable text (font-size >= 18).
+
+Schema (must match exactly):
+${WHITEBOARD_SCHEMA_HINT}
+
+Inputs:
+transcript_lines=${JSON.stringify(transcriptLines)}
+action_slots=${JSON.stringify(actionSlots)}
+figure_cache=${JSON.stringify(figureCache)}
+`;
+
+export const buildWhiteboardRepairPrompt = (
+  rawText: string,
+  schemaHint: string = WHITEBOARD_SCHEMA_HINT
+) => `
+You receive malformed JSON-like text for whiteboard SVG planning.
+Repair it into valid JSON matching this schema and rules.
 Return JSON only. No markdown, no explanations.
 
 Schema:

@@ -11,6 +11,19 @@ export type LectureChunk = {
   boardOps?: WhiteboardOp[];
 };
 
+export type WhiteboardFigure = {
+  line: number;
+  use_cached: boolean;
+  figure_id: string;
+  tags: string[];
+  concept_context: string;
+  svg: string | null;
+};
+
+export type WhiteboardPlan = {
+  whiteboard: WhiteboardFigure[];
+};
+
 export type LecturePackage = {
   // topicId is the SyllabusItem.id for the course.
   topicId: string;
@@ -22,6 +35,7 @@ export type LecturePackage = {
     summary: string;
     boardOps?: WhiteboardOp[];
   };
+  whiteboard?: WhiteboardPlan;
 };
 
 export type LectureLevel = LecturePackage["level"];

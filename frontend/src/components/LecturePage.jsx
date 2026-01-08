@@ -2,13 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import "./LecturePage.css";
 import { askLectureQuestion, generateLecture, getCourseSyllabus } from "../api";
-import WhiteboardRenderer from "./WhiteboardRenderer";
-import {
-  applyWhiteboardPlan,
-  loadWhiteboardCache,
-  parseWhiteboardResponse,
-  saveWhiteboardCache,
-} from "../utils/whiteboardManager";
+import VisualRenderer from "./VisualRenderer";
 import aceIdle0 from "../assets/characters/Ace/Idle/HeroKnight_Idle_0.png";
 import aceIdle1 from "../assets/characters/Ace/Idle/HeroKnight_Idle_1.png";
 import aceIdle2 from "../assets/characters/Ace/Idle/HeroKnight_Idle_2.png";
@@ -80,8 +74,6 @@ export default function LecturePage() {
   const [showTranscript, setShowTranscript] = useState(false);
   const [lineIndex, setLineIndex] = useState(0);
   const [aceFrame, setAceFrame] = useState(0);
-  const [whiteboardPlan, setWhiteboardPlan] = useState([]);
-  const [whiteboardCache, setWhiteboardCache] = useState(() => loadWhiteboardCache());
   const [isInputOpen, setIsInputOpen] = useState(false);
   const [inputPrompt, setInputPrompt] = useState("");
   const [inputValue, setInputValue] = useState("");
@@ -125,28 +117,6 @@ export default function LecturePage() {
   }, [courseId, topicId]);
 
   useEffect(() => {
-    if (!lecture) {
-      setWhiteboardPlan([]);
-      return;
-    }
-    const rawWhiteboard =
-      lecture.whiteboard ||
-      lecture.whiteboardPlan ||
-      meta?.whiteboard ||
-      meta?.whiteboardPlan ||
-      meta?.whiteboardResponse ||
-      null;
-    const entries = parseWhiteboardResponse(rawWhiteboard);
-    if (!entries) {
-      setWhiteboardPlan([]);
-      return;
-    }
-    setWhiteboardCache((prev) => {
-      const { plan, cache } = applyWhiteboardPlan(entries, prev);
-      setWhiteboardPlan(plan);
-      saveWhiteboardCache(cache);
-      return cache;
-    });
   }, [lecture, meta]);
 
   useEffect(() => {
@@ -208,20 +178,55 @@ export default function LecturePage() {
     return lines;
   }, [lecture]);
 
+  const visualSchedule = useMemo(() => {
+    if (!lecture?.chunks || !lectureLines.length) return [];
+    const schedule = [];
+    const chunkLineMap = new Map();
+    lectureLines.forEach((line, index) => {
+      const indices = chunkLineMap.get(line.chunkIndex) || [];
+      indices.push(index);
+      chunkLineMap.set(line.chunkIndex, indices);
+    });
+    lecture.chunks.forEach((chunk, chunkIndex) => {
+      const visuals = Array.isArray(chunk.visuals) ? chunk.visuals : [];
+      if (!visuals.length) return;
+      const chunkLineIndices = chunkLineMap.get(chunkIndex) || [];
+      const usedLines = new Set();
+      visuals.forEach((visual, visualIndex) => {
+        if (!visual || !visual.anchor_quote) return;
+        let targetLine = chunkLineIndices.find(
+          (lineIndex) =>
+            !usedLines.has(lineIndex) &&
+            lectureLines[lineIndex]?.text.includes(visual.anchor_quote)
+        );
+        if (typeof targetLine !== "number") {
+          targetLine = chunkLineIndices.find((lineIndex) => !usedLines.has(lineIndex));
+        }
+        if (typeof targetLine !== "number") {
+          targetLine = chunkLineIndices[0];
+        }
+        if (typeof targetLine !== "number") return;
+        usedLines.add(targetLine);
+        schedule.push({
+          line: targetLine + 1,
+          visual,
+          order: visualIndex
+        });
+      });
+    });
+    return schedule.sort((a, b) => a.line - b.line || a.order - b.order);
+  }, [lecture, lectureLines]);
+
   const currentTranscriptLine = useMemo(() => {
     if (!lectureLines.length) return 0;
     return lineIndex + 1;
   }, [lineIndex, lectureLines.length]);
 
-  const whiteboardActive = useMemo(() => {
-    if (!whiteboardPlan.length || !currentTranscriptLine) return false;
-    const lines = whiteboardPlan
-      .map((entry) => Number(entry?.line))
-      .filter((line) => Number.isFinite(line));
-    if (!lines.length) return false;
-    const firstLine = Math.min(...lines);
+  const visualsActive = useMemo(() => {
+    if (!visualSchedule.length || !currentTranscriptLine) return false;
+    const firstLine = visualSchedule[0]?.line || 0;
     return currentTranscriptLine >= firstLine;
-  }, [whiteboardPlan, currentTranscriptLine]);
+  }, [visualSchedule, currentTranscriptLine]);
 
   useEffect(() => {
     setLineIndex(0);
@@ -370,15 +375,11 @@ export default function LecturePage() {
         Raise Hand
       </button>
       <div className="lecture-stage">
-        <WhiteboardRenderer
-          currentLine={currentTranscriptLine}
-          whiteboardPlan={whiteboardPlan}
-          figureCache={whiteboardCache}
-        />
+        <VisualRenderer currentLine={currentTranscriptLine} visualSchedule={visualSchedule} />
         <img
           src={ACE_IDLE_FRAMES[aceFrame]}
           alt="Ace"
-          className={`lecture-ace${whiteboardActive ? " lecture-ace--side" : ""}`}
+          className={`lecture-ace${visualsActive ? " lecture-ace--side" : ""}`}
         />
       </div>
       {!isInputOpen && (

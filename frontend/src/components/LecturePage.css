@@ -23,6 +23,7 @@
   align-items: center;
   justify-content: center;
   pointer-events: none;
+  z-index: 1;
 }
 
 .lecture-hand {
@@ -52,6 +53,30 @@
   height: auto;
   image-rendering: pixelated;
   filter: drop-shadow(0 12px 24px rgba(15, 23, 42, 0.2));
+  position: relative;
+  z-index: 2;
+}
+
+.lecture-whiteboard {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -58%);
+  width: min(800px, 90vw);
+  max-width: 800px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.lecture-whiteboard__svg {
+  width: 100%;
+  max-height: 450px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 2px solid rgba(15, 23, 42, 0.12);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.15);
 }
 
 .lecture-dialogue {

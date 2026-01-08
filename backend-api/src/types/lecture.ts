@@ -5,10 +5,37 @@ export type WhiteboardOp =
   | { op: "text"; x: number; y: number; text: string }
   | { op: "erase"; target?: "all" | string };
 
+export type VisualType =
+  | "memory_diagram"
+  | "table"
+  | "flowchart"
+  | "timeline"
+  | "graph"
+  | "code_trace";
+
+export type Visual = {
+  id: string;
+  type: VisualType;
+  anchor_quote: string;
+  title: string;
+  caption: string;
+  content: Record<string, unknown>;
+};
+
+export type NeedsClarification = {
+  needs_clarification: {
+    reason: string;
+    questions: string[];
+  };
+};
+
+export type VisualsResult = Visual[] | NeedsClarification;
+
 export type LectureChunk = {
   chunkTitle: string;
   narration: string;
   boardOps?: WhiteboardOp[];
+  visuals?: VisualsResult;
 };
 
 export type WhiteboardFigure = {

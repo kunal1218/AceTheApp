@@ -248,6 +248,241 @@ Malformed input:
 ${rawText}
 `;
 
+export const VISUAL_SCHEMA_HINT = JSON.stringify(
+  [
+    {
+      id: "V1",
+      type: "memory_diagram",
+      anchor_quote: "exact quote from transcript that motivated this visual",
+      title: "Short title",
+      caption: "1-2 sentences",
+      content: {}
+    }
+  ],
+  null,
+  2
+);
+
+export const BASE_VISUAL_PROMPT = `
+TASK: Generate transcript-anchored visuals as strict JSON.
+
+Transcript anchoring (hard requirement)
+- Each visual must include anchor_quote: an exact substring from transcriptChunk (copy/paste exact).
+- If you cannot find an exact quote to justify the visual, DO NOT create it.
+
+What must get visuals
+- Any concrete example present in transcriptChunk (numbers, arrays, strings, code, step-by-step walkthroughs).
+- Any mechanism explanation (pointer arithmetic, dereference, indexing, stack vs heap, etc.).
+- Any pitfall/misconception called out.
+
+What must NOT get visuals
+- Purely abstract statements with no example/mechanism.
+- Decorations/mascots/clipart (ban characters, memes, random icons).
+
+Allowed visual types ONLY
+- "memory_diagram" | "table" | "flowchart" | "timeline" | "graph" | "code_trace"
+Reject/never output any other type.
+
+Correctness constraints (critical)
+Array rules:
+- Arrays must render as contiguous cells with indices 0..n-1
+- If values are known from transcript/code, include them in cells.
+- If addresses are shown, they must increase consistently by element_size (e.g., int +4).
+Pointer rules:
+- Pointer is a variable box containing an address.
+- Arrow direction is ALWAYS: pointer -> pointed-to memory cell.
+- If showing &arr[0], arrow must land on index 0 cell.
+Array vs pointer rule:
+- NEVER produce "array points to pointer."
+- If explaining array decay, label explicitly:
+  - "arr (array object)"
+  - "arr in expression -> &arr[0]"
+
+Quantity rules
+- Produce 2-6 visuals per transcript chunk.
+- NEVER fewer than the number of concrete examples detected in the chunk.
+- Prefer multiple small visuals over one big concept visual.
+
+Clarity rules
+- Each visual must include:
+  - title (short)
+  - caption (1-2 sentences explaining exactly what it shows)
+
+No guessing
+- If addresses/element sizes/values are required to satisfy a rule but are not derivable from transcriptChunk/codeSnippets, do not invent them.
+- Instead return needs_clarification with specific questions.
+
+JSON OUTPUT SCHEMA (must match exactly)
+Return an array of objects:
+[
+  {
+    "id": "V1",
+    "type": "memory_diagram",
+    "anchor_quote": "exact quote from transcript that motivated this visual",
+    "title": "Short title",
+    "caption": "1-2 sentences",
+    "content": {}
+  }
+]
+
+TYPE-SPECIFIC content FIELDS
+1) memory_diagram content:
+{
+  "variables": [
+    {
+      "name": "arr",
+      "kind": "array",
+      "elem_type": "int",
+      "base_address": "0x1000",
+      "cells": [
+        {"index": 0, "address": "0x1000", "value": 0},
+        {"index": 1, "address": "0x1004", "value": 1}
+      ]
+    },
+    {
+      "name": "p",
+      "kind": "pointer",
+      "points_to": "0x1000"
+    }
+  ],
+  "arrows": [
+    {"from": "p", "to_address": "0x1000", "label": "p points to arr[0]"}
+  ]
+}
+
+2) code_trace content:
+{
+  "code": ["...","..."],
+  "steps": [
+    {"line": 1, "state": "brief state"},
+    {"line": 2, "state": "brief state"}
+  ]
+}
+
+3) table content:
+{
+  "headers": ["col1","col2"],
+  "rows": [["a","b"],["c","d"]]
+}
+
+4) flowchart content:
+{
+  "nodes": [{"id":"n1","text":"..."},{"id":"n2","text":"..."}],
+  "edges": [{"from":"n1","to":"n2","label":"..."}]
+}
+
+5) timeline content:
+{
+  "events": [{"t":"Step 1","text":"..."},{"t":"Step 2","text":"..."}]
+}
+
+6) graph content:
+{
+  "nodes": [{"id":"a","label":"..."},{"id":"b","label":"..."}],
+  "edges": [{"from":"a","to":"b","label":"..."}]
+}
+
+NEEDS_CLARIFICATION (if required)
+If you cannot produce correct visuals without guessing, return:
+{
+  "needs_clarification": {
+    "reason": "short reason",
+    "questions": ["specific question 1", "specific question 2"]
+  }
+}
+Do NOT output partial visuals if correctness rules would be violated.
+`;
+
+export const DOMAIN_ADDON_PROMPTS: Record<string, string> = {
+  cs_arch: `
+DOMAIN ADDON: cs_arch (Computer Architecture / Systems / C pointers & memory)
+- Prefer "memory_diagram" and "code_trace" for pointers, arrays, dereference, pointer arithmetic, stack vs heap, malloc/free.
+- If transcript mentions "sizeof": generate a "table" comparing sizeof(array) vs sizeof(pointer) and explain decay in caption (anchored).
+- If transcript mentions "stack" or "heap": generate a memory_diagram with two regions labeled stack/heap and show variable lifetime notes in caption.
+- If transcript mentions "alignment" or "endianness": prefer a table or memory_diagram that shows byte ordering/alignment (ONLY if transcript gives enough info; otherwise needs_clarification).
+- NEVER draw array -> pointer arrows; pointer arrows only pointer -> cell.
+`,
+  math: ``,
+  chem_bio: ``
+};
+
+export const buildVisualsPrompt = ({
+  transcriptChunk,
+  codeSnippets,
+  anchors,
+  exampleCount,
+  selectedDomains
+}: {
+  transcriptChunk: string;
+  codeSnippets: string[];
+  anchors: string[];
+  exampleCount: number;
+  selectedDomains: string[];
+}) => {
+  const addonText = selectedDomains
+    .map((domain) => DOMAIN_ADDON_PROMPTS[domain])
+    .filter(Boolean)
+    .join("\n");
+  const anchorLines = anchors.length
+    ? `You must produce at least one visual for each of the following anchors:\n${anchors
+        .map((anchor) => `- "${anchor}"`)
+        .join("\n")}`
+    : "No anchors were detected. Do NOT invent visuals without an exact quote.";
+  const snippetLines = codeSnippets.length
+    ? codeSnippets.map((snippet) => `- ${snippet}`).join("\n")
+    : "- (none)";
+  return [
+    BASE_VISUAL_PROMPT.trim(),
+    addonText.trim(),
+    `Concrete examples detected: ${exampleCount}`,
+    anchorLines,
+    `transcriptChunk:`,
+    `<<<BEGIN_TRANSCRIPT`,
+    transcriptChunk,
+    `END_TRANSCRIPT>>>`,
+    `codeSnippets:`,
+    snippetLines
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+};
+
+export const buildVisualsRepairPrompt = ({
+  rawText,
+  transcriptChunk,
+  codeSnippets,
+  anchors,
+  errors
+}: {
+  rawText: string;
+  transcriptChunk: string;
+  codeSnippets: string[];
+  anchors: string[];
+  errors: string[];
+}) => `
+You are repairing a JSON response to satisfy the BASE VISUAL CONTRACT.
+Return ONLY valid JSON. No markdown, no commentary.
+
+Errors to fix:
+${errors.map((error) => `- ${error}`).join("\n")}
+
+Anchors (must use exact substrings from transcriptChunk):
+${anchors.map((anchor) => `- "${anchor}"`).join("\n")}
+
+Transcript:
+<<<BEGIN_TRANSCRIPT
+${transcriptChunk}
+END_TRANSCRIPT>>>
+
+Code snippets:
+${codeSnippets.map((snippet) => `- ${snippet}`).join("\n") || "- (none)"}
+
+Malformed input:
+<<<BEGIN_BAD_JSON
+${rawText}
+END_BAD_JSON>>>
+`;
+
 export const buildWhiteboardSvgPrompt = (
   transcriptLines: string[],
   actionSlots: Array<{ line: number; intent: string }>,

@@ -8,6 +8,7 @@ import type {
 import { prisma } from "../db/prisma";
 import { requireAuth } from "../middleware/auth";
 import { llmService } from "../services/llmService";
+import { generateVisuals } from "../services/visuals";
 import {
   STYLE_VERSION,
   TIE_IN_VERSION,
@@ -69,6 +70,22 @@ const buildWhiteboardInputs = (chunks: { chunkTitle: string; narration: string }
   });
 
   return { transcriptLines, actionSlots };
+};
+
+const extractCodeSnippets = (text: string) => {
+  const snippets = new Set<string>();
+  const inlineRegex = /`([^`]+)`/g;
+  let match: RegExpExecArray | null;
+  while ((match = inlineRegex.exec(text)) !== null) {
+    const snippet = match[1].trim();
+    if (snippet) snippets.add(snippet);
+  }
+  const codeLike = text
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => /[;{}=]/.test(sentence));
+  codeLike.forEach((snippet) => snippets.add(snippet));
+  return Array.from(snippets);
 };
 
 const devLog = (...args: unknown[]) => {
@@ -321,6 +338,20 @@ router.post("/generate", async (req, res) => {
         }
       }
     });
+    const cachedChunks = (existingUserCache?.payload as LecturePackage | null)?.chunks || [];
+    const visualsResults = await Promise.all(
+      chunks.map(async (chunk, index) => {
+        const cachedVisuals = cachedChunks[index]?.visuals;
+        if (cachedVisuals) return cachedVisuals;
+        const codeSnippets = extractCodeSnippets(chunk.narration || "");
+        return generateVisuals(chunk.narration || "", codeSnippets);
+      })
+    );
+    const chunksWithVisuals = chunks.map((chunk, index) => ({
+      ...chunk,
+      visuals: visualsResults[index]
+    }));
+    lecturePackage.chunks = chunksWithVisuals;
     const cachedWhiteboard = (existingUserCache?.payload as LecturePackage | null)?.whiteboard;
     if (
       cachedWhiteboard?.whiteboard?.length &&

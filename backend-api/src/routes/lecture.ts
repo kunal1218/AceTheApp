@@ -60,7 +60,9 @@ const buildWhiteboardInputs = (chunks: { chunkTitle: string; narration: string }
     const lines = splitTranscriptLines(chunk.narration || "");
     if (!lines.length) return;
     const lineNumber = transcriptLines.length + 1;
-    const intent = chunk.chunkTitle?.trim() || `chunk_${index + 1}`;
+    const firstLine = lines[0] || "";
+    const intentBase = chunk.chunkTitle?.trim() || `chunk_${index + 1}`;
+    const intent = firstLine ? `${intentBase}: ${firstLine}` : intentBase;
     actionSlots.push({ line: lineNumber, intent });
     transcriptLines.push(...lines);
   });

@@ -270,6 +270,7 @@ Rules:
 - If none fit, create a new figure:
   use_cached=false, unique snake_case figure_id, and svg must be a complete standalone SVG string.
 - Include tags (3-8 keywords) and a 1-2 sentence concept_context for every entry.
+- If the intent implies a relationship or flow, include arrows to show it.
 
 SVG constraints:
 - width="800" height="450" viewBox="0 0 800 450"

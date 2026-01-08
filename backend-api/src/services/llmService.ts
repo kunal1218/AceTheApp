@@ -177,6 +177,59 @@ const isWhiteboardPayload = (value: unknown): value is WhiteboardPlan => {
   return value.whiteboard.every(isWhiteboardEntry);
 };
 
+const buildFallbackSvg = (label: string) => {
+  const safeLabel = label.slice(0, 32);
+  return `<svg width="800" height="450" viewBox="0 0 800 450"><rect x="80" y="140" width="220" height="120" fill="white" stroke="black"/><rect x="500" y="140" width="220" height="120" fill="white" stroke="black"/><line x1="300" y1="200" x2="500" y2="200" stroke="black" stroke-width="3"/><polygon points="500,200 486,192 486,208" fill="black"/><text x="110" y="210" font-size="20" fill="black">${safeLabel}</text><text x="540" y="210" font-size="20" fill="black">result</text></svg>`;
+};
+
+const normalizeWhiteboardPlan = (
+  plan: WhiteboardPlan,
+  actionSlots: Array<{ line: number; intent: string }>,
+  figureCache: Array<{
+    figure_id: string;
+    tags: string[];
+    concept_context: string;
+    svg?: string;
+  }>
+) => {
+  const cacheMap = new Map(
+    figureCache.map((entry) => [entry.figure_id, entry.svg || null])
+  );
+  const seen = new Set<string>();
+  const normalized = plan.whiteboard.map((entry, index) => {
+    let figureId = entry.figure_id.trim();
+    if (!figureId) {
+      figureId = `figure_${entry.line}`;
+    }
+    if (seen.has(figureId)) {
+      figureId = `${figureId}_${entry.line}`;
+    }
+    seen.add(figureId);
+    const slotIntent = actionSlots[index]?.intent || `line_${entry.line}`;
+    let useCached = entry.use_cached;
+    let svg = entry.svg;
+    if (useCached) {
+      const cachedSvg = cacheMap.get(entry.figure_id) || null;
+      if (!cachedSvg) {
+        useCached = false;
+        svg = buildFallbackSvg(slotIntent);
+      } else {
+        svg = null;
+      }
+    }
+    if (!useCached && (!svg || typeof svg !== "string")) {
+      svg = buildFallbackSvg(slotIntent);
+    }
+    return {
+      ...entry,
+      figure_id: figureId,
+      use_cached: useCached,
+      svg
+    };
+  });
+  return { whiteboard: normalized };
+};
+
 const buildLectureFromTeacherText = (
   teacherText: string,
   topicName: string
@@ -864,7 +917,7 @@ export const llmService = {
     });
     if (result) {
       devLog(repaired ? "Gemini whiteboard repair success" : "Gemini whiteboard success");
-      return result;
+      return normalizeWhiteboardPlan(result, input.actionSlots, input.figureCache);
     }
     devLog("whiteboard generation failed");
     return null;

@@ -63,6 +63,18 @@ const splitDialogueLines = (text) => {
   return lines;
 };
 
+const expandLinesForVisuals = (text, minLines) => {
+  const baseLines = splitDialogueLines(text);
+  if (baseLines.length >= minLines) return baseLines;
+  const roughParts = text
+    .split(/[;:]/g)
+    .flatMap((segment) => segment.split(/,\s+/g))
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const expanded = roughParts.length ? roughParts : baseLines;
+  return expanded.length >= minLines ? expanded : baseLines;
+};
+
 export default function LecturePage() {
   const { courseId, topicId } = useParams();
   const location = useLocation();
@@ -190,6 +202,14 @@ export default function LecturePage() {
       const visuals = Array.isArray(chunk.visuals) ? chunk.visuals : [];
       if (!visuals.length || !chunkLineIndices.length) return;
       const usedLines = new Set();
+      if (visuals.length > chunkLineIndices.length) {
+        const expandedLines = expandLinesForVisuals(chunkText, visuals.length);
+        const extraCount = expandedLines.length - chunkLineIndices.length;
+        for (let i = 0; i < extraCount; i += 1) {
+          chunkLineIndices.push(globalLineCursor + i);
+        }
+        globalLineCursor += Math.max(0, extraCount);
+      }
       visuals.forEach((visual, visualIndex) => {
         if (!visual) return;
         const anchor = (visual.anchor_quote || "").trim();

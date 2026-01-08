@@ -64,6 +64,7 @@ export type LecturePackage = {
     boardOps?: WhiteboardOp[];
   };
   whiteboard?: WhiteboardPlan;
+  visualsVersion?: string;
 };
 
 export type LectureLevel = LecturePackage["level"];

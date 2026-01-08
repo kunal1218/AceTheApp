@@ -13,6 +13,7 @@ import { generateVisuals } from "../services/visuals";
 import {
   STYLE_VERSION,
   TIE_IN_VERSION,
+  VISUALS_VERSION,
   WHITEBOARD_VERSION,
   buildGeneralCacheKey,
   buildTieInCacheKey,
@@ -339,11 +340,15 @@ router.post("/generate", async (req, res) => {
         }
       }
     });
-    const cachedChunks = (existingUserCache?.payload as LecturePackage | null)?.chunks || [];
+    const cachedPayload = existingUserCache?.payload as LecturePackage | null;
+    const cachedChunks = cachedPayload?.chunks || [];
+    const cachedVisualsVersion = cachedPayload?.visualsVersion;
     const visualsResults = await Promise.all(
       chunks.map(async (chunk, index) => {
         const cachedVisuals = cachedChunks[index]?.visuals;
-        if (cachedVisuals) return cachedVisuals;
+        if (cachedVisuals && cachedVisualsVersion === VISUALS_VERSION) {
+          return cachedVisuals;
+        }
         const codeSnippets = extractCodeSnippets(chunk.narration || "");
         return generateVisuals(chunk.narration || "", codeSnippets);
       })
@@ -353,6 +358,7 @@ router.post("/generate", async (req, res) => {
       visuals: visualsResults[index]
     }));
     lecturePackage.chunks = chunksWithVisuals;
+    lecturePackage.visualsVersion = VISUALS_VERSION;
     const cachedWhiteboard = (existingUserCache?.payload as LecturePackage | null)?.whiteboard;
     if (
       cachedWhiteboard?.whiteboard?.length &&

@@ -294,6 +294,8 @@ export default function LecturePage() {
     }));
     console.warn("[LecturePage] No visuals scheduled", {
       visualsSummary: meta?.visualsSummary,
+      visualsVersion: meta?.visualsVersion,
+      llmMode: meta?.llmMode,
       perChunk: summary
     });
   }, [lecture, visualSchedule, meta]);

@@ -462,7 +462,8 @@ router.post("/generate", async (req, res) => {
       tieInVersionUsed: TIE_IN_VERSION,
       promptFingerprint: GENERAL_PROMPT_FINGERPRINT,
       visualsVersion: VISUALS_VERSION,
-      visualsSummary
+      visualsSummary,
+      llmMode: LLM_MODE
     };
     if (process.env.NODE_ENV !== "production") {
       meta.validation = validationSummary.checks;

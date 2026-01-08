@@ -95,6 +95,10 @@ const devLog = (...args: unknown[]) => {
   console.log("[lecture]", ...args);
 };
 
+const prodLog = (...args: unknown[]) => {
+  console.log("[lecture]", ...args);
+};
+
 const isStubSource = (payload?: GeneralLectureContent | null) =>
   payload?.source === "stub" || payload?.source === "stub_fallback";
 
@@ -399,6 +403,14 @@ router.post("/generate", async (req, res) => {
       ).length
     };
     devLog("visuals summary", visualsSummary);
+    prodLog("visuals summary", {
+      courseId,
+      topicId,
+      level,
+      llmMode: LLM_MODE,
+      visualsVersion: VISUALS_VERSION,
+      visualsSummary
+    });
     const cachedWhiteboard = (existingUserCache?.payload as LecturePackage | null)?.whiteboard;
     if (
       cachedWhiteboard?.whiteboard?.length &&

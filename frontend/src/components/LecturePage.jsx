@@ -75,6 +75,29 @@ const expandLinesForVisuals = (text, minLines) => {
   return expanded.length >= minLines ? expanded : baseLines;
 };
 
+const normalizeChunkVisuals = (visuals, chunkText) => {
+  if (Array.isArray(visuals)) return visuals;
+  const needs = visuals?.needs_clarification;
+  if (!needs || !Array.isArray(needs.questions)) return [];
+  const anchor = splitDialogueLines(chunkText)[0] || chunkText.trim();
+  const rows = needs.questions.map((question) => [question]);
+  return [
+    {
+      id: "NEEDS_CLARIFICATION",
+      type: "table",
+      anchor_quote: anchor,
+      title: "Needs Clarification",
+      caption: needs.reason
+        ? `Clarification needed: ${needs.reason}`
+        : "Clarification needed to draw exact visuals.",
+      content: {
+        headers: ["Questions"],
+        rows
+      }
+    }
+  ];
+};
+
 export default function LecturePage() {
   const { courseId, topicId } = useParams();
   const location = useLocation();
@@ -199,7 +222,7 @@ export default function LecturePage() {
       const chunkLines = splitDialogueLines(chunkText);
       const chunkLineIndices = chunkLines.map((_, index) => globalLineCursor + index);
       globalLineCursor += chunkLines.length;
-      const visuals = Array.isArray(chunk.visuals) ? chunk.visuals : [];
+      const visuals = normalizeChunkVisuals(chunk.visuals, chunkText);
       if (!visuals.length || !chunkLineIndices.length) return;
       const usedLines = new Set();
       if (visuals.length > chunkLineIndices.length) {

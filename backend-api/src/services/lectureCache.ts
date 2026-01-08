@@ -3,7 +3,7 @@ import crypto from "crypto";
 export const STYLE_VERSION = "v14";
 export const TIE_IN_VERSION = "v1";
 export const WHITEBOARD_VERSION = "v1";
-export const VISUALS_VERSION = "v1";
+export const VISUALS_VERSION = "v2";
 
 type TopicContextSource = {
   title?: string | null;

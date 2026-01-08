@@ -204,12 +204,39 @@ router.post("/generate", async (req, res) => {
           }
         });
         if (userCacheFallback?.payload) {
+          const cachedLecture = userCacheFallback.payload as LecturePackage;
+          if (cachedLecture.visualsVersion !== VISUALS_VERSION) {
+            const refreshedVisuals = await Promise.all(
+              cachedLecture.chunks.map(async (chunk) => {
+                const codeSnippets = extractCodeSnippets(chunk.narration || "");
+                return generateVisuals(chunk.narration || "", codeSnippets);
+              })
+            );
+            cachedLecture.chunks = cachedLecture.chunks.map((chunk, index) => ({
+              ...chunk,
+              visuals: refreshedVisuals[index]
+            }));
+            cachedLecture.visualsVersion = VISUALS_VERSION;
+            await prisma.lectureUserCache.update({
+              where: {
+                userId_courseId_topicId_level: {
+                  userId: req.user!.id,
+                  courseId,
+                  topicId,
+                  level
+                }
+              },
+              data: {
+                payload: cachedLecture as unknown as Prisma.InputJsonValue
+              }
+            });
+          }
           devLog("stub lecture ignored, serving user cache", {
             generalCacheKey,
             userCacheKey: userCacheFallback.generalCacheKey
           });
           return res.json({
-            data: userCacheFallback.payload,
+            data: cachedLecture,
             meta: {
               generalCache: "user_cache",
               tieInCache: "user_cache",
